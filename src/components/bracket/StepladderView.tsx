@@ -109,9 +109,6 @@ export function StepladderView({
                       onClearResult={onClearResult}
                     />
                   </div>
-                  {index < bracket.matches.length - 1 ? (
-                    <div className="pointer-events-none absolute -right-8 top-[calc(50%+28px)] hidden h-px w-8 bg-line md:block" />
-                  ) : null}
                 </div>
               );
             })}

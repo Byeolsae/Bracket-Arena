@@ -241,7 +241,6 @@ function GroupDoubleHourglassBracket({
 
         <div className="overflow-x-auto pb-6">
           <div className="relative min-h-[560px] min-w-[1240px] py-8">
-            <HourglassConnectorLines />
             <div className="relative z-10 grid grid-cols-[280px_280px_280px] gap-x-32">
               <HourglassColumn
                 title="Opening"
@@ -333,24 +332,6 @@ function HourglassColumn({
         </div>
       )}
     </div>
-  );
-}
-
-function HourglassConnectorLines() {
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full opacity-70 md:block"
-      viewBox="0 0 1240 560"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      <path d="M270 188 H350 V128 H402" className="fill-none stroke-line" strokeWidth="2" />
-      <path d="M270 304 H350 V432 H402" className="fill-none stroke-line" strokeWidth="2" />
-      <path d="M688 128 H784 V278 H812" className="fill-none stroke-line" strokeWidth="2" />
-      <path d="M688 432 H784 V278 H812" className="fill-none stroke-line" strokeWidth="2" />
-      <path d="M350 188 L350 304" className="fill-none stroke-line/70" strokeWidth="2" />
-      <path d="M784 128 L784 432" className="fill-none stroke-line/70" strokeWidth="2" />
-    </svg>
   );
 }
 

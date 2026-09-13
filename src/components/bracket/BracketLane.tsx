@@ -100,15 +100,9 @@ export function BracketLane({
                 <div className={`bracket-round-label ${roundHasActiveMatch ? "ring-2 ring-cyan shadow-[0_0_22px_rgba(47,230,255,0.28)]" : ""} ${roundToneClassName}`}>
                   {round.name}
                 </div>
-                {roundIndex < rounds.length - 1 && round.matches.length > 1 ? (
-                  <div className="pointer-events-none absolute -right-10 top-24 bottom-10 hidden w-px bg-line md:block" />
-                ) : null}
                 <div className="flex flex-1 flex-col justify-around gap-5">
                   {round.matches.map((match) => (
                     <div key={match.id} className="relative">
-                      {roundIndex > 0 ? (
-                        <div className="pointer-events-none absolute -left-10 top-1/2 hidden h-px w-10 bg-line md:block" />
-                      ) : null}
                       <MatchCard
                         match={match}
                         teamsById={teamsById}
@@ -121,9 +115,6 @@ export function BracketLane({
                         onSaveResult={onSaveResult}
                         onClearResult={onClearResult}
                       />
-                      {roundIndex < rounds.length - 1 ? (
-                        <div className="pointer-events-none absolute -right-10 top-1/2 hidden h-px w-10 bg-line md:block" />
-                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -231,9 +222,6 @@ function SplitBranchRounds({
                   matchIndex === round.matches.length - 1 &&
                   nextRound.matches.length === Math.ceil(round.matches.length / 2);
                 const centerY = isOddCarryMatch ? nextCenterY : baseCenterY;
-                const connectorTop = Math.min(centerY, nextCenterY);
-                const connectorHeight = Math.abs(nextCenterY - centerY);
-
                 return (
                 <div
                   key={match.id}
@@ -244,22 +232,6 @@ function SplitBranchRounds({
                     transform: "translateY(-50%)"
                   }}
                 >
-                  {roundIndex > 0 ? (
-                    <div className="pointer-events-none absolute -left-[56px] top-1/2 hidden h-px w-[56px] bg-line md:block" />
-                  ) : null}
-                  {!isLastRound ? (
-                    <>
-                      <div className="pointer-events-none absolute -right-[56px] top-1/2 hidden h-px w-[56px] bg-line md:block" />
-                      <div
-                        className="pointer-events-none absolute hidden w-px bg-line md:block"
-                        style={{
-                          right: -56,
-                          top: connectorTop - centerY + 56,
-                          height: Math.max(1, connectorHeight)
-                        }}
-                      />
-                    </>
-                  ) : null}
                   <MatchCard
                     match={match}
                     teamsById={teamsById}
