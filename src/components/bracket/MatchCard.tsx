@@ -106,6 +106,8 @@ export function MatchCard({
 
   return (
     <article
+      data-match-card="true"
+      data-match-id={match.id}
       className={clsx(
         "relative w-64 shrink-0 border border-line bg-panel shadow-panel",
         active && !isLocked && "ring-2 ring-cyan shadow-[0_0_26px_rgba(47,230,255,0.26)]",
@@ -137,6 +139,8 @@ export function MatchCard({
       <div className="space-y-px p-2">
         <BracketTeamRow
           participant={match.participantA}
+          matchId={match.id}
+          slot="A"
           team={teamA}
           inputRef={inputARef}
           defaultScore={match.scoreA}
@@ -147,6 +151,8 @@ export function MatchCard({
         />
         <BracketTeamRow
           participant={match.participantB}
+          matchId={match.id}
+          slot="B"
           team={teamB}
           inputRef={inputBRef}
           defaultScore={match.scoreB}
@@ -162,6 +168,8 @@ export function MatchCard({
 
 function BracketTeamRow({
   participant,
+  matchId,
+  slot,
   team,
   inputRef,
   defaultScore,
@@ -171,6 +179,8 @@ function BracketTeamRow({
   onInput
 }: {
   participant?: MatchParticipant;
+  matchId: string;
+  slot: "A" | "B";
   team?: Team;
   inputRef: React.RefObject<HTMLInputElement | null>;
   defaultScore?: number;
@@ -189,6 +199,10 @@ function BracketTeamRow({
 
   return (
     <div
+      data-team-row="true"
+      data-match-id={matchId}
+      data-slot={slot}
+      data-team-id={team?.id}
       className={clsx(
         "grid h-11 grid-cols-[1fr_52px] items-stretch overflow-hidden border border-line bg-field text-ink transition",
         isWinner && "shadow-[0_0_24px_rgba(47,230,255,0.14)]",

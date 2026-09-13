@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BracketStageMatch, Team } from "@/lib/core/models";
 import { sortBracketMatches } from "@/lib/core/bracketOrder";
 import { MatchCard } from "@/components/bracket/MatchCard";
@@ -46,6 +47,10 @@ export function BracketLane({
   onSaveResult,
   onClearResult
 }: BracketLaneProps) {
+  const boardRef = useRef<HTMLDivElement>(null);
+  const splitBoardRef = useRef<HTMLDivElement>(null);
+  const [hoveredTeamId, setHoveredTeamId] = useState<string | undefined>();
+  const [hoverPaths, setHoverPaths] = useState<string[]>([]);
   const rounds = groupByRound(matches);
   const rawDisplayRounds =
     splitBranches && expectedFirstRoundMatchCount
@@ -61,6 +66,33 @@ export function BracketLane({
   const displayRounds = roundNameOverrides
     ? applyRoundNameOverrides(rawDisplayRounds, roundNameOverrides)
     : rawDisplayRounds;
+  const displayedMatches = useMemo(() => displayRounds.flatMap((round) => round.matches), [displayRounds]);
+  const pathMatches = useMemo(
+    () => displayedMatches.filter((match) => !match.id.startsWith("placeholder-")),
+    [displayedMatches]
+  );
+  const updateHoverPaths = useCallback(
+    (teamId?: string) => {
+      const root = (splitBranches && rounds.length > 0 ? splitBoardRef.current : boardRef.current) ?? undefined;
+      setHoverPaths(teamId && root ? buildTeamHoverPaths(root, pathMatches, teamId) : []);
+    },
+    [pathMatches, rounds.length, splitBranches]
+  );
+  const setHoveredTeam = useCallback(
+    (teamId?: string) => {
+      setHoveredTeamId(teamId);
+      updateHoverPaths(teamId);
+    },
+    [updateHoverPaths]
+  );
+
+  useEffect(() => {
+    if (!hoveredTeamId) return;
+
+    const update = () => updateHoverPaths(hoveredTeamId);
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [hoveredTeamId, updateHoverPaths]);
 
   return (
     <section className="min-w-0 space-y-3">
@@ -71,6 +103,7 @@ export function BracketLane({
 
       {splitBranches && rounds.length > 0 ? (
         <SplitBranchRounds
+          boardRef={splitBoardRef}
           rounds={displayRounds}
           actualRounds={rounds}
           teamsById={teamsById}
@@ -81,10 +114,22 @@ export function BracketLane({
           onSaveResult={onSaveResult}
           onClearResult={onClearResult}
           activeMatchIds={activeMatchIds}
+          hoverPaths={hoverPaths}
+          onTeamHover={setHoveredTeam}
         />
       ) : (
       <div className={`${scrollable ? "overflow-x-auto" : "overflow-visible"} pb-4`}>
-        <div className="grid min-w-max auto-cols-[minmax(300px,340px)] grid-flow-col gap-14">
+        <div
+          ref={boardRef}
+          className="relative grid min-w-max auto-cols-[minmax(300px,340px)] grid-flow-col gap-14"
+          onMouseOver={(event) => {
+            const row = (event.target as HTMLElement).closest<HTMLElement>("[data-team-row='true']");
+            const teamId = row?.dataset.teamId;
+            if (teamId && teamId !== hoveredTeamId) setHoveredTeam(teamId);
+          }}
+          onMouseLeave={() => setHoveredTeam(undefined)}
+        >
+          <BracketHoverOverlay paths={hoverPaths} />
           {rounds.map((round, roundIndex) => {
             const previousRound = rounds[roundIndex - 1];
             const roundHasActiveMatch = round.matches.some((match) => activeMatchIds?.has(match.id));
@@ -143,8 +188,12 @@ function SplitBranchRounds({
   scrollable,
   onSaveResult,
   onClearResult,
-  activeMatchIds
+  activeMatchIds,
+  hoverPaths,
+  onTeamHover,
+  boardRef
 }: {
+  boardRef: React.RefObject<HTMLDivElement | null>;
   rounds: ReturnType<typeof groupByRound>;
   actualRounds: ReturnType<typeof groupByRound>;
   teamsById: Map<string, Team>;
@@ -155,6 +204,8 @@ function SplitBranchRounds({
   onSaveResult: BracketLaneProps["onSaveResult"];
   onClearResult: BracketLaneProps["onClearResult"];
   activeMatchIds?: Set<string>;
+  hoverPaths: string[];
+  onTeamHover: (teamId?: string) => void;
 }) {
   const leafGap = 176;
   const cardWidth = 320;
@@ -164,12 +215,20 @@ function SplitBranchRounds({
   return (
     <div className={`${scrollable ? "overflow-x-auto" : "overflow-visible"} pb-4`}>
       <div
+        ref={boardRef}
         className="relative min-w-max"
         style={{
           width: rounds.length * cardWidth + Math.max(0, rounds.length - 1) * columnGap,
           height: canvasHeight + 56
         }}
+        onMouseOver={(event) => {
+          const row = (event.target as HTMLElement).closest<HTMLElement>("[data-team-row='true']");
+          const teamId = row?.dataset.teamId;
+          if (teamId) onTeamHover(teamId);
+        }}
+        onMouseLeave={() => onTeamHover(undefined)}
       >
+        <BracketHoverOverlay paths={hoverPaths} />
         {rounds.map((round, roundIndex) => {
           const previousRound = actualRounds.find((item) => item.round === rounds[roundIndex - 1]?.round);
           const roundHasActiveMatch = round.matches.some((match) => activeMatchIds?.has(match.id));
@@ -253,6 +312,139 @@ function SplitBranchRounds({
       </div>
     </div>
   );
+}
+
+function BracketHoverOverlay({ paths }: { paths: string[] }) {
+  if (!paths.length) return null;
+
+  return (
+    <svg className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible" aria-hidden="true">
+      {paths.map((path, index) => (
+        <path
+          key={`${path}-${index}`}
+          d={path}
+          className="fill-none stroke-cyan"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            filter: "drop-shadow(0 0 8px rgba(47,230,255,0.8))"
+          }}
+        />
+      ))}
+    </svg>
+  );
+}
+
+function buildTeamHoverPaths(root: HTMLElement, matches: BracketStageMatch[], teamId: string) {
+  const segments = getTeamPathSegments(matches, teamId);
+
+  return segments
+    .map((segment) => {
+      const from = getTeamRowElement(root, segment.fromMatchId, teamId) ?? getMatchCardElement(root, segment.fromMatchId);
+      const to =
+        getTeamRowElement(root, segment.toMatchId, teamId) ??
+        (segment.toSlot ? getSlotRowElement(root, segment.toMatchId, segment.toSlot) : undefined) ??
+        getMatchCardElement(root, segment.toMatchId);
+
+      if (!from || !to) return undefined;
+      const fromPoint = getElementPoint(root, from, "right");
+      const toPoint = getElementPoint(root, to, "left");
+      const midX = fromPoint.x + Math.max(36, (toPoint.x - fromPoint.x) / 2);
+
+      return `M ${fromPoint.x} ${fromPoint.y} C ${midX} ${fromPoint.y}, ${midX} ${toPoint.y}, ${toPoint.x} ${toPoint.y}`;
+    })
+    .filter((path): path is string => Boolean(path));
+}
+
+function getTeamPathSegments(matches: BracketStageMatch[], teamId: string) {
+  const segments: Array<{ fromMatchId: string; toMatchId: string; toSlot?: "A" | "B" }> = [];
+
+  matches.forEach((match) => {
+    if (doesTeamAdvanceFromMatch(match, teamId) && match.nextMatchId) {
+      segments.push({ fromMatchId: match.id, toMatchId: match.nextMatchId, toSlot: match.nextMatchSlot });
+    }
+
+    if (match.loserId === teamId && match.loserNextMatchId) {
+      segments.push({ fromMatchId: match.id, toMatchId: match.loserNextMatchId, toSlot: match.loserNextMatchSlot });
+    }
+
+    matches.forEach((target) => {
+      if (target.id === match.id) return;
+      if (doesTeamAdvanceFromMatch(match, teamId)) {
+        if (target.participantA?.sourceMatchId === match.id && target.participantA.teamId === teamId) {
+          segments.push({ fromMatchId: match.id, toMatchId: target.id, toSlot: "A" });
+        }
+        if (target.participantB?.sourceMatchId === match.id && target.participantB.teamId === teamId) {
+          segments.push({ fromMatchId: match.id, toMatchId: target.id, toSlot: "B" });
+        }
+      }
+      if (match.loserId === teamId) {
+        if (target.participantA?.sourceMatchId === match.id && target.participantA.teamId === teamId) {
+          segments.push({ fromMatchId: match.id, toMatchId: target.id, toSlot: "A" });
+        }
+        if (target.participantB?.sourceMatchId === match.id && target.participantB.teamId === teamId) {
+          segments.push({ fromMatchId: match.id, toMatchId: target.id, toSlot: "B" });
+        }
+      }
+    });
+  });
+
+  const seen = new Set<string>();
+  return segments.filter((segment) => {
+    const key = `${segment.fromMatchId}->${segment.toMatchId}:${segment.toSlot ?? ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function doesTeamAdvanceFromMatch(match: BracketStageMatch, teamId: string) {
+  return match.winnerId === teamId || (match.status === "bye" && match.participantA?.teamId === teamId);
+}
+
+function getElementPoint(root: HTMLElement, element: HTMLElement, side: "left" | "right") {
+  const rootRect = root.getBoundingClientRect();
+  const rect = element.getBoundingClientRect();
+  const scale = rootRect.width / Math.max(root.offsetWidth, 1);
+  const x = ((side === "left" ? rect.left : rect.right) - rootRect.left) / scale;
+  const y = (rect.top + rect.height / 2 - rootRect.top) / scale;
+  return { x, y };
+}
+
+function getMatchCardElement(root: HTMLElement, matchId: string) {
+  return findDataElement(root, "matchCard", "true", (element) => element.dataset.matchId === matchId);
+}
+
+function getTeamRowElement(root: HTMLElement, matchId: string, teamId: string) {
+  return findDataElement(
+    root,
+    "teamRow",
+    "true",
+    (element) => element.dataset.matchId === matchId && element.dataset.teamId === teamId
+  );
+}
+
+function getSlotRowElement(root: HTMLElement, matchId: string, slot: "A" | "B") {
+  return findDataElement(
+    root,
+    "teamRow",
+    "true",
+    (element) => element.dataset.matchId === matchId && element.dataset.slot === slot
+  );
+}
+
+function findDataElement(
+  root: HTMLElement,
+  key: string,
+  value: string,
+  predicate: (element: HTMLElement) => boolean
+) {
+  return Array.from(root.querySelectorAll<HTMLElement>(`[data-${kebabCase(key)}='${value}']`)).find(predicate);
+}
+
+function kebabCase(value: string) {
+  return value.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 }
 
 function getRequiredCanvasHeight(rounds: ReturnType<typeof groupByRound>, leafGap: number) {
