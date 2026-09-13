@@ -151,6 +151,7 @@ export default function DrawPage() {
   const [potAssignments, setPotAssignments] = useState<Record<string, number>>({});
   const [draggedTeamId, setDraggedTeamId] = useState<string | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [skipDrawAnimation, setSkipDrawAnimation] = useState(false);
   const [drawQueue, setDrawQueue] = useState<DrawResult[]>([]);
   const [revealedResults, setRevealedResults] = useState<DrawResult[]>([]);
   const [currentResult, setCurrentResult] = useState<DrawResult>();
@@ -328,6 +329,14 @@ export default function DrawPage() {
     setDrawQueue(queue);
     setRevealedResults([]);
     setCurrentResult(undefined);
+
+    if (skipDrawAnimation) {
+      setRevealedResults(queue);
+      setCurrentResult(queue.at(-1));
+      setIsDrawing(false);
+      return;
+    }
+
     setIsDrawing(true);
 
     queue.forEach((result, index) => {
@@ -641,6 +650,19 @@ export default function DrawPage() {
                 <div className="rounded-md border border-cyan/40 bg-cyan/10 px-3 py-2 text-sm font-black text-cyan">
                   {revealedResults.length}/{drawQueue.length || selectedTeams.length} 공개
                 </div>
+                <button
+                  type="button"
+                  className={`inline-flex h-10 items-center gap-2 rounded-md border px-3 text-xs font-black uppercase tracking-wide transition ${
+                    skipDrawAnimation
+                      ? "border-lime bg-lime text-arena"
+                      : "border-line bg-field text-muted hover:border-cyan hover:text-cyan"
+                  }`}
+                  onClick={() => setSkipDrawAnimation((current) => !current)}
+                  title="켜면 추첨 애니메이션 없이 결과를 즉시 공개합니다"
+                  aria-pressed={skipDrawAnimation}
+                >
+                  스킵 {skipDrawAnimation ? "ON" : "OFF"}
+                </button>
                 <button type="button" className="button-primary" onClick={importToBracket} disabled={!revealedResults.length || isDrawing}>
                   <ArrowRight className="h-4 w-4" />
                   브래킷으로 가져오기
