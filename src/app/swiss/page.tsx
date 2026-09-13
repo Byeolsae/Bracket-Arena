@@ -189,20 +189,20 @@ function SwissBracketBoard({
   const eliminated = records.filter((record) => record.status === "eliminated");
 
   return (
-    <div className="relative overflow-x-auto rounded-md border border-line bg-[radial-gradient(circle_at_20%_20%,rgba(47,230,255,0.12),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.04),transparent_35%),hsl(var(--arena))] p-4">
-      <div className="flex min-w-max gap-5">
+    <div className="relative overflow-x-auto rounded-md border border-cyan/20 bg-arena/95 p-6 shadow-inner">
+      <div className="flex min-w-max items-stretch gap-12 bg-[linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:40px_40px] p-4">
         {roundBuckets.map(({ round, buckets }) => (
-          <div key={round} className="w-56 shrink-0">
-            <div className="mb-3 rounded-sm border border-line bg-field px-3 py-2 text-center text-xs font-black uppercase tracking-[0.18em] text-ink">
+          <div key={round} className="w-[300px] shrink-0">
+            <div className="bracket-round-label mb-7 h-8 bg-cyan text-[11px] text-arena shadow-[0_12px_30px_rgba(0,0,0,0.2)]">
               Round {round}
             </div>
             <div className="space-y-4">
               {buckets.map(([recordKey, matches]) => (
                 <div key={`${round}-${recordKey}`} className="relative">
-                  <div className={clsx("rounded-t-sm px-3 py-1 text-center text-xs font-black uppercase text-arena", bucketTone(recordKey))}>
+                  <div className={clsx("bracket-round-label h-6 text-[10px] text-arena", bucketTone(recordKey))}>
                     {recordKey}
                   </div>
-                  <div className="space-y-1 border border-t-0 border-line bg-panel/80 p-2">
+                  <div className="space-y-3 border border-t-0 border-line/80 bg-panel/90 p-2.5 shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
                     {matches.map((match) => (
                       <SwissMiniMatch key={match.id} match={match} teamsById={teamsById} />
                     ))}
@@ -232,33 +232,88 @@ function SwissMiniMatch({
 
   if (match.isBye) {
     return (
-      <div className="flex items-center gap-2 rounded-sm border border-lime/40 bg-lime/10 px-2 py-1">
-        <TeamLogo team={teamA} size="sm" highlighted />
-        <span className="min-w-0 flex-1 truncate text-xs font-black uppercase text-ink">
-          {teamA?.shortName || teamA?.name || "미정"}
-        </span>
-        <span className="text-[10px] font-black text-lime">BYE</span>
-      </div>
+      <article className="relative w-64 overflow-hidden border border-lime bg-panel shadow-panel">
+        <div className="flex h-7 items-center justify-between bg-lime px-2 text-[10px] font-black uppercase tracking-wider text-arena">
+          <span>M{match.matchNumber.toString().padStart(2, "0")}</span>
+          <span className="truncate px-2">Round {match.round}</span>
+          <span>BYE</span>
+        </div>
+        <div className="p-2">
+          <div className="grid h-11 grid-cols-[1fr_52px] items-stretch overflow-hidden border border-lime/60 bg-lime/10 text-ink shadow-[0_0_24px_rgba(130,255,49,0.12)]">
+            <div className="flex min-w-0 items-center gap-2 px-2">
+              <TeamLogo team={teamA} size="sm" highlighted />
+              <div className="min-w-0">
+                <div className="truncate text-xs font-black uppercase tracking-wide text-ink">
+                  {teamA?.shortName || teamA?.name || "TBD"}
+                </div>
+                {teamA?.shortName ? <div className="truncate text-[10px] font-bold">{teamA.name}</div> : null}
+              </div>
+            </div>
+            <div className="grid place-items-center bg-lime text-xs font-black text-arena">BYE</div>
+          </div>
+        </div>
+      </article>
     );
   }
+  const completedWithWinner = Boolean(match.winnerId);
 
   return (
-    <div className="rounded-sm border border-line bg-field">
-      <SwissMiniTeam team={teamA} active={match.winnerId === teamA?.id} score={match.scoreA} />
-      <div className="mx-2 border-t border-line" />
-      <SwissMiniTeam team={teamB} active={match.winnerId === teamB?.id} score={match.scoreB} />
-    </div>
+    <article className={clsx("relative w-64 overflow-hidden border border-line bg-panel shadow-panel", completedWithWinner && "border-lime")}>
+      <div className="flex h-7 items-center justify-between bg-danger px-2 text-[10px] font-black uppercase tracking-wider text-white">
+        <span>M{match.matchNumber.toString().padStart(2, "0")}</span>
+        <span className="truncate px-2">Round {match.round}</span>
+        <span>{completedWithWinner ? "DONE" : "OPEN"}</span>
+      </div>
+      <div className="space-y-px p-2">
+        <SwissMiniTeam
+          team={teamA}
+          active={match.winnerId === teamA?.id}
+          dimmed={Boolean(completedWithWinner && teamA?.id && match.winnerId !== teamA.id)}
+          score={match.scoreA}
+        />
+        <SwissMiniTeam
+          team={teamB}
+          active={match.winnerId === teamB?.id}
+          dimmed={Boolean(completedWithWinner && teamB?.id && match.winnerId !== teamB.id)}
+          score={match.scoreB}
+        />
+      </div>
+    </article>
   );
 }
 
-function SwissMiniTeam({ team, active, score }: { team?: Team; active?: boolean; score?: number }) {
+function SwissMiniTeam({
+  team,
+  active,
+  dimmed,
+  score
+}: {
+  team?: Team;
+  active?: boolean;
+  dimmed?: boolean;
+  score?: number;
+}) {
+  const isPlaceholder = !team;
+
   return (
-    <div className={clsx("flex items-center gap-2 px-2 py-1", active && "bg-cyan/10")}>
-      <TeamLogo team={team} size="sm" highlighted={active} useVictoryLogo={active} />
-      <span className="min-w-0 flex-1 truncate text-xs font-black uppercase text-ink">
-        {team?.shortName || team?.name || "미정"}
-      </span>
-      <span className={clsx("grid h-5 min-w-5 place-items-center rounded-sm text-xs font-black", active ? "bg-cyan text-arena" : "bg-arena text-slate-400")}>
+    <div
+      className={clsx(
+        "grid h-11 grid-cols-[1fr_52px] items-stretch overflow-hidden border border-line bg-field text-ink transition",
+        active && "border-lime bg-lime/10 shadow-[0_0_24px_rgba(47,230,255,0.14)]",
+        dimmed && "opacity-55 saturate-75",
+        isPlaceholder && "border-dashed border-cyan/25 bg-cyan/5 text-cyan/80"
+      )}
+    >
+      <div className={clsx("flex min-w-0 items-center gap-2 px-2 transition", active && "shadow-[0_0_18px_rgba(47,230,255,0.18)]")}>
+        <TeamLogo team={team} size="sm" highlighted={active} useVictoryLogo={active} />
+        <div className="min-w-0">
+          <div className={clsx("truncate text-xs font-black uppercase tracking-wide", isPlaceholder && "text-cyan")}>
+            {team?.shortName || team?.name || "TBD"}
+          </div>
+          {team?.shortName ? <div className="truncate text-[10px] font-bold">{team.name}</div> : null}
+        </div>
+      </div>
+      <span className={clsx("grid h-full place-items-center text-base font-black", active ? "bg-lime text-arena" : "bg-panel text-ink")}>
         {score ?? "-"}
       </span>
     </div>

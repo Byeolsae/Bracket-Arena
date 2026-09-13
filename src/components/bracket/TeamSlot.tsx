@@ -16,6 +16,7 @@ type TeamSlotProps = {
   team?: Team;
   score?: number | string;
   isWinner?: boolean;
+  isLoser?: boolean;
   editable?: boolean;
   disabled?: boolean;
   onScoreChange?: (score: string) => void;
@@ -26,6 +27,7 @@ export function TeamSlot({
   team,
   score,
   isWinner,
+  isLoser,
   editable,
   disabled,
   onScoreChange
@@ -43,6 +45,7 @@ export function TeamSlot({
       className={clsx(
         "grid h-11 grid-cols-[1fr_48px] items-stretch overflow-hidden border border-line bg-field text-ink transition",
         isWinner && "shadow-[0_0_24px_rgba(47,230,255,0.14)]",
+        isLoser && "opacity-55 saturate-75",
         isBye && "border-dashed opacity-70",
         isPlaceholder && "border-dashed border-cyan/25 bg-cyan/5 text-cyan/80"
       )}

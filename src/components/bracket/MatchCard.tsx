@@ -141,6 +141,7 @@ export function MatchCard({
           inputRef={inputARef}
           defaultScore={match.scoreA}
           isWinner={match.winnerId === teamA?.id}
+          isLoser={Boolean(match.winnerId && teamA?.id && match.winnerId !== teamA.id)}
           disabled={isLocked}
           onInput={scheduleAutoApply}
         />
@@ -150,6 +151,7 @@ export function MatchCard({
           inputRef={inputBRef}
           defaultScore={match.scoreB}
           isWinner={match.winnerId === teamB?.id}
+          isLoser={Boolean(match.winnerId && teamB?.id && match.winnerId !== teamB.id)}
           disabled={isLocked}
           onInput={scheduleAutoApply}
         />
@@ -164,6 +166,7 @@ function BracketTeamRow({
   inputRef,
   defaultScore,
   isWinner,
+  isLoser,
   disabled,
   onInput
 }: {
@@ -172,6 +175,7 @@ function BracketTeamRow({
   inputRef: React.RefObject<HTMLInputElement | null>;
   defaultScore?: number;
   isWinner?: boolean;
+  isLoser?: boolean;
   disabled?: boolean;
   onInput: () => void;
 }) {
@@ -188,6 +192,7 @@ function BracketTeamRow({
       className={clsx(
         "grid h-11 grid-cols-[1fr_52px] items-stretch overflow-hidden border border-line bg-field text-ink transition",
         isWinner && "shadow-[0_0_24px_rgba(47,230,255,0.14)]",
+        isLoser && "opacity-55 saturate-75",
         isBye && "border-dashed opacity-70",
         isPlaceholder && "border-dashed border-cyan/25 bg-cyan/5 text-cyan/80"
       )}

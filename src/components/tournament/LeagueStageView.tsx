@@ -79,6 +79,7 @@ export function LeagueStageView({ stage, teams, onChange }: LeagueStageViewProps
         {localStage.matches.map((match) => {
           const teamA = match.teamAId ? teamsById.get(match.teamAId) : undefined;
           const teamB = match.teamBId ? teamsById.get(match.teamBId) : undefined;
+          const completedWithWinner = Boolean(match.winnerId);
 
           return (
             <article key={match.id} className="rounded-md border border-line bg-panel p-3">
@@ -106,7 +107,11 @@ export function LeagueStageView({ stage, teams, onChange }: LeagueStageViewProps
                 </div>
               ) : (
                 <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
-                  <LeagueTeamSide team={teamA} active={match.winnerId === teamA?.id} />
+                  <LeagueTeamSide
+                    team={teamA}
+                    active={match.winnerId === teamA?.id}
+                    dimmed={Boolean(completedWithWinner && teamA?.id && match.winnerId !== teamA.id)}
+                  />
                   <ScorePair
                     scoreA={match.scoreA}
                     scoreB={match.scoreB}
@@ -114,7 +119,12 @@ export function LeagueStageView({ stage, teams, onChange }: LeagueStageViewProps
                     teamB={teamB}
                     onChange={(scoreA, scoreB) => updateResult(match.id, scoreA, scoreB)}
                   />
-                  <LeagueTeamSide team={teamB} active={match.winnerId === teamB?.id} align="right" />
+                  <LeagueTeamSide
+                    team={teamB}
+                    active={match.winnerId === teamB?.id}
+                    dimmed={Boolean(completedWithWinner && teamB?.id && match.winnerId !== teamB.id)}
+                    align="right"
+                  />
                 </div>
               )}
             </article>
@@ -130,10 +140,12 @@ export function LeagueStageView({ stage, teams, onChange }: LeagueStageViewProps
 function LeagueTeamSide({
   team,
   active,
+  dimmed,
   align = "left"
 }: {
   team?: Team;
   active?: boolean;
+  dimmed?: boolean;
   align?: "left" | "right";
 }) {
   const primary = active ? getTeamWinnerColor(team) : getTeamThemePrimaryColor(team);
@@ -151,7 +163,7 @@ function LeagueTeamSide({
     <div
       className={`relative flex min-w-0 items-center gap-3 rounded-md border bg-field px-3 py-2 transition ${
         active ? "border-cyan/45 shadow-[0_0_18px_rgba(47,230,255,0.12)]" : "border-line"
-      } ${align === "right" ? "flex-row-reverse" : ""}`}
+      } ${dimmed ? "opacity-55 saturate-75" : ""} ${align === "right" ? "flex-row-reverse" : ""}`}
       style={activeStyle}
     >
       <TeamLogo team={team} size="sm" highlighted={active} useVictoryLogo={active} />

@@ -173,7 +173,7 @@ function SwissBracketBoard({
           return (
             <div
               key={round}
-              className="relative flex min-h-[720px] w-[330px] shrink-0 flex-col"
+              className="relative flex min-h-[720px] w-[300px] shrink-0 flex-col"
             >
               <div className={clsx("bracket-round-label h-8 text-[11px] text-arena shadow-[0_12px_30px_rgba(0,0,0,0.2)]", roundTone(round, swiss.currentRound))}>
                 Round {round}
@@ -193,7 +193,7 @@ function SwissBracketBoard({
                     <div className={clsx("bracket-round-label h-6 text-[10px] text-arena", bucketTone(recordKey))}>
                       {recordKey}
                     </div>
-                    <div className="space-y-3 overflow-hidden border border-t-0 border-line/80 bg-panel/90 p-2.5 shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
+                    <div className="space-y-3 border border-t-0 border-line/80 bg-panel/90 p-2.5 shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
                       {matches.map((match) => (
                         <SwissMiniMatch
                           key={match.id}
@@ -260,68 +260,125 @@ function SwissMiniMatch({
   if (match.isBye) {
     const byeTextStyle = getTeamTextStyle(teamA);
     return (
-      <div className="flex min-h-11 items-center gap-2 border border-lime/40 bg-lime/10 px-2.5 py-2 shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
-        <TeamLogo team={teamA} size="sm" highlighted />
-        <span className="min-w-0 flex-1 truncate text-xs font-black uppercase text-ink" style={byeTextStyle}>
-          {teamA?.shortName || teamA?.name || "TBD"}
-        </span>
-        <span className="text-[10px] font-black text-lime">BYE</span>
-      </div>
+      <article className="relative w-64 overflow-hidden border border-lime bg-panel shadow-panel">
+        <div className="flex h-7 items-center justify-between bg-lime px-2 text-[10px] font-black uppercase tracking-wider text-arena">
+          <span>M{match.matchNumber.toString().padStart(2, "0")}</span>
+          <span className="truncate px-2">Round {match.round}</span>
+          <span>BYE</span>
+        </div>
+        <div className="p-2">
+          <div className="grid h-11 grid-cols-[1fr_52px] items-stretch overflow-hidden border border-lime/60 bg-lime/10 text-ink shadow-[0_0_24px_rgba(130,255,49,0.12)]">
+            <div className="flex min-w-0 items-center gap-2 px-2">
+              <TeamLogo team={teamA} size="sm" highlighted />
+              <div className="min-w-0">
+                <div className="truncate text-xs font-black uppercase tracking-wide text-ink" style={byeTextStyle}>
+                  {teamA?.shortName || teamA?.name || "TBD"}
+                </div>
+                {teamA?.shortName ? (
+                  <div className="truncate text-[10px] font-bold" style={byeTextStyle}>{teamA.name}</div>
+                ) : null}
+              </div>
+            </div>
+            <div className="grid place-items-center bg-lime text-xs font-black text-arena">BYE</div>
+          </div>
+        </div>
+      </article>
     );
   }
 
+  const completedWithWinner = Boolean(match.winnerId);
+
   return (
-    <div className="relative overflow-hidden border border-line bg-field/95 pr-10 shadow-[0_10px_24px_rgba(0,0,0,0.2)]">
-      <button
-        type="button"
-        className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded border border-line bg-panel text-muted transition hover:border-cyan hover:text-cyan"
-        onClick={onRandom}
-        title="매치 랜덤 점수"
-      >
-        <Dices className="h-3.5 w-3.5" aria-hidden="true" />
-      </button>
-      <SwissMiniTeam team={teamA} active={match.winnerId === teamA?.id} value={left} onChange={setLeft} />
-      <div className="mx-2 border-t border-line" />
-      <SwissMiniTeam team={teamB} active={match.winnerId === teamB?.id} value={right} onChange={setRight} />
-    </div>
+    <article
+      className={clsx(
+        "relative w-64 overflow-hidden border border-line bg-panel shadow-panel",
+        completedWithWinner && "border-lime"
+      )}
+    >
+      <div className="flex h-7 items-center justify-between bg-danger px-2 text-[10px] font-black uppercase tracking-wider text-white">
+        <span>M{match.matchNumber.toString().padStart(2, "0")}</span>
+        <span className="truncate px-2">Round {match.round}</span>
+        <button
+          type="button"
+          className="grid h-5 w-5 place-items-center border border-black/15 bg-white/20 text-current transition hover:bg-white/35 disabled:cursor-not-allowed disabled:opacity-35"
+          onClick={onRandom}
+          title="매치 랜덤 점수"
+          disabled={match.isBye || !teamA || !teamB}
+        >
+          <Dices className="h-3 w-3" aria-hidden="true" />
+        </button>
+      </div>
+      <div className="space-y-px p-2">
+        <SwissMiniTeam
+          team={teamA}
+          active={match.winnerId === teamA?.id}
+          dimmed={Boolean(completedWithWinner && teamA?.id && match.winnerId !== teamA.id)}
+          value={left}
+          onChange={setLeft}
+        />
+        <SwissMiniTeam
+          team={teamB}
+          active={match.winnerId === teamB?.id}
+          dimmed={Boolean(completedWithWinner && teamB?.id && match.winnerId !== teamB.id)}
+          value={right}
+          onChange={setRight}
+        />
+      </div>
+    </article>
   );
 }
 
 function SwissMiniTeam({
   team,
   active,
+  dimmed,
   value,
   onChange
 }: {
   team?: Team;
   active?: boolean;
+  dimmed?: boolean;
   value: string;
   onChange: (value: string) => void;
 }) {
   const isPlaceholder = !team;
-  const teamStyle = active ? getTeamAccentStyle(team) : undefined;
+  const teamStyle = active ? getTeamAccentStyle(team) : getSwissTeamIdleStyle(team);
   const scoreStyle = active ? getScoreInputStyle(team) : undefined;
   const textStyle = getTeamTextStyle(team, active);
 
   return (
     <div
       className={clsx(
-        "flex min-h-11 items-center gap-2.5 border border-transparent px-2.5 py-2 transition",
-        active && "bg-cyan/10",
+        "grid h-11 grid-cols-[1fr_52px] items-stretch overflow-hidden border border-line bg-field text-ink transition",
+        active && "shadow-[0_0_24px_rgba(47,230,255,0.14)]",
+        dimmed && "opacity-55 saturate-75",
         isPlaceholder && "border-dashed border-cyan/25 bg-cyan/5 text-cyan/80"
       )}
-      style={teamStyle}
     >
-      {isPlaceholder ? <TbdMark /> : <TeamLogo team={team} size="sm" highlighted={active} useVictoryLogo={active} />}
-      <span className={clsx("min-w-0 flex-1 truncate text-xs font-black uppercase text-ink", isPlaceholder && "text-cyan")} style={textStyle}>
-        {team?.shortName || team?.name || "TBD"}
-      </span>
+      <div
+        className={clsx(
+          "flex min-w-0 items-center gap-2 px-2 transition",
+          active && "shadow-[0_0_18px_rgba(47,230,255,0.18)]",
+          isPlaceholder && "bg-cyan/5"
+        )}
+        style={teamStyle}
+      >
+        {isPlaceholder ? <TbdMark /> : <TeamLogo team={team} size="sm" highlighted={active} useVictoryLogo={active} />}
+        <div className="min-w-0">
+          <div className={clsx("truncate text-xs font-black uppercase tracking-wide", isPlaceholder && "text-cyan")} style={textStyle}>
+            {team?.shortName || team?.name || "TBD"}
+          </div>
+          {team?.shortName ? (
+            <div className="truncate text-[10px] font-bold" style={textStyle}>{team.name}</div>
+          ) : null}
+        </div>
+      </div>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value.replace(/[^0-9]/g, ""))}
         className={clsx(
-          "h-8 w-10 border border-line bg-arena text-center text-xs font-black outline-none focus:border-cyan",
-          active ? "text-arena" : "text-slate-400",
+          "h-full w-full border-0 bg-panel px-1 text-center text-base font-black text-ink outline-none transition focus:bg-cyan/10 focus:text-cyan disabled:text-slate-500",
+          active && "bg-lime text-arena focus:bg-lime focus:text-arena",
           isPlaceholder && "bg-panel/40 text-cyan/50"
         )}
         disabled={isPlaceholder}
@@ -458,6 +515,11 @@ function getTeamAccentStyle(team?: Team): CSSProperties | undefined {
     background: primary,
     boxShadow: `0 0 30px ${mix(primary, 56)}, inset 0 0 0 1px ${mix(primary, 86)}, inset 5px 0 0 ${stripColor}`
   };
+}
+
+function getSwissTeamIdleStyle(team?: Team): CSSProperties | undefined {
+  const stripColor = getTeamBracketAccentColor(team) ?? getTeamThemePrimaryColor(team);
+  return stripColor ? { boxShadow: `inset 5px 0 0 ${mix(stripColor, 82)}` } : undefined;
 }
 
 function getScoreInputStyle(team?: Team): CSSProperties | undefined {

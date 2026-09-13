@@ -83,8 +83,20 @@ export function StageMatchRow({ match, teamsById, requireWinner, allowDraw = tru
       </div>
 
       <div className="grid gap-1">
-        <TeamLine team={teamA} score={scoreA} active={winnerId === teamA?.id} onScoreChange={(value) => updateScore("A", value)} />
-        <TeamLine team={teamB} score={scoreB} active={winnerId === teamB?.id} onScoreChange={(value) => updateScore("B", value)} />
+        <TeamLine
+          team={teamA}
+          score={scoreA}
+          active={winnerId === teamA?.id}
+          dimmed={Boolean(winnerId && teamA?.id && winnerId !== teamA.id)}
+          onScoreChange={(value) => updateScore("A", value)}
+        />
+        <TeamLine
+          team={teamB}
+          score={scoreB}
+          active={winnerId === teamB?.id}
+          dimmed={Boolean(winnerId && teamB?.id && winnerId !== teamB.id)}
+          onScoreChange={(value) => updateScore("B", value)}
+        />
       </div>
     </div>
   );
@@ -94,11 +106,13 @@ function TeamLine({
   team,
   score,
   active,
+  dimmed,
   onScoreChange
 }: {
   team?: Team;
   score?: number;
   active?: boolean;
+  dimmed?: boolean;
   onScoreChange: (score?: number) => void;
 }) {
   const rowStyle = getTeamWinnerRowStyle(team, active);
@@ -110,7 +124,8 @@ function TeamLine({
     <div
       className={clsx(
         "grid min-h-10 grid-cols-[34px_1fr_48px] items-center border border-line bg-field transition",
-        active && "border-cyan bg-cyan/10"
+        active && "border-cyan bg-cyan/10",
+        dimmed && "opacity-55 saturate-75"
       )}
       style={rowStyle}
     >
