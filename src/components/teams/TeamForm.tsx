@@ -432,16 +432,6 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
               <TextField label={ui.teamName} value={form.name} onChange={(name) => setForm({ ...form, name })} />
               <TextField label={ui.shortName} value={form.shortName} maxLength={8} onChange={(shortName) => setForm({ ...form, shortName })} />
             </div>
-            <div className="mt-4 rounded-md border border-line bg-field/65 p-3">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <div className="text-sm font-black text-ink">브래킷 표시 미리보기</div>
-                <div className="text-[10px] font-black uppercase tracking-[0.14em] text-muted">Live</div>
-              </div>
-              <div className="space-y-2">
-                <NormalSampleCard team={previewTeam} surface="base" />
-                {victoryColorEnabled ? <VictorySampleCard team={getBaseVictoryPreviewTeam(previewTeam)} surface="base" title="승리 상태" /> : null}
-              </div>
-            </div>
           </div>
 
           <div className="rounded-md border border-line bg-arena/55 p-4">
@@ -662,6 +652,7 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
                 ) : null}
               </div>
             </div>
+            <ModeColorPreview team={previewTeam} showVictory={victoryColorEnabled} />
           </div>
 
           <label className="block space-y-1.5 rounded-md border border-line bg-arena/55 p-4">
@@ -794,23 +785,21 @@ function ThemeColorPanel({
   );
 }
 
-/*
-function ModeColorPreview({ team }: { team: Team }) {
-  void VictoryColorPreview;
-
+function ModeColorPreview({ team, showVictory }: { team: Team; showVictory: boolean }) {
   return (
-    <div className="mt-3 rounded-md border border-line bg-field/65 p-3">
+    <div className="mt-4 space-y-3 rounded-md border border-line bg-field/65 p-3">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <div className="text-sm font-black text-ink">Bracket color preview</div>
-          <div className="text-xs font-semibold text-muted">Base, light, and dark normal/winner states</div>
+          <div className="text-sm font-black text-ink">다크/라이트 표시 미리보기</div>
+          <div className="text-xs font-semibold text-muted">약칭과 팀 이름이 브래킷 표시 기준으로 바로 반영됩니다.</div>
         </div>
       </div>
       <div className="grid gap-3 lg:grid-cols-3">
-        <ModeStatePreviewPair team={team} surface="base" />
-        <ModeStatePreviewPair team={getModePreviewTeam(team, "light")} surface="light" />
-        <ModeStatePreviewPair team={getModePreviewTeam(team, "dark")} surface="dark" />
+        <NormalSampleCard team={team} surface="base" title="기본" />
+        <NormalSampleCard team={getModePreviewTeam(team, "light")} surface="light" title="라이트" />
+        <NormalSampleCard team={getModePreviewTeam(team, "dark")} surface="dark" title="다크" />
       </div>
+      {showVictory ? <VictoryColorPreview team={team} /> : null}
     </div>
   );
 }
@@ -832,9 +821,6 @@ function VictoryColorPreview({ team }: { team: Team }) {
     </div>
   );
 }
-
-void ModeColorPreview;
-*/
 
 function LogoBracketPreview({
   team,

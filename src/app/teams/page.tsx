@@ -247,11 +247,11 @@ export default function TeamsPage() {
           <p className="mt-1 max-w-4xl text-sm text-muted">{text.desc}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button className="button-primary" onClick={openCreate}>
+          <button type="button" className="button-primary" onClick={openCreate}>
             <Plus className="h-4 w-4" />
             {text.newTeam}
           </button>
-          <button className="button-muted" onClick={createFolder}>
+          <button type="button" className="button-muted" onClick={createFolder}>
             <FolderPlus className="h-4 w-4" />
             {text.createFolder}
           </button>
@@ -282,6 +282,7 @@ export default function TeamsPage() {
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             {openPath.map((folder, index) => (
               <button
+                type="button"
                 key={folder.id}
                 className={`rounded border px-3 py-1.5 text-sm font-black uppercase tracking-wide transition ${
                   index === openPath.length - 1 ? "border-cyan bg-cyan/10 text-ink" : "border-line bg-panel text-muted hover:text-ink"
@@ -392,7 +393,7 @@ export default function TeamsPage() {
                   {formMode === "edit" ? text.editTeam : text.addTeam}
                 </h2>
               </div>
-              <button className="icon-button h-10 w-10" onClick={closeForm} title={text.close}>
+              <button type="button" className="icon-button h-10 w-10" onClick={closeForm} title={text.close}>
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -599,7 +600,7 @@ function DesktopFolderIcon({
         }
       }}
     >
-      <button className="relative grid h-16 w-20 place-items-center text-yellow-300 drop-shadow" onClick={onOpen} title="Open folder">
+      <button type="button" className="relative grid h-16 w-20 place-items-center text-yellow-300 drop-shadow" onClick={onOpen} title="Open folder">
         <Folder className="h-14 w-14 fill-yellow-300/20" />
         <span className="absolute bottom-2 rounded bg-black/50 px-1 text-[10px] font-black text-white">
           {(item.folder.itemIds ?? []).length}
@@ -618,15 +619,33 @@ function DesktopFolderIcon({
           autoFocus
         />
       ) : (
-        <button className="mt-2 line-clamp-3 min-h-[42px] w-28 break-words text-xs font-bold leading-tight text-ink drop-shadow" onClick={onOpen}>
+        <button type="button" className="mt-2 line-clamp-3 min-h-[42px] w-28 break-words text-xs font-bold leading-tight text-ink drop-shadow" onClick={onOpen}>
           {item.folder.name}
         </button>
       )}
       <div className="mt-auto flex gap-1 opacity-0 transition group-hover:opacity-100">
-        <button className="rounded border border-line bg-panel/90 p-1 text-muted hover:text-ink" onClick={onStartEdit} title={text.rename}>
+        <button
+          type="button"
+          className="rounded border border-line bg-panel/90 p-1 text-muted hover:text-ink"
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onStartEdit();
+          }}
+          title={text.rename}
+        >
           <Edit3 className="h-3.5 w-3.5" />
         </button>
-        <button className="rounded border border-line bg-panel/90 p-1 text-muted hover:border-danger hover:text-danger" onClick={onDelete} title={text.remove}>
+        <button
+          type="button"
+          className="rounded border border-line bg-panel/90 p-1 text-muted hover:border-danger hover:text-danger"
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete();
+          }}
+          title={text.remove}
+        >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -691,10 +710,28 @@ function DesktopTeamIcon({
         {item.team.shortName || item.team.name}
       </p>
       <div className="mt-auto flex gap-1 opacity-0 transition group-hover:opacity-100">
-        <button className="rounded border border-line bg-panel/90 p-1 text-muted hover:text-ink" onClick={onEdit} title="Edit">
+        <button
+          type="button"
+          className="rounded border border-line bg-panel/90 p-1 text-muted hover:text-ink"
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onEdit();
+          }}
+          title="Edit"
+        >
           <Edit3 className="h-3.5 w-3.5" />
         </button>
-        <button className="rounded border border-line bg-panel/90 p-1 text-muted hover:border-danger hover:text-danger" onClick={onDelete} title="Delete">
+        <button
+          type="button"
+          className="rounded border border-line bg-panel/90 p-1 text-muted hover:border-danger hover:text-danger"
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete();
+          }}
+          title="Delete"
+        >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
