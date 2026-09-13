@@ -365,7 +365,11 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
 
   function clearLogo(field: LogoField) {
     void removeStoredLogo(form[field]);
-    setForm({ ...form, [field]: "", [logoNameFieldByLogoField[field]]: "" });
+    setForm((current) => ({ ...current, [field]: "", [logoNameFieldByLogoField[field]]: "" }));
+  }
+
+  function updateFormField<K extends keyof typeof emptyForm>(field: K, value: (typeof emptyForm)[K]) {
+    setForm((current) => ({ ...current, [field]: value }));
   }
 
   return (
@@ -426,8 +430,8 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
           <div className="rounded-md border border-line bg-arena/55 p-4">
             <p className="section-kicker mb-3">{ui.teamInfo}</p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <TextField label={ui.teamName} value={form.name} onChange={(name) => setForm({ ...form, name })} />
-              <TextField label={ui.shortName} value={form.shortName} maxLength={8} onChange={(shortName) => setForm({ ...form, shortName })} />
+              <TextField label={ui.teamName} value={form.name} onChange={(name) => updateFormField("name", name)} />
+              <TextField label={ui.shortName} value={form.shortName} maxLength={8} onChange={(shortName) => updateFormField("shortName", shortName)} />
             </div>
           </div>
 
@@ -826,7 +830,8 @@ function NormalSampleCard({
       : surface === "dark"
         ? "border-slate-700 text-white"
         : "border-line text-ink";
-  const label = team.shortName || team.name || "TEAM";
+  const shortLabel = team.shortName || "약칭";
+  const fullLabel = team.name || "팀 이름";
   const point = getTeamBracketAccentColor(team) ?? defaultPrimary;
   const text = getTeamThemeTextColor(team);
   const textStyle = text ? { color: text } : undefined;
@@ -844,8 +849,8 @@ function NormalSampleCard({
         <div className="flex min-w-0 items-center gap-2 py-0 pl-3 pr-2">
           <TeamLogo team={team} size="sm" variant={surface === "base" ? "default" : surface} />
           <div className="min-w-0">
-            <div className="truncate text-xs font-black uppercase tracking-wide" style={textStyle}>{label}</div>
-            {!compact && team.shortName ? <div className="truncate text-[10px] font-bold opacity-75" style={textStyle}>{team.name}</div> : null}
+            <div className="truncate text-xs font-black uppercase tracking-wide" style={textStyle}>{shortLabel}</div>
+            {!compact ? <div className="truncate text-[10px] font-bold opacity-75" style={textStyle}>{fullLabel}</div> : null}
           </div>
         </div>
         <div className={clsx("grid place-items-center border-l text-sm font-black", scoreClass)}>
@@ -877,7 +882,8 @@ function VictorySampleCard({
       : surface === "dark"
         ? "bg-black text-white"
         : "bg-arena text-ink";
-  const label = team.shortName || team.name || "TEAM";
+  const shortLabel = team.shortName || "약칭";
+  const fullLabel = team.name || "팀 이름";
 
   return (
     <div className={clsx("rounded border border-line p-2", surfaceClass)}>
@@ -893,8 +899,8 @@ function VictorySampleCard({
         <div className="flex min-w-0 items-center gap-2 px-2" style={{ color: text }}>
           <TeamLogo team={team} size="sm" highlighted useVictoryLogo variant={surface === "base" ? "default" : surface} />
           <div className="min-w-0">
-            <div className="truncate text-xs font-black uppercase tracking-wide">{label}</div>
-            {!compact && team.shortName ? <div className="truncate text-[10px] font-bold">{team.name}</div> : null}
+            <div className="truncate text-xs font-black uppercase tracking-wide">{shortLabel}</div>
+            {!compact ? <div className="truncate text-[10px] font-bold">{fullLabel}</div> : null}
           </div>
         </div>
         <div className="grid place-items-center text-sm font-black" style={{ background: primary, color: scoreText }}>
