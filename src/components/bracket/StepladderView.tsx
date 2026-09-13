@@ -25,6 +25,7 @@ export function StepladderView({
   onClearResult
 }: StepladderViewProps) {
   const [zoom, setZoom] = useState(1);
+  const [hoveredTeamId, setHoveredTeamId] = useState<string | undefined>();
   const teamsById = new Map(teams.map((team) => [team.id, team]));
   const champion = bracket.championId ? teamsById.get(bracket.championId) : undefined;
   const placements = getStepladderPlacements(bracket, teamsById);
@@ -105,10 +106,15 @@ export function StepladderView({
                       active={match.id === currentMatch?.id}
                       locked={match.status !== "ready" && match.status !== "complete"}
                       roundToneClassName={toneClassName}
+                      onTeamHover={setHoveredTeamId}
+                      onTeamHoverEnd={() => setHoveredTeamId(undefined)}
                       onSaveResult={onSaveResult}
                       onClearResult={onClearResult}
                     />
                   </div>
+                  {index < bracket.matches.length - 1 && doesMatchAdvanceTeam(match, hoveredTeamId) ? (
+                    <div className="pointer-events-none absolute -right-8 top-[calc(50%+28px)] hidden h-0.5 w-8 bg-cyan shadow-[0_0_14px_rgba(47,230,255,0.75)] md:block" />
+                  ) : null}
                 </div>
               );
             })}
@@ -117,6 +123,11 @@ export function StepladderView({
       </div>
     </section>
   );
+}
+
+function doesMatchAdvanceTeam(match: StepladderBracket["matches"][number], teamId?: string) {
+  if (!teamId) return false;
+  return match.winnerId === teamId || (match.status === "bye" && match.participantA?.teamId === teamId);
 }
 
 function PodiumChip({

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { BracketStageMatch, Team } from "@/lib/core/models";
 import { sortBracketMatches } from "@/lib/core/bracketOrder";
 import { MatchCard } from "@/components/bracket/MatchCard";
@@ -46,6 +47,7 @@ export function BracketLane({
   onSaveResult,
   onClearResult
 }: BracketLaneProps) {
+  const [hoveredTeamId, setHoveredTeamId] = useState<string | undefined>();
   const rounds = groupByRound(matches);
   const rawDisplayRounds =
     splitBranches && expectedFirstRoundMatchCount
@@ -81,6 +83,9 @@ export function BracketLane({
           onSaveResult={onSaveResult}
           onClearResult={onClearResult}
           activeMatchIds={activeMatchIds}
+          hoveredTeamId={hoveredTeamId}
+          onTeamHover={setHoveredTeamId}
+          onTeamHoverEnd={() => setHoveredTeamId(undefined)}
         />
       ) : (
       <div className={`${scrollable ? "overflow-x-auto" : "overflow-visible"} pb-4`}>
@@ -103,6 +108,9 @@ export function BracketLane({
                 <div className="flex flex-1 flex-col justify-around gap-5">
                   {round.matches.map((match) => (
                     <div key={match.id} className="relative">
+                      {roundIndex > 0 && doesMatchIncludeTeam(match, hoveredTeamId) ? (
+                        <HoverPathLine side="left" />
+                      ) : null}
                       <MatchCard
                         match={match}
                         teamsById={teamsById}
@@ -112,9 +120,14 @@ export function BracketLane({
                         }
                         active={Boolean(activeMatchIds?.has(match.id))}
                         roundToneClassName={roundToneClassName}
+                        onTeamHover={setHoveredTeamId}
+                        onTeamHoverEnd={() => setHoveredTeamId(undefined)}
                         onSaveResult={onSaveResult}
                         onClearResult={onClearResult}
                       />
+                      {roundIndex < rounds.length - 1 && doesMatchAdvanceTeam(match, hoveredTeamId) ? (
+                        <HoverPathLine side="right" />
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -143,7 +156,10 @@ function SplitBranchRounds({
   scrollable,
   onSaveResult,
   onClearResult,
-  activeMatchIds
+  activeMatchIds,
+  hoveredTeamId,
+  onTeamHover,
+  onTeamHoverEnd
 }: {
   rounds: ReturnType<typeof groupByRound>;
   actualRounds: ReturnType<typeof groupByRound>;
@@ -155,6 +171,9 @@ function SplitBranchRounds({
   onSaveResult: BracketLaneProps["onSaveResult"];
   onClearResult: BracketLaneProps["onClearResult"];
   activeMatchIds?: Set<string>;
+  hoveredTeamId?: string;
+  onTeamHover: (teamId: string) => void;
+  onTeamHoverEnd: () => void;
 }) {
   const leafGap = 176;
   const cardWidth = 320;
@@ -222,6 +241,10 @@ function SplitBranchRounds({
                   matchIndex === round.matches.length - 1 &&
                   nextRound.matches.length === Math.ceil(round.matches.length / 2);
                 const centerY = isOddCarryMatch ? nextCenterY : baseCenterY;
+                const showLeftPath = roundIndex > 0 && doesMatchIncludeTeam(match, hoveredTeamId);
+                const showRightPath = !isLastRound && doesMatchAdvanceTeam(match, hoveredTeamId);
+                const connectorTop = Math.min(centerY, nextCenterY);
+                const connectorHeight = Math.abs(nextCenterY - centerY);
                 return (
                 <div
                   key={match.id}
@@ -232,6 +255,22 @@ function SplitBranchRounds({
                     transform: "translateY(-50%)"
                   }}
                 >
+                  {showLeftPath ? <HoverPathLine side="left" width={56} /> : null}
+                  {showRightPath ? (
+                    <>
+                      <HoverPathLine side="right" width={56} />
+                      {connectorHeight > 1 ? (
+                        <div
+                          className="pointer-events-none absolute hidden w-px bg-cyan shadow-[0_0_14px_rgba(47,230,255,0.65)] md:block"
+                          style={{
+                            right: -56,
+                            top: connectorTop - centerY + 56,
+                            height: Math.max(1, connectorHeight)
+                          }}
+                        />
+                      ) : null}
+                    </>
+                  ) : null}
                   <MatchCard
                     match={match}
                     teamsById={teamsById}
@@ -241,6 +280,8 @@ function SplitBranchRounds({
                     }
                     active={Boolean(activeMatchIds?.has(match.id))}
                     roundToneClassName={roundToneClassName}
+                    onTeamHover={onTeamHover}
+                    onTeamHoverEnd={onTeamHoverEnd}
                     onSaveResult={onSaveResult}
                     onClearResult={onClearResult}
                   />
@@ -253,6 +294,30 @@ function SplitBranchRounds({
       </div>
     </div>
   );
+}
+
+function HoverPathLine({ side, width = 40 }: { side: "left" | "right"; width?: number }) {
+  return (
+    <div
+      className="pointer-events-none absolute top-1/2 z-20 hidden h-0.5 bg-cyan shadow-[0_0_14px_rgba(47,230,255,0.75)] md:block"
+      style={{
+        width,
+        left: side === "left" ? -width : undefined,
+        right: side === "right" ? -width : undefined
+      }}
+    />
+  );
+}
+
+function doesMatchIncludeTeam(match: BracketStageMatch, teamId?: string) {
+  if (!teamId) return false;
+  return match.participantA?.teamId === teamId || match.participantB?.teamId === teamId;
+}
+
+function doesMatchAdvanceTeam(match: BracketStageMatch, teamId?: string) {
+  if (!teamId) return false;
+  if (match.winnerId === teamId) return true;
+  return match.status === "bye" && match.participantA?.teamId === teamId;
 }
 
 function getRequiredCanvasHeight(rounds: ReturnType<typeof groupByRound>, leafGap: number) {
