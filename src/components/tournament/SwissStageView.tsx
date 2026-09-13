@@ -182,12 +182,8 @@ function SwissBracketBoard({
                 className="mt-7 flex flex-1 flex-col justify-center gap-8"
                 style={{ paddingTop: convergenceOffset, paddingBottom: convergenceOffset }}
               >
-                {buckets.map(([recordKey, matches], bucketIndex) => (
+                {buckets.map(([recordKey, matches]) => (
                   <div key={`${round}-${recordKey}`} className="relative w-64">
-                    {roundIndex > 0 ? <SwissLeftConnector /> : null}
-                    {roundIndex < roundBuckets.length - 1 ? (
-                      <SwissRightConnector split={bucketIndex < buckets.length - 1} />
-                    ) : null}
                     <div className={clsx("bracket-round-label h-6 text-[10px] text-arena", bucketTone(recordKey))}>
                       {recordKey}
                     </div>
@@ -217,29 +213,6 @@ function SwissBracketBoard({
         </div>
       </div>
     </div>
-  );
-}
-
-function SwissLeftConnector() {
-  return (
-    <>
-      <div className="pointer-events-none absolute -left-16 top-1/2 hidden h-px w-16 bg-line md:block" />
-      <div className="pointer-events-none absolute -left-16 top-[calc(50%-18px)] hidden h-9 w-px bg-line md:block" />
-    </>
-  );
-}
-
-function SwissRightConnector({ split }: { split: boolean }) {
-  return (
-    <>
-      <div className="pointer-events-none absolute -right-16 top-1/2 hidden h-px w-16 bg-line md:block" />
-      {split ? (
-        <>
-          <div className="pointer-events-none absolute -right-16 top-1/2 hidden h-12 w-px bg-line md:block" />
-          <div className="pointer-events-none absolute -right-16 top-[calc(50%+48px)] hidden h-px w-16 bg-line md:block" />
-        </>
-      ) : null}
-    </>
   );
 }
 
