@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, DragEvent } from "react";
 import Link from "next/link";
-import { Grid2X2, Medal, Plus, RotateCcw, Rows3, Shield, SlidersHorizontal, Trash2, Users } from "lucide-react";
+import { Grid2X2, Medal, Plus, Printer, RotateCcw, Rows3, Shield, SlidersHorizontal, Trash2, Users } from "lucide-react";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import { getTeamThemeTextColor, getTeamVictoryTextColor, getTeamWinnerAccentColor, getTeamWinnerColor } from "@/lib/core/color";
 import type { Team } from "@/lib/core/models";
@@ -70,6 +70,26 @@ export default function TierListPage() {
     setDraggedTeamId(null);
   }
 
+  function printTierListAsPdf() {
+    if (typeof window === "undefined") return;
+
+    const { body } = document;
+    body.dataset.printingTier = "true";
+
+    let cleanupTimer: number | undefined;
+    const cleanup = () => {
+      if (cleanupTimer) window.clearTimeout(cleanupTimer);
+      delete body.dataset.printingTier;
+      window.removeEventListener("afterprint", cleanup);
+    };
+
+    window.addEventListener("afterprint", cleanup, { once: true });
+    window.requestAnimationFrame(() => {
+      window.print();
+      cleanupTimer = window.setTimeout(cleanup, 3000);
+    });
+  }
+
   return (
     <main className="w-full px-3 py-6 sm:px-4 2xl:px-5">
       <section className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -132,6 +152,10 @@ export default function TierListPage() {
           <Link href="/teams" className="button-muted">
             <Users className="h-4 w-4" />팀 관리
           </Link>
+          <button type="button" className="button-muted" onClick={printTierListAsPdf}>
+            <Printer className="h-4 w-4" />
+            PDF 저장
+          </button>
           <button
             type="button"
             className={isTierSettingsOpen ? "button-primary" : "button-muted"}
@@ -181,90 +205,97 @@ export default function TierListPage() {
       </section>
       ) : null}
 
-      <section className="arena-card overflow-hidden">
-        <div className="divide-y divide-line">
-          {tiers.map((tier) => {
-            const tierTeams = tier.teamIds.map((teamId) => teamsById.get(teamId)).filter(Boolean) as Team[];
-            const tierTextColor = normalizeColor(tier.textColor, "#111827");
-            const tierColor = normalizeColor(tier.color, "#2fe6ff");
-
-            return (
-              <div key={tier.id} className="grid min-h-28 grid-cols-[112px_1fr] bg-card/70">
-                <div
-                  className="relative flex flex-col border-r border-line"
-                  style={{ backgroundColor: tierColor, color: tierTextColor }}
-                >
-                  <button
-                    type="button"
-                    className="min-h-28 flex-1 px-3 text-center text-3xl font-black uppercase outline-none transition hover:bg-black/10"
-                    onClick={() => setSelectedTierId(tier.id)}
-                  >
-                    {tier.name}
-                  </button>
-                  <button
-                    type="button"
-                    className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded border border-black/15 bg-black/10 opacity-55 transition hover:bg-black/25 hover:opacity-100"
-                    style={{ color: tierTextColor }}
-                    onClick={() => deleteTier(tier.id)}
-                    aria-label={`${tier.name} 등급 삭제`}
-                    title="등급 삭제"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                <div
-                  className="flex min-h-28 flex-wrap content-start gap-2 p-3"
-                  onDragOver={allowDrop}
-                  onDrop={(event) => dropToTier(event, tier.id)}
-                >
-                  {tierTeams.map((team) => (
-                    <TierTeamChip
-                      key={team.id}
-                      team={team}
-                      tone={teamTone}
-                      layout={teamLayout}
-                      onDragStart={() => handleDragStart(team.id)}
-                      onDropBefore={(event) => dropToTier(event, tier.id, team.id)}
-                    />
-                  ))}
-                  {!tierTeams.length ? (
-                    <div className="grid min-h-16 flex-1 place-items-center rounded-md border border-dashed border-line text-sm font-semibold text-muted">
-                      여기에 팀을 드래그
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            );
-          })}
+      <div data-print-tier-root="true" className="space-y-5">
+        <div className="print-only">
+          <p className="section-kicker">Tier List</p>
+          <h1 className="mt-2 text-3xl font-black uppercase tracking-wide text-ink">티어리스트</h1>
         </div>
-      </section>
 
-      <section className="mt-5 arena-card p-4" onDragOver={allowDrop} onDrop={dropToUnranked}>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="font-black uppercase tracking-wide text-ink">미배치 팀</h2>
-            <p className="text-sm font-semibold text-muted">등급 밖으로 꺼내려면 이 영역에 드래그하면 됩니다.</p>
+        <section className="arena-card overflow-hidden">
+          <div className="divide-y divide-line">
+            {tiers.map((tier) => {
+              const tierTeams = tier.teamIds.map((teamId) => teamsById.get(teamId)).filter(Boolean) as Team[];
+              const tierTextColor = normalizeColor(tier.textColor, "#111827");
+              const tierColor = normalizeColor(tier.color, "#2fe6ff");
+
+              return (
+                <div key={tier.id} className="grid min-h-28 grid-cols-[112px_1fr] bg-card/70">
+                  <div
+                    className="relative flex flex-col border-r border-line"
+                    style={{ backgroundColor: tierColor, color: tierTextColor }}
+                  >
+                    <button
+                      type="button"
+                      className="min-h-28 flex-1 px-3 text-center text-3xl font-black uppercase outline-none transition hover:bg-black/10"
+                      onClick={() => setSelectedTierId(tier.id)}
+                    >
+                      {tier.name}
+                    </button>
+                    <button
+                      type="button"
+                      className="no-print absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded border border-black/15 bg-black/10 opacity-55 transition hover:bg-black/25 hover:opacity-100"
+                      style={{ color: tierTextColor }}
+                      onClick={() => deleteTier(tier.id)}
+                      aria-label={`${tier.name} 등급 삭제`}
+                      title="등급 삭제"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <div
+                    className="flex min-h-28 flex-wrap content-start gap-2 p-3"
+                    onDragOver={allowDrop}
+                    onDrop={(event) => dropToTier(event, tier.id)}
+                  >
+                    {tierTeams.map((team) => (
+                      <TierTeamChip
+                        key={team.id}
+                        team={team}
+                        tone={teamTone}
+                        layout={teamLayout}
+                        onDragStart={() => handleDragStart(team.id)}
+                        onDropBefore={(event) => dropToTier(event, tier.id, team.id)}
+                      />
+                    ))}
+                    {!tierTeams.length ? (
+                      <div className="grid min-h-16 flex-1 place-items-center rounded-md border border-dashed border-line text-sm font-semibold text-muted">
+                        여기에 팀을 드래그
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <span className="rounded-md border border-line px-2 py-1 text-xs font-black text-muted">
-            {unrankedTeams.length}팀
-          </span>
-        </div>
-        <div className="flex min-h-24 flex-wrap content-start gap-2 rounded-md border border-dashed border-line bg-field/60 p-3">
-          {unrankedTeams.map((team) => (
-            <TierTeamChip key={team.id} team={team} tone={teamTone} layout={teamLayout} onDragStart={() => handleDragStart(team.id)} />
-          ))}
-          {!teams.length ? (
-            <div className="grid flex-1 place-items-center text-sm font-semibold text-muted">
-              아직 팀이 없습니다. 팀 관리에서 먼저 추가하세요.
+        </section>
+
+        <section className="arena-card p-4" onDragOver={allowDrop} onDrop={dropToUnranked}>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-black uppercase tracking-wide text-ink">미배치 팀</h2>
+              <p className="text-sm font-semibold text-muted">등급 밖으로 꺼내려면 이 영역에 드래그하면 됩니다.</p>
             </div>
-          ) : null}
-          {teams.length > 0 && !unrankedTeams.length ? (
-            <div className="grid flex-1 place-items-center text-sm font-semibold text-muted">
-              모든 팀이 등급에 배치되었습니다.
-            </div>
-          ) : null}
-        </div>
-      </section>
+            <span className="rounded-md border border-line px-2 py-1 text-xs font-black text-muted">
+              {unrankedTeams.length}팀
+            </span>
+          </div>
+          <div className="flex min-h-24 flex-wrap content-start gap-2 rounded-md border border-dashed border-line bg-field/60 p-3">
+            {unrankedTeams.map((team) => (
+              <TierTeamChip key={team.id} team={team} tone={teamTone} layout={teamLayout} onDragStart={() => handleDragStart(team.id)} />
+            ))}
+            {!teams.length ? (
+              <div className="grid flex-1 place-items-center text-sm font-semibold text-muted">
+                아직 팀이 없습니다. 팀 관리에서 먼저 추가하세요.
+              </div>
+            ) : null}
+            {teams.length > 0 && !unrankedTeams.length ? (
+              <div className="grid flex-1 place-items-center text-sm font-semibold text-muted">
+                모든 팀이 등급에 배치되었습니다.
+              </div>
+            ) : null}
+          </div>
+        </section>
+      </div>
     </main>
   );
 }

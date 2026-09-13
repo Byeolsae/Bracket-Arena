@@ -206,6 +206,10 @@ body {
   .draw-reveal {
     animation: draw-reveal-pop 0.36s ease-out both;
   }
+
+  .print-only {
+    @apply hidden;
+  }
 }
 
 @keyframes draw-reveal-pop {
@@ -404,5 +408,66 @@ body {
 
   body[data-printing-bracket="true"] [data-print-bracket-root="true"] [style*="scale("] {
     transform: none !important;
+  }
+
+  body[data-printing-tier="true"] {
+    background: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    forced-color-adjust: none !important;
+  }
+
+  body[data-printing-tier="true"] * {
+    visibility: hidden !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    forced-color-adjust: none !important;
+  }
+
+  body[data-printing-tier="true"] [data-print-tier-root="true"],
+  body[data-printing-tier="true"] [data-print-tier-root="true"] * {
+    visibility: visible !important;
+  }
+
+  body[data-printing-tier="true"] [data-print-tier-root="true"] {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    background: hsl(var(--arena)) !important;
+    color: hsl(var(--ink)) !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    forced-color-adjust: none !important;
+  }
+
+  body[data-printing-tier="true"] [data-print-tier-root="true"] .print-only {
+    display: block !important;
+    margin-bottom: 16px !important;
+  }
+
+  body[data-printing-tier="true"] .no-print {
+    display: none !important;
+  }
+
+  body[data-printing-tier="true"] [data-print-tier-root="true"] [style],
+  body[data-printing-tier="true"] [data-print-tier-root="true"] img,
+  body[data-printing-tier="true"] [data-print-tier-root="true"] svg {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    forced-color-adjust: none !important;
+  }
+
+  body[data-printing-tier="true"] [data-print-tier-root="true"] button {
+    color: inherit;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    forced-color-adjust: none !important;
   }
 }
