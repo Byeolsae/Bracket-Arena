@@ -207,7 +207,6 @@ function GroupDoubleHourglassBracket({
   const deciderMatches = sections.find((section) => section.title === "Decider")?.matches ?? [];
   const allMatches = [...upperMatches, ...lowerMatches, ...deciderMatches];
   const activeMatchIds = getCurrentPlayableMatchIds(allMatches);
-  const [hoveredTeamId, setHoveredTeamId] = useState<string | undefined>();
   const openingMatches = upperMatches.filter((match) => match.round <= 1);
   const winnersMatches = upperMatches.filter((match) => match.round > 1);
 
@@ -249,9 +248,6 @@ function GroupDoubleHourglassBracket({
                 matches={openingMatches}
                 teamsById={teamsById}
                 activeMatchIds={activeMatchIds}
-                hoveredTeamId={hoveredTeamId}
-                onTeamHover={setHoveredTeamId}
-                onTeamHoverEnd={() => setHoveredTeamId(undefined)}
                 className="justify-center gap-6"
                 onSaveResult={(matchId, result) => onSaveResult(groupId, matchId, result)}
               />
@@ -263,9 +259,6 @@ function GroupDoubleHourglassBracket({
                   matches={winnersMatches}
                   teamsById={teamsById}
                   activeMatchIds={activeMatchIds}
-                  hoveredTeamId={hoveredTeamId}
-                  onTeamHover={setHoveredTeamId}
-                  onTeamHoverEnd={() => setHoveredTeamId(undefined)}
                   className="gap-5"
                   onSaveResult={(matchId, result) => onSaveResult(groupId, matchId, result)}
                 />
@@ -275,9 +268,6 @@ function GroupDoubleHourglassBracket({
                   matches={lowerMatches}
                   teamsById={teamsById}
                   activeMatchIds={activeMatchIds}
-                  hoveredTeamId={hoveredTeamId}
-                  onTeamHover={setHoveredTeamId}
-                  onTeamHoverEnd={() => setHoveredTeamId(undefined)}
                   className="gap-5"
                   onSaveResult={(matchId, result) => onSaveResult(groupId, matchId, result)}
                 />
@@ -289,9 +279,6 @@ function GroupDoubleHourglassBracket({
                 matches={deciderMatches}
                 teamsById={teamsById}
                 activeMatchIds={activeMatchIds}
-                hoveredTeamId={hoveredTeamId}
-                onTeamHover={setHoveredTeamId}
-                onTeamHoverEnd={() => setHoveredTeamId(undefined)}
                 className="justify-center gap-5"
                 onSaveResult={(matchId, result) => onSaveResult(groupId, matchId, result)}
               />
@@ -309,9 +296,6 @@ function HourglassColumn({
   matches,
   teamsById,
   activeMatchIds,
-  hoveredTeamId,
-  onTeamHover,
-  onTeamHoverEnd,
   className,
   onSaveResult
 }: {
@@ -320,9 +304,6 @@ function HourglassColumn({
   matches: BracketStageMatch[];
   teamsById: Map<string, Team>;
   activeMatchIds: Set<string>;
-  hoveredTeamId?: string;
-  onTeamHover?: (teamId: string) => void;
-  onTeamHoverEnd?: () => void;
   className?: string;
   onSaveResult: (matchId: string, result: { scoreA?: number; scoreB?: number; winnerId: string }) => void;
 }) {
@@ -334,17 +315,12 @@ function HourglassColumn({
       {matches.length ? (
         matches.map((match) => (
           <div key={match.id} className="relative">
-            {doesMatchAdvanceTeam(match, hoveredTeamId) ? (
-              <div className="pointer-events-none absolute -right-16 top-1/2 z-20 hidden h-0.5 w-16 bg-cyan shadow-[0_0_14px_rgba(47,230,255,0.75)] md:block" />
-            ) : null}
             <MatchCard
               match={match}
               teamsById={teamsById}
               locked={match.status !== "complete" && !activeMatchIds.has(match.id)}
               active={activeMatchIds.has(match.id)}
               roundToneClassName={toneClassName}
-              onTeamHover={onTeamHover}
-              onTeamHoverEnd={onTeamHoverEnd}
               onSaveResult={onSaveResult}
               onClearResult={() => undefined}
             />
@@ -357,12 +333,6 @@ function HourglassColumn({
       )}
     </div>
   );
-}
-
-function doesMatchAdvanceTeam(match: BracketStageMatch, teamId?: string) {
-  if (!teamId) return false;
-  if (match.winnerId === teamId) return true;
-  return match.status === "bye" && match.participantA?.teamId === teamId;
 }
 
 function getHourglassToneClass(tone: SectionTone) {

@@ -22,8 +22,6 @@ type MatchCardProps = {
   locked?: boolean;
   active?: boolean;
   roundToneClassName?: string;
-  onTeamHover?: (teamId: string) => void;
-  onTeamHoverEnd?: () => void;
   onSaveResult: (
     matchId: string,
     result: { scoreA?: number; scoreB?: number; winnerId: string }
@@ -37,8 +35,6 @@ export function MatchCard({
   locked = false,
   active = false,
   roundToneClassName,
-  onTeamHover,
-  onTeamHoverEnd,
   onSaveResult,
   onClearResult
 }: MatchCardProps) {
@@ -147,8 +143,6 @@ export function MatchCard({
           isWinner={match.winnerId === teamA?.id}
           isLoser={Boolean(match.winnerId && teamA?.id && match.winnerId !== teamA.id)}
           disabled={isLocked}
-          onTeamHover={onTeamHover}
-          onTeamHoverEnd={onTeamHoverEnd}
           onInput={scheduleAutoApply}
         />
         <BracketTeamRow
@@ -159,8 +153,6 @@ export function MatchCard({
           isWinner={match.winnerId === teamB?.id}
           isLoser={Boolean(match.winnerId && teamB?.id && match.winnerId !== teamB.id)}
           disabled={isLocked}
-          onTeamHover={onTeamHover}
-          onTeamHoverEnd={onTeamHoverEnd}
           onInput={scheduleAutoApply}
         />
       </div>
@@ -176,8 +168,6 @@ function BracketTeamRow({
   isWinner,
   isLoser,
   disabled,
-  onTeamHover,
-  onTeamHoverEnd,
   onInput
 }: {
   participant?: MatchParticipant;
@@ -187,8 +177,6 @@ function BracketTeamRow({
   isWinner?: boolean;
   isLoser?: boolean;
   disabled?: boolean;
-  onTeamHover?: (teamId: string) => void;
-  onTeamHoverEnd?: () => void;
   onInput: () => void;
 }) {
   const isBye = participant?.isBye;
@@ -209,10 +197,6 @@ function BracketTeamRow({
         isPlaceholder && "border-dashed border-cyan/25 bg-cyan/5 text-cyan/80"
       )}
       style={rowStyle}
-      onMouseEnter={() => {
-        if (team?.id) onTeamHover?.(team.id);
-      }}
-      onMouseLeave={onTeamHoverEnd}
     >
       <div
         className={clsx(
