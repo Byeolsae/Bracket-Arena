@@ -374,7 +374,6 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
         <div className="grid content-start items-start gap-3 md:grid-cols-2 xl:grid-cols-1">
           {logoFields.map((item) => {
             const logoPreview = getLogoPreviewConfig(previewTeam, item.field);
-            const showBracketPreview = item.field !== "logoDefault" && item.field !== "logoVictory";
             return (
               <div key={item.field} className="rounded-md border border-line bg-arena/55 p-4">
                 <div className="mb-3 flex items-center justify-between gap-2">
@@ -404,11 +403,9 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
                     highlighted={isVictoryLogoField(item.field)}
                     useVictoryLogo={isVictoryLogoField(item.field)}
                   />
-                  {showBracketPreview ? (
-                    <div className="w-full max-w-sm">
-                      <LogoBracketPreview team={logoPreview.team} surface={logoPreview.surface} field={item.field} />
-                    </div>
-                  ) : null}
+                  <div className="w-full max-w-sm">
+                    <LogoBracketPreview team={logoPreview.team} surface={logoPreview.surface} field={item.field} />
+                  </div>
                 </div>
                 <label className="button-muted w-full cursor-pointer justify-center">
                   <ImagePlus className="h-4 w-4" aria-hidden="true" />
@@ -652,7 +649,6 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
                 ) : null}
               </div>
             </div>
-            <ModeColorPreview team={previewTeam} showVictory={victoryColorEnabled} />
           </div>
 
           <label className="block space-y-1.5 rounded-md border border-line bg-arena/55 p-4">
@@ -785,43 +781,6 @@ function ThemeColorPanel({
   );
 }
 
-function ModeColorPreview({ team, showVictory }: { team: Team; showVictory: boolean }) {
-  return (
-    <div className="mt-4 space-y-3 rounded-md border border-line bg-field/65 p-3">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div>
-          <div className="text-sm font-black text-ink">다크/라이트 표시 미리보기</div>
-          <div className="text-xs font-semibold text-muted">약칭과 팀 이름이 브래킷 표시 기준으로 바로 반영됩니다.</div>
-        </div>
-      </div>
-      <div className="grid gap-3 lg:grid-cols-3">
-        <NormalSampleCard team={team} surface="base" title="기본" />
-        <NormalSampleCard team={getModePreviewTeam(team, "light")} surface="light" title="라이트" />
-        <NormalSampleCard team={getModePreviewTeam(team, "dark")} surface="dark" title="다크" />
-      </div>
-      {showVictory ? <VictoryColorPreview team={team} /> : null}
-    </div>
-  );
-}
-
-function VictoryColorPreview({ team }: { team: Team }) {
-  return (
-    <div className="mt-3 rounded-md border border-line bg-field/65 p-3">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div>
-          <div className="text-sm font-black text-ink">승리 색상 미리보기</div>
-          <div className="text-xs font-semibold text-muted">배경, 포인트, 글씨 색상을 브래킷 기준으로 확인</div>
-        </div>
-      </div>
-      <div className="grid gap-3 lg:grid-cols-3">
-        <VictorySampleCard team={team} surface="base" title="기본" />
-        <VictorySampleCard team={getModePreviewTeam(team, "light")} surface="light" title="라이트" />
-        <VictorySampleCard team={getModePreviewTeam(team, "dark")} surface="dark" title="다크" />
-      </div>
-    </div>
-  );
-}
-
 function LogoBracketPreview({
   team,
   surface,
@@ -831,13 +790,11 @@ function LogoBracketPreview({
   surface: "base" | "light" | "dark";
   field: LogoField;
 }) {
-  if (field === "logoDefault" || field === "logoVictory") return null;
-
   if (isVictoryLogoField(field)) {
-    return <VictorySampleCard team={team} surface={surface} compact />;
+    return <VictorySampleCard team={team} surface={surface} title="승리 표시" />;
   }
 
-  return <NormalSampleCard team={team} surface={surface} compact />;
+  return <NormalSampleCard team={team} surface={surface} title="브래킷 표시" />;
 }
 
 function NormalSampleCard({
