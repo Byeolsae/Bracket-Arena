@@ -372,6 +372,9 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
+  const livePreviewName = form.name.trim() || "New Team";
+  const livePreviewShortName = form.shortName.trim();
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid items-start gap-4 xl:grid-cols-[1.1fr_1fr]">
@@ -408,7 +411,14 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
                     useVictoryLogo={isVictoryLogoField(item.field)}
                   />
                   <div className="w-full max-w-sm">
-                    <LogoBracketPreview team={logoPreview.team} surface={logoPreview.surface} field={item.field} />
+                    <LogoBracketPreview
+                      key={`${item.field}-${livePreviewName}-${livePreviewShortName}`}
+                      team={logoPreview.team}
+                      surface={logoPreview.surface}
+                      field={item.field}
+                      displayName={livePreviewName}
+                      displayShortName={livePreviewShortName}
+                    />
                   </div>
                 </div>
                 <label className="button-muted w-full cursor-pointer justify-center">
@@ -788,29 +798,37 @@ function ThemeColorPanel({
 function LogoBracketPreview({
   team,
   surface,
-  field
+  field,
+  displayName,
+  displayShortName
 }: {
   team: Team;
   surface: "base" | "light" | "dark";
   field: LogoField;
+  displayName: string;
+  displayShortName: string;
 }) {
   if (isVictoryLogoField(field)) {
-    return <VictorySampleCard team={team} surface={surface} />;
+    return <VictorySampleCard team={team} surface={surface} displayName={displayName} displayShortName={displayShortName} />;
   }
 
-  return <NormalSampleCard team={team} surface={surface} />;
+  return <NormalSampleCard team={team} surface={surface} displayName={displayName} displayShortName={displayShortName} />;
 }
 
 function NormalSampleCard({
   team,
   surface,
   title,
-  compact
+  compact,
+  displayName,
+  displayShortName
 }: {
   team: Team;
   surface: "base" | "light" | "dark";
   title?: string;
   compact?: boolean;
+  displayName?: string;
+  displayShortName?: string;
 }) {
   const surfaceClass =
     surface === "light"
@@ -830,8 +848,8 @@ function NormalSampleCard({
       : surface === "dark"
         ? "border-slate-700 text-white"
         : "border-line text-ink";
-  const shortLabel = team.shortName || "약칭";
-  const fullLabel = team.name || "팀 이름";
+  const fullLabel = displayName || team.name || "New Team";
+  const shortLabel = displayShortName || team.shortName || fullLabel;
   const point = getTeamBracketAccentColor(team) ?? defaultPrimary;
   const text = getTeamThemeTextColor(team);
   const textStyle = text ? { color: text } : undefined;
@@ -865,12 +883,16 @@ function VictorySampleCard({
   team,
   surface,
   title,
-  compact
+  compact,
+  displayName,
+  displayShortName
 }: {
   team: Team;
   surface: "base" | "light" | "dark";
   title?: string;
   compact?: boolean;
+  displayName?: string;
+  displayShortName?: string;
 }) {
   const primary = getTeamWinnerColor(team) ?? normalizeColor(team.primaryColor, defaultPrimary);
   const point = getTeamWinnerAccentColor(team) ?? primary;
@@ -882,8 +904,8 @@ function VictorySampleCard({
       : surface === "dark"
         ? "bg-black text-white"
         : "bg-arena text-ink";
-  const shortLabel = team.shortName || "약칭";
-  const fullLabel = team.name || "팀 이름";
+  const fullLabel = displayName || team.name || "New Team";
+  const shortLabel = displayShortName || team.shortName || fullLabel;
 
   return (
     <div className={clsx("rounded border border-line p-2", surfaceClass)}>
