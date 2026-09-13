@@ -190,19 +190,21 @@ function SwissBracketBoard({
 
   return (
     <div className="relative overflow-x-auto rounded-md border border-cyan/20 bg-arena/95 p-6 shadow-inner">
-      <div className="flex min-w-max items-stretch gap-12 bg-[linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:40px_40px] p-4">
+      <div className="flex min-w-max items-stretch gap-16 bg-[linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:40px_40px] p-4">
         {roundBuckets.map(({ round, buckets }) => (
-          <div key={round} className="w-[300px] shrink-0">
+          <div key={round} className="w-64 shrink-0">
             <div className="bracket-round-label mb-7 h-8 bg-cyan text-[11px] text-arena shadow-[0_12px_30px_rgba(0,0,0,0.2)]">
               Round {round}
             </div>
-            <div className="space-y-4">
-              {buckets.map(([recordKey, matches]) => (
-                <div key={`${round}-${recordKey}`} className="relative">
+            <div className="space-y-8">
+              {buckets.map(([recordKey, matches], bucketIndex) => (
+                <div key={`${round}-${recordKey}`} className="relative w-64">
+                  {round > 1 ? <SwissLeftConnector /> : null}
+                  {round < roundBuckets.length ? <SwissRightConnector split={bucketIndex < buckets.length - 1} /> : null}
                   <div className={clsx("bracket-round-label h-6 text-[10px] text-arena", bucketTone(recordKey))}>
                     {recordKey}
                   </div>
-                  <div className="space-y-3 border border-t-0 border-line/80 bg-panel/90 p-2.5 shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
+                  <div className="space-y-3 border border-t-0 border-line/80 bg-panel/90 shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
                     {matches.map((match) => (
                       <SwissMiniMatch key={match.id} match={match} teamsById={teamsById} />
                     ))}
@@ -217,6 +219,29 @@ function SwissBracketBoard({
         <SwissOutcomeColumn title="Eliminated" tone="bg-danger" records={eliminated} teamsById={teamsById} />
       </div>
     </div>
+  );
+}
+
+function SwissLeftConnector() {
+  return (
+    <>
+      <div className="pointer-events-none absolute -left-16 top-1/2 hidden h-px w-16 bg-line md:block" />
+      <div className="pointer-events-none absolute -left-16 top-[calc(50%-18px)] hidden h-9 w-px bg-line md:block" />
+    </>
+  );
+}
+
+function SwissRightConnector({ split }: { split: boolean }) {
+  return (
+    <>
+      <div className="pointer-events-none absolute -right-16 top-1/2 hidden h-px w-16 bg-line md:block" />
+      {split ? (
+        <>
+          <div className="pointer-events-none absolute -right-16 top-1/2 hidden h-12 w-px bg-line md:block" />
+          <div className="pointer-events-none absolute -right-16 top-[calc(50%+48px)] hidden h-px w-16 bg-line md:block" />
+        </>
+      ) : null}
+    </>
   );
 }
 
