@@ -13,7 +13,7 @@ export type TierListTier = {
 
 type TierListStore = {
   tiers: TierListTier[];
-  addTier: () => void;
+  addTier: () => string;
   updateTier: (id: string, patch: Partial<Pick<TierListTier, "name" | "color" | "textColor">>) => void;
   deleteTier: (id: string) => void;
   moveTeamToTier: (teamId: string, tierId: string | null, beforeTeamId?: string) => void;
@@ -60,13 +60,16 @@ export const useTierListStore = create<TierListStore>()(
   persist(
     (set) => ({
       tiers: cloneDefaultTiers(),
-      addTier: () =>
+      addTier: () => {
+        const id = createId("tier");
         set((state) => ({
           tiers: [
             ...state.tiers,
-            { id: createId("tier"), name: "NEW", color: "#2fe6ff", textColor: "#111827", teamIds: [] }
+            { id, name: "NEW", color: "#2fe6ff", textColor: "#111827", teamIds: [] }
           ]
-        })),
+        }));
+        return id;
+      },
       updateTier: (id, patch) =>
         set((state) => ({
           tiers: state.tiers.map((tier) => (tier.id === id ? { ...tier, ...patch } : tier))

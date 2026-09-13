@@ -432,6 +432,16 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
               <TextField label={ui.teamName} value={form.name} onChange={(name) => setForm({ ...form, name })} />
               <TextField label={ui.shortName} value={form.shortName} maxLength={8} onChange={(shortName) => setForm({ ...form, shortName })} />
             </div>
+            <div className="mt-4 rounded-md border border-line bg-field/65 p-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="text-sm font-black text-ink">브래킷 표시 미리보기</div>
+                <div className="text-[10px] font-black uppercase tracking-[0.14em] text-muted">Live</div>
+              </div>
+              <div className="space-y-2">
+                <NormalSampleCard team={previewTeam} surface="base" />
+                {victoryColorEnabled ? <VictorySampleCard team={getBaseVictoryPreviewTeam(previewTeam)} surface="base" title="승리 상태" /> : null}
+              </div>
+            </div>
           </div>
 
           <div className="rounded-md border border-line bg-arena/55 p-4">

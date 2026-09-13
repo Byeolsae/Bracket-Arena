@@ -70,6 +70,12 @@ export default function TierListPage() {
     setDraggedTeamId(null);
   }
 
+  function handleAddTier() {
+    const tierId = addTier();
+    setSelectedTierId(tierId);
+    setIsTierSettingsOpen(true);
+  }
+
   function printTierListAsPdf() {
     if (typeof window === "undefined") return;
 
@@ -165,7 +171,7 @@ export default function TierListPage() {
             <SlidersHorizontal className="h-4 w-4" />
             티어 설정
           </button>
-          <button type="button" className="button-muted" onClick={addTier}>
+          <button type="button" className="button-muted" onClick={handleAddTier}>
             <Plus className="h-4 w-4" />
             등급 추가
           </button>
@@ -205,13 +211,12 @@ export default function TierListPage() {
       </section>
       ) : null}
 
-      <div data-print-tier-root="true" className="space-y-5">
-        <div className="print-only">
-          <p className="section-kicker">Tier List</p>
-          <h1 className="mt-2 text-3xl font-black uppercase tracking-wide text-ink">티어리스트</h1>
-        </div>
-
-        <section className="arena-card overflow-hidden">
+      <div className="space-y-5">
+        <section data-print-tier-root="true" className="arena-card overflow-hidden">
+          <div className="print-only border-b border-line bg-panel px-4 py-3">
+            <p className="section-kicker">Tier List</p>
+            <h1 className="mt-2 text-3xl font-black uppercase tracking-wide text-ink">티어리스트</h1>
+          </div>
           <div className="divide-y divide-line">
             {tiers.map((tier) => {
               const tierTeams = tier.teamIds.map((teamId) => teamsById.get(teamId)).filter(Boolean) as Team[];
