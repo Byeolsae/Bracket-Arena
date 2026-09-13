@@ -781,6 +781,7 @@ export default function DrawPage() {
                   aria-pressed={skipDrawAnimation}
                 >
                   <span>스킵</span>
+                  <span className={skipDrawAnimation ? "text-muted" : "text-cyan"}>OFF</span>
                   <span
                     className={`relative h-6 w-11 rounded-full border transition ${
                       skipDrawAnimation ? "border-lime bg-lime" : "border-line bg-panel"
@@ -792,7 +793,7 @@ export default function DrawPage() {
                       }`}
                     />
                   </span>
-                  <span className={skipDrawAnimation ? "text-lime" : "text-muted"}>{skipDrawAnimation ? "ON" : "OFF"}</span>
+                  <span className={skipDrawAnimation ? "text-lime" : "text-muted"}>ON</span>
                 </button>
                 <button type="button" className="button-primary" onClick={importToBracket} disabled={!revealedResults.length || isDrawing}>
                   <ArrowRight className="h-4 w-4" />
