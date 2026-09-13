@@ -791,10 +791,10 @@ function LogoBracketPreview({
   field: LogoField;
 }) {
   if (isVictoryLogoField(field)) {
-    return <VictorySampleCard team={team} surface={surface} title="승리 표시" />;
+    return <VictorySampleCard team={team} surface={surface} />;
   }
 
-  return <NormalSampleCard team={team} surface={surface} title="브래킷 표시" />;
+  return <NormalSampleCard team={team} surface={surface} />;
 }
 
 function NormalSampleCard({
