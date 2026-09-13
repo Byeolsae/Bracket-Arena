@@ -1,14 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { DragEvent } from "react";
+import type { CSSProperties, DragEvent } from "react";
 import Link from "next/link";
-import { Plus, RotateCcw, SlidersHorizontal, Trash2, Users } from "lucide-react";
+import { Grid2X2, Medal, Plus, RotateCcw, Rows3, Shield, SlidersHorizontal, Trash2, Users } from "lucide-react";
 import { TeamLogo } from "@/components/teams/TeamLogo";
+import { getTeamThemeTextColor, getTeamVictoryTextColor, getTeamWinnerAccentColor, getTeamWinnerColor } from "@/lib/core/color";
 import type { Team } from "@/lib/core/models";
 import type { TierListTier } from "@/store/tierListStore";
 import { useTeamStore } from "@/store/teamStore";
 import { useTierListStore } from "@/store/tierListStore";
+
+type TierTeamTone = "normal" | "victory";
+type TierTeamLayout = "detail" | "logo";
 
 export default function TierListPage() {
   const { teams } = useTeamStore();
@@ -17,6 +21,8 @@ export default function TierListPage() {
   const [draggedTeamId, setDraggedTeamId] = useState<string | null>(null);
   const [selectedTierId, setSelectedTierId] = useState<string | null>(null);
   const [isTierSettingsOpen, setIsTierSettingsOpen] = useState(false);
+  const [teamTone, setTeamTone] = useState<TierTeamTone>("normal");
+  const [teamLayout, setTeamLayout] = useState<TierTeamLayout>("detail");
   const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
   const assignedTeamIds = useMemo(
     () => new Set(tiers.flatMap((tier) => tier.teamIds)),
@@ -75,6 +81,54 @@ export default function TierListPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <div className="flex rounded-md border border-line bg-field p-1">
+            <button
+              type="button"
+              className={`inline-flex h-9 items-center gap-1.5 rounded px-2.5 text-xs font-black uppercase transition ${
+                teamTone === "normal" ? "bg-cyan text-arena" : "text-muted hover:bg-panel hover:text-ink"
+              }`}
+              onClick={() => setTeamTone("normal")}
+              title="팀을 노멀 상태로 표시"
+            >
+              <Shield className="h-4 w-4" />
+              노멀
+            </button>
+            <button
+              type="button"
+              className={`inline-flex h-9 items-center gap-1.5 rounded px-2.5 text-xs font-black uppercase transition ${
+                teamTone === "victory" ? "bg-lime text-arena" : "text-muted hover:bg-panel hover:text-ink"
+              }`}
+              onClick={() => setTeamTone("victory")}
+              title="모든 팀을 승리 상태로 표시"
+            >
+              <Medal className="h-4 w-4" />
+              승리
+            </button>
+          </div>
+          <div className="flex rounded-md border border-line bg-field p-1">
+            <button
+              type="button"
+              className={`inline-flex h-9 items-center gap-1.5 rounded px-2.5 text-xs font-black uppercase transition ${
+                teamLayout === "detail" ? "bg-cyan text-arena" : "text-muted hover:bg-panel hover:text-ink"
+              }`}
+              onClick={() => setTeamLayout("detail")}
+              title="로고와 팀명을 함께 표시"
+            >
+              <Rows3 className="h-4 w-4" />
+              상세
+            </button>
+            <button
+              type="button"
+              className={`inline-flex h-9 items-center gap-1.5 rounded px-2.5 text-xs font-black uppercase transition ${
+                teamLayout === "logo" ? "bg-cyan text-arena" : "text-muted hover:bg-panel hover:text-ink"
+              }`}
+              onClick={() => setTeamLayout("logo")}
+              title="로고만 네모 칸으로 표시"
+            >
+              <Grid2X2 className="h-4 w-4" />
+              로고
+            </button>
+          </div>
           <Link href="/teams" className="button-muted">
             <Users className="h-4 w-4" />팀 관리
           </Link>
@@ -167,6 +221,8 @@ export default function TierListPage() {
                     <TierTeamChip
                       key={team.id}
                       team={team}
+                      tone={teamTone}
+                      layout={teamLayout}
                       onDragStart={() => handleDragStart(team.id)}
                       onDropBefore={(event) => dropToTier(event, tier.id, team.id)}
                     />
@@ -195,7 +251,7 @@ export default function TierListPage() {
         </div>
         <div className="flex min-h-24 flex-wrap content-start gap-2 rounded-md border border-dashed border-line bg-field/60 p-3">
           {unrankedTeams.map((team) => (
-            <TierTeamChip key={team.id} team={team} onDragStart={() => handleDragStart(team.id)} />
+            <TierTeamChip key={team.id} team={team} tone={teamTone} layout={teamLayout} onDragStart={() => handleDragStart(team.id)} />
           ))}
           {!teams.length ? (
             <div className="grid flex-1 place-items-center text-sm font-semibold text-muted">
@@ -287,13 +343,39 @@ function ColorControl({
 
 function TierTeamChip({
   team,
+  tone,
+  layout,
   onDragStart,
   onDropBefore
 }: {
   team: Team;
+  tone: TierTeamTone;
+  layout: TierTeamLayout;
   onDragStart: () => void;
   onDropBefore?: (event: DragEvent) => void;
 }) {
+  const isVictory = tone === "victory";
+  const chipStyle = getTierTeamChipStyle(team, isVictory);
+  const textStyle = getTierTeamTextStyle(team, isVictory);
+
+  if (layout === "logo") {
+    return (
+      <div
+        draggable
+        onDragStart={onDragStart}
+        onDragOver={(event) => {
+          if (onDropBefore) event.preventDefault();
+        }}
+        onDrop={onDropBefore}
+        className="grid h-16 w-16 cursor-grab place-items-center rounded-md border border-line bg-field shadow-sm transition hover:border-cyan active:cursor-grabbing"
+        style={chipStyle}
+        title={team.name}
+      >
+        <TeamLogo team={team} size="md" highlighted={isVictory} useVictoryLogo={isVictory} />
+      </div>
+    );
+  }
+
   return (
     <div
       draggable
@@ -303,14 +385,31 @@ function TierTeamChip({
       }}
       onDrop={onDropBefore}
       className="flex h-16 min-w-48 cursor-grab items-center gap-2 rounded-md border border-line bg-field px-3 shadow-sm transition hover:border-cyan active:cursor-grabbing"
+      style={chipStyle}
     >
-      <TeamLogo team={team} size="sm" />
+      <TeamLogo team={team} size="sm" highlighted={isVictory} useVictoryLogo={isVictory} />
       <div className="min-w-0">
-        <div className="truncate text-sm font-black text-ink">{team.shortName || team.name}</div>
-        <div className="truncate text-xs font-semibold text-muted">{team.name}</div>
+        <div className="truncate text-sm font-black text-ink" style={textStyle}>{team.shortName || team.name}</div>
+        <div className="truncate text-xs font-semibold text-muted" style={textStyle}>{team.name}</div>
       </div>
     </div>
   );
+}
+
+function getTierTeamChipStyle(team: Team, isVictory: boolean): CSSProperties | undefined {
+  if (!isVictory) return undefined;
+  const primary = getTeamWinnerColor(team);
+  const accent = getTeamWinnerAccentColor(team) ?? primary;
+  if (!primary) return undefined;
+  return {
+    borderColor: accent,
+    background: `linear-gradient(90deg, ${accent} 0 4px, ${primary} 4px 100%)`
+  };
+}
+
+function getTierTeamTextStyle(team: Team, isVictory: boolean): CSSProperties | undefined {
+  const color = isVictory ? getTeamVictoryTextColor(team) || getTeamThemeTextColor(team) : getTeamThemeTextColor(team);
+  return color ? { color } : undefined;
 }
 
 function normalizeColor(value: string | undefined, fallback: string) {

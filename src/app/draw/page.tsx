@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Layers3, Play, RotateCcw, Shuffle, Trophy, Users } from "lucide-react";
+import { ArrowRight, Check, Layers3, Play, RotateCcw, Shuffle, Trophy, Users, X } from "lucide-react";
 import { TeamLogo } from "@/components/teams/TeamLogo";
-import type { Team } from "@/lib/core/models";
+import type { Team, TeamFolder } from "@/lib/core/models";
 import { useTeamStore } from "@/store/teamStore";
 
 type DrawType = "seed" | "group";
@@ -134,8 +134,69 @@ function makeSeedAssignments(teamIds: string[], current: Record<string, number> 
   return next;
 }
 
+type FolderRow = {
+  id: string;
+  name: string;
+  depth: number;
+  teams: Team[];
+  allTeamIds: string[];
+};
+
+function buildFolderRows(folders: TeamFolder[], teamsById: Map<string, Team>): FolderRow[] {
+  if (!folders.length) {
+    const teams = [...teamsById.values()];
+    return [{ id: "all-teams", name: "전체 팀", depth: 0, teams, allTeamIds: teams.map((team) => team.id) }];
+  }
+
+  const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
+  const childrenByFolder = new Map<string | undefined, TeamFolder[]>();
+  for (const folder of folders) {
+    const parentId = folder.parentId;
+    childrenByFolder.set(parentId, [...(childrenByFolder.get(parentId) ?? []), folder]);
+  }
+
+  const getDirectTeams = (folder: TeamFolder) => {
+    const itemIds = folder.itemIds?.length ? folder.itemIds : (folder.teamIds ?? []).map((teamId) => `team:${teamId}`);
+    return itemIds
+      .filter((itemId) => itemId.startsWith("team:"))
+      .map((itemId) => teamsById.get(itemId.slice("team:".length)))
+      .filter(Boolean) as Team[];
+  };
+
+  const collectTeamIds = (folderId: string, visited = new Set<string>()): string[] => {
+    if (visited.has(folderId)) return [];
+    visited.add(folderId);
+    const folder = foldersById.get(folderId);
+    if (!folder) return [];
+
+    const directTeamIds = getDirectTeams(folder).map((team) => team.id);
+    const childTeamIds = (childrenByFolder.get(folderId) ?? []).flatMap((child) => collectTeamIds(child.id, visited));
+    return [...new Set([...directTeamIds, ...childTeamIds])];
+  };
+
+  const rows: FolderRow[] = [];
+  const visit = (folder: TeamFolder, depth: number) => {
+    const teams = getDirectTeams(folder);
+    rows.push({
+      id: folder.id,
+      name: folder.name,
+      depth,
+      teams,
+      allTeamIds: collectTeamIds(folder.id)
+    });
+    for (const child of childrenByFolder.get(folder.id) ?? []) {
+      visit(child, depth + 1);
+    }
+  };
+
+  const roots = folders.filter((folder) => !folder.parentId);
+  for (const root of roots.length ? roots : folders) visit(root, 0);
+  return rows;
+}
+
 export default function DrawPage() {
   const teams = useTeamStore((state) => state.teams);
+  const folders = useTeamStore((state) => state.folders);
   const [tournamentName, setTournamentName] = useState("새 대회");
   const [tournamentMode, setTournamentMode] = useState<TournamentMode>("two-stage");
   const [qualifierFormat, setQualifierFormat] = useState<StageFormat>("group");
@@ -157,10 +218,12 @@ export default function DrawPage() {
   const [currentResult, setCurrentResult] = useState<DrawResult>();
   const timersRef = useRef<number[]>([]);
 
+  const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
   const selectedTeams = useMemo(
-    () => selectedTeamIds.map((teamId) => teams.find((team) => team.id === teamId)).filter(Boolean) as Team[],
-    [selectedTeamIds, teams]
+    () => selectedTeamIds.map((teamId) => teamsById.get(teamId)).filter(Boolean) as Team[],
+    [selectedTeamIds, teamsById]
   );
+  const folderRows = useMemo(() => buildFolderRows(folders, teamsById), [folders, teamsById]);
   const canUseGroupDraw = tournamentMode === "two-stage" && supportsGroupDraw(qualifierFormat);
   const fixedQualifierTeamsPerGroup = canUseGroupDraw ? getFixedQualifierTeamsPerGroup(qualifierFormat) : undefined;
   const usesFixedQualifierGroups = drawType === "group" && canUseGroupDraw && Boolean(fixedQualifierTeamsPerGroup);
@@ -269,6 +332,22 @@ export default function DrawPage() {
       return [...current, teamId];
     });
     setPotAssignments((current) => ({ ...current, [teamId]: normalizePotIndex(current[teamId], safePotCount) }));
+  }
+
+  function selectFolderTeams(teamIds: string[]) {
+    resetDraw();
+    const teamIdSet = new Set(teamIds);
+    const nextTeams = teams.filter((team) => selectedTeamIds.includes(team.id) || teamIdSet.has(team.id));
+    setSelectedTeamIds(nextTeams.map((team) => team.id));
+    setPotAssignments(makePotAssignments(nextTeams, safePotCount));
+  }
+
+  function clearFolderTeams(teamIds: string[]) {
+    resetDraw();
+    const teamIdSet = new Set(teamIds);
+    const nextTeams = teams.filter((team) => selectedTeamIds.includes(team.id) && !teamIdSet.has(team.id));
+    setSelectedTeamIds(nextTeams.map((team) => team.id));
+    setPotAssignments(makePotAssignments(nextTeams, safePotCount));
   }
 
   function moveTeamToPot(teamId: string, potIndex: number) {
@@ -587,30 +666,74 @@ export default function DrawPage() {
                 </button>
               </div>
             </div>
-            <div className="grid max-h-[560px] gap-2 overflow-auto pr-1 md:grid-cols-2 2xl:grid-cols-3">
-              {teams.map((team) => {
-                const checked = selectedTeamIds.includes(team.id);
-                const potIndex = normalizePotIndex(potAssignments[team.id], safePotCount);
+            <div className="max-h-[560px] space-y-3 overflow-auto pr-1">
+              {folderRows.map((folder) => {
+                const selectedInFolder = folder.allTeamIds.filter((teamId) => selectedTeamIds.includes(teamId)).length;
                 return (
-                  <button
-                    key={team.id}
-                    type="button"
-                    className={`flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left transition ${
-                      checked ? "border-cyan bg-cyan/10" : "border-line bg-field hover:border-cyan/50"
-                    }`}
-                    onClick={() => toggleTeam(team.id)}
-                  >
-                    <TeamLogo team={team} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-black uppercase text-ink">{team.shortName || team.name}</div>
-                      <div className="truncate text-xs font-semibold text-muted">{team.name}</div>
+                  <section key={folder.id} className="rounded-md border border-line bg-field/70">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-3 py-2">
+                      <div className="min-w-0" style={{ paddingLeft: folder.depth * 12 }}>
+                        <h3 className="truncate text-sm font-black uppercase tracking-wide text-ink">{folder.name}</h3>
+                        <p className="text-xs font-semibold text-muted">
+                          {selectedInFolder}/{folder.allTeamIds.length}팀 선택
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded border border-line bg-panel text-muted transition hover:border-cyan hover:text-cyan"
+                          onClick={() => selectFolderTeams(folder.allTeamIds)}
+                          disabled={!folder.allTeamIds.length}
+                          title="폴더 전체 선택"
+                          aria-label={`${folder.name} 전체 선택`}
+                        >
+                          <Check className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded border border-line bg-panel text-muted transition hover:border-danger hover:text-danger"
+                          onClick={() => clearFolderTeams(folder.allTeamIds)}
+                          disabled={!folder.allTeamIds.length}
+                          title="폴더 선택 해제"
+                          aria-label={`${folder.name} 선택 해제`}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
-                    {checked && assignmentMode === "draw" && drawType === "group" ? (
-                      <span className="rounded bg-cyan/15 px-2 py-1 text-[10px] font-black uppercase text-cyan">
-                        Pot {potIndex + 1}
-                      </span>
-                    ) : null}
-                  </button>
+                    <div className="grid gap-2 p-2 md:grid-cols-2 2xl:grid-cols-3">
+                      {folder.teams.map((team) => {
+                        const checked = selectedTeamIds.includes(team.id);
+                        const potIndex = normalizePotIndex(potAssignments[team.id], safePotCount);
+                        return (
+                          <button
+                            key={team.id}
+                            type="button"
+                            className={`flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left transition ${
+                              checked ? "border-cyan bg-cyan/10" : "border-line bg-panel hover:border-cyan/50"
+                            }`}
+                            onClick={() => toggleTeam(team.id)}
+                          >
+                            <TeamLogo team={team} size="sm" />
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-black uppercase text-ink">{team.shortName || team.name}</div>
+                              <div className="truncate text-xs font-semibold text-muted">{team.name}</div>
+                            </div>
+                            {checked && assignmentMode === "draw" && drawType === "group" ? (
+                              <span className="rounded bg-cyan/15 px-2 py-1 text-[10px] font-black uppercase text-cyan">
+                                Pot {potIndex + 1}
+                              </span>
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                      {!folder.teams.length ? (
+                        <div className="rounded-md border border-dashed border-line p-3 text-sm font-semibold text-muted">
+                          이 폴더에는 직접 들어있는 팀이 없습니다.
+                        </div>
+                      ) : null}
+                    </div>
+                  </section>
                 );
               })}
               {!teams.length ? (
@@ -652,16 +775,24 @@ export default function DrawPage() {
                 </div>
                 <button
                   type="button"
-                  className={`inline-flex h-10 items-center gap-2 rounded-md border px-3 text-xs font-black uppercase tracking-wide transition ${
-                    skipDrawAnimation
-                      ? "border-lime bg-lime text-arena"
-                      : "border-line bg-field text-muted hover:border-cyan hover:text-cyan"
-                  }`}
+                  className="inline-flex h-10 items-center gap-2 rounded-full border border-line bg-field px-2.5 text-xs font-black uppercase tracking-wide text-muted transition hover:border-cyan hover:text-cyan"
                   onClick={() => setSkipDrawAnimation((current) => !current)}
                   title="켜면 추첨 애니메이션 없이 결과를 즉시 공개합니다"
                   aria-pressed={skipDrawAnimation}
                 >
-                  스킵 {skipDrawAnimation ? "ON" : "OFF"}
+                  <span>스킵</span>
+                  <span
+                    className={`relative h-6 w-11 rounded-full border transition ${
+                      skipDrawAnimation ? "border-lime bg-lime" : "border-line bg-panel"
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-ink shadow transition ${
+                        skipDrawAnimation ? "left-6 bg-arena" : "left-1"
+                      }`}
+                    />
+                  </span>
+                  <span className={skipDrawAnimation ? "text-lime" : "text-muted"}>{skipDrawAnimation ? "ON" : "OFF"}</span>
                 </button>
                 <button type="button" className="button-primary" onClick={importToBracket} disabled={!revealedResults.length || isDrawing}>
                   <ArrowRight className="h-4 w-4" />
