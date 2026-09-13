@@ -85,13 +85,24 @@ export default function TeamsPage() {
   };
 
   const openEdit = (team: Team) => {
-    setEditingTeam(team);
+    setEditingTeam({ ...team });
     setFormMode("edit");
   };
 
   const closeForm = () => {
     setEditingTeam(undefined);
     setFormMode(null);
+  };
+
+  const saveTeamForm = (teamInput: Omit<Team, "id" | "defaultSeed"> & { id?: string }) => {
+    if (formMode === "edit" && editingTeam?.id) {
+      const updatedTeam = { ...teamInput, id: editingTeam.id };
+      updateTeam(editingTeam.id, updatedTeam);
+      setEditingTeam(updatedTeam);
+    } else {
+      addTeam({ ...teamInput, id: undefined }, openFolderId);
+    }
+    closeForm();
   };
 
   const startFolderEdit = (folder: TeamFolder) => {
@@ -398,15 +409,9 @@ export default function TeamsPage() {
               </button>
             </div>
             <TeamForm
+              key={formMode === "edit" ? editingTeam?.id ?? "edit-team" : "new-team"}
               team={editingTeam}
-              onSubmit={(team) => {
-                if (team.id) {
-                  updateTeam(team.id, team);
-                } else {
-                  addTeam(team, openFolderId);
-                }
-                closeForm();
-              }}
+              onSubmit={saveTeamForm}
               onCancel={closeForm}
             />
           </section>
