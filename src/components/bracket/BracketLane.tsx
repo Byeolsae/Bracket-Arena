@@ -349,6 +349,9 @@ function buildBracketConnectionPaths(root: HTMLElement, matches: BracketStageMat
       const fromPoint = getElementPoint(root, from, "right");
       const toPoint = getElementPoint(root, to, "left");
       const gap = toPoint.x - fromPoint.x;
+      if (Math.abs(toPoint.y - fromPoint.y) < 4) {
+        return `M ${fromPoint.x} ${fromPoint.y} H ${toPoint.x}`;
+      }
       const elbowX = fromPoint.x + Math.max(34, gap * 0.48);
 
       return `M ${fromPoint.x} ${fromPoint.y} H ${elbowX} V ${toPoint.y} H ${toPoint.x}`;
@@ -412,8 +415,7 @@ function inferAdjacentRoundSegments(matches: BracketStageMatch[], explicitFromId
       if (!target) return;
       segments.push({
         fromMatchId: match.id,
-        toMatchId: target.id,
-        toSlot: matchIndex % 2 === 0 ? "A" : "B"
+        toMatchId: target.id
       });
     });
   }
