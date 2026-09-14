@@ -122,7 +122,7 @@ type GroupSeedTemplateSlot = {
 const STAGE_LABELS: Record<StageFormat, { label: string; hint: string }> = {
   single: { label: "싱글 엘리미네이션", hint: "한 번 지면 탈락하는 기본 녹아웃 브래킷" },
   double: { label: "더블 엘리미네이션", hint: "상위조 / 하위조 / 그랜드 파이널" },
-  triple: { label: "트리플 엘리미네이션", hint: "본선 8팀 고정, 0패 / 1패 / 2패 그룹 구조" },
+  triple: { label: "트리플 엘리미네이션", hint: "부전승 없는 2/4/8팀 본선, 0패 / 1패 / 2패 그룹 구조" },
   stepladder: { label: "스텝래더", hint: "낮은 시드부터 높은 시드에게 도전" },
   league: { label: "리그", hint: "라운드 로빈 순위표" },
   group: { label: "그룹 리그", hint: "조별 라운드 로빈" },
@@ -200,7 +200,7 @@ function getFixedGroupConfig(format: StageFormat) {
 }
 
 function getStageLimitLabel(format: StageFormat) {
-  if (format === "triple") return "8팀 고정";
+  if (format === "triple") return `2-${MAX_TRIPLE_ELIMINATION_TEAMS}팀`;
   if (format === "group_double_elimination") return "한 조당 0-4팀";
   if (format === "group_triple_elimination") return "한 조당 0-8팀";
 
@@ -248,13 +248,23 @@ function getFinalFormatDisabledReason(format: StageFormat, teamCount: number) {
   if (format === "single" && teamCount > MAX_SINGLE_ELIMINATION_TEAMS) {
     return `진출팀 ${teamCount}팀, 최대 ${MAX_SINGLE_ELIMINATION_TEAMS}팀`;
   }
-  if (format === "double" && teamCount > MAX_DOUBLE_ELIMINATION_TEAMS) {
-    return `진출팀 ${teamCount}팀, 최대 ${MAX_DOUBLE_ELIMINATION_TEAMS}팀`;
-  }
-  if (format === "triple" && teamCount !== MAX_TRIPLE_ELIMINATION_TEAMS) {
-    return `진출팀 ${teamCount}팀, ${MAX_TRIPLE_ELIMINATION_TEAMS}팀 고정`;
-  }
   return undefined;
+}
+
+function previousPowerOfTwo(value: number): number {
+  if (value <= 2) return 2;
+  return 2 ** Math.floor(Math.log2(value));
+}
+
+function getNoByeEliminationTeamLimit(format: StageFormat, teamCount: number) {
+  const maxTeams = format === "double" ? MAX_DOUBLE_ELIMINATION_TEAMS : format === "triple" ? MAX_TRIPLE_ELIMINATION_TEAMS : undefined;
+  if (!maxTeams || teamCount < 2) return teamCount;
+  return Math.max(2, previousPowerOfTwo(Math.min(teamCount, maxTeams)));
+}
+
+function getNoByeEliminationTeams(format: StageFormat, teams: Team[]) {
+  if (format !== "double" && format !== "triple") return teams;
+  return teams.slice(0, getNoByeEliminationTeamLimit(format, teams.length));
 }
 
 function getEffectiveGroupCount(format: StageFormat, teamCount: number, requestedGroupCount: number) {
@@ -584,10 +594,6 @@ export default function MakerPage() {
     if (!maxTeams) return undefined;
 
     if (!isGroupFormat(format)) {
-      if (format === "triple" && stageTeams.length !== maxTeams) {
-        return `${STAGE_LABELS[format].label}은 ${maxTeams}팀 고정입니다.`;
-      }
-
       return stageTeams.length > maxTeams
         ? `${STAGE_LABELS[format].label}은 최대 ${maxTeams}팀까지만 생성할 수 있습니다.`
         : undefined;
@@ -667,6 +673,8 @@ export default function MakerPage() {
       }
       stageTeams = fixedPlayoff.teams;
     }
+    const originalStageTeamCount = stageTeams.length;
+    stageTeams = getNoByeEliminationTeams(format, stageTeams);
     const limitMessage = getStageLimitMessage(format, stageTeams);
     if (stageTeams.length < 2) {
       setCreationNotice(role === "final" && mode === "two-stage" ? "본선 진출팀이 2팀 이상 확정된 뒤 본선을 생성할 수 있습니다." : "최소 2팀을 선택해야 합니다.");
@@ -676,7 +684,11 @@ export default function MakerPage() {
       setCreationNotice(limitMessage);
       return;
     }
-    setCreationNotice(undefined);
+    setCreationNotice(
+      stageTeams.length < originalStageTeamCount && (format === "double" || format === "triple")
+        ? `${STAGE_LABELS[format].label}은 부전승 없이 생성하기 위해 ${originalStageTeamCount}팀 중 상위 시드 ${stageTeams.length}팀으로 생성했습니다.`
+        : undefined
+    );
     setActiveStage({ format, role, teamCount: stageTeams.length });
     const stageGroupCount = getEffectiveGroupCount(format, stageTeams.length, groupCount);
     const stageGroupNames = makeGroupNames(stageGroupCount);

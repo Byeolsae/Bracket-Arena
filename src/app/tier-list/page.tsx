@@ -29,6 +29,7 @@ export default function TierListPage() {
   const [teamLayout, setTeamLayout] = useState<TierTeamLayout>("detail");
   const [tierOverrides, setTierOverrides] = useState<Record<string, TierStylePatch>>({});
   const teamDisplaySize = useUiStore((state) => state.teamDisplaySize);
+  const tierSize = tierListSizeClass[teamDisplaySize];
   const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
   const visibleTiers = useMemo(
     () => tiers.map((tier) => (tierOverrides[tier.id] ? { ...tier, ...tierOverrides[tier.id] } : tier)),
@@ -281,14 +282,14 @@ export default function TierListPage() {
               const tierColor = normalizeColor(tier.color, "#2fe6ff");
 
               return (
-                <div key={tier.id} className="grid min-h-24 grid-cols-[132px_1fr] bg-card/70">
+                <div key={tier.id} className={clsx("grid bg-card/70", tierSize.row, tierSize.columns)}>
                   <div
                     className="relative flex flex-col border-r border-line"
                     style={{ backgroundColor: tierColor, color: tierTextColor }}
                   >
                     <button
                       type="button"
-                      className="min-h-24 flex-1 px-4 text-center text-4xl font-black uppercase outline-none transition hover:bg-black/10"
+                      className={clsx("flex-1 text-center font-black uppercase outline-none transition hover:bg-black/10", tierSize.label)}
                       onClick={() => setSelectedTierId(tier.id)}
                     >
                       {tier.name}
@@ -305,7 +306,7 @@ export default function TierListPage() {
                     </button>
                   </div>
                   <div
-                    className="flex min-h-24 flex-wrap content-start gap-3 p-3"
+                    className={clsx("flex flex-wrap content-start", tierSize.content)}
                     onDragOver={allowDrop}
                     onDrop={(event) => dropToTier(event, tier.id)}
                   >
@@ -321,7 +322,7 @@ export default function TierListPage() {
                       />
                     ))}
                     {!tierTeams.length ? (
-                      <div className="grid min-h-20 flex-1 place-items-center rounded-md border border-dashed border-line text-sm font-semibold text-muted">
+                      <div className={clsx("grid flex-1 place-items-center rounded-md border border-dashed border-line font-semibold text-muted", tierSize.empty)}>
                         여기에 팀을 드래그
                       </div>
                     ) : null}
@@ -549,6 +550,53 @@ const tierTeamSizeClass: Record<
     detailLogo: "lg",
     primaryText: "text-lg",
     secondaryText: "text-base"
+  }
+};
+
+const tierListSizeClass: Record<
+  TeamDisplaySize,
+  {
+    row: string;
+    columns: string;
+    label: string;
+    content: string;
+    empty: string;
+  }
+> = {
+  1: {
+    row: "min-h-14",
+    columns: "grid-cols-[76px_1fr]",
+    label: "min-h-14 px-2 text-xl",
+    content: "min-h-14 gap-2 p-2",
+    empty: "min-h-10 text-xs"
+  },
+  2: {
+    row: "min-h-16",
+    columns: "grid-cols-[88px_1fr]",
+    label: "min-h-16 px-2 text-2xl",
+    content: "min-h-16 gap-2 p-2",
+    empty: "min-h-12 text-xs"
+  },
+  3: {
+    row: "min-h-20",
+    columns: "grid-cols-[108px_1fr]",
+    label: "min-h-20 px-3 text-3xl",
+    content: "min-h-20 gap-2.5 p-2.5",
+    empty: "min-h-16 text-sm"
+  },
+  4: {
+    row: "min-h-24",
+    columns: "grid-cols-[132px_1fr]",
+    label: "min-h-24 px-4 text-4xl",
+    content: "min-h-24 gap-3 p-3",
+    empty: "min-h-20 text-sm"
+  },
+  5: {
+    row: "min-h-28",
+    columns: "grid-cols-[156px_1fr]",
+    label: "min-h-28 px-5 text-5xl",
+    content: "min-h-28 gap-3 p-3",
+    empty: "min-h-24 text-base"
   }
 };
 
