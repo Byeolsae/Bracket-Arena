@@ -91,9 +91,8 @@ export function TeamLogo({
         alt={`${team?.name ?? "Team"} logo`}
         className={clsx(
           sizeClass[size],
-          "shrink-0 bg-transparent object-contain object-center p-0.5",
-          isVictoryLogo && "rounded-sm",
-          highlighted && "drop-shadow-[0_0_10px_rgba(47,230,255,0.55)]"
+          "shrink-0 bg-transparent object-contain object-center p-0.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.42)]",
+          isVictoryLogo && "rounded-sm"
         )}
       />
     );
