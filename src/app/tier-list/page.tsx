@@ -276,14 +276,14 @@ export default function TierListPage() {
               const tierColor = normalizeColor(tier.color, "#2fe6ff");
 
               return (
-                <div key={tier.id} className="grid min-h-20 grid-cols-[112px_1fr] bg-card/70">
+                <div key={tier.id} className="grid min-h-24 grid-cols-[132px_1fr] bg-card/70">
                   <div
                     className="relative flex flex-col border-r border-line"
                     style={{ backgroundColor: tierColor, color: tierTextColor }}
                   >
                     <button
                       type="button"
-                      className="min-h-20 flex-1 px-3 text-center text-3xl font-black uppercase outline-none transition hover:bg-black/10"
+                      className="min-h-24 flex-1 px-4 text-center text-4xl font-black uppercase outline-none transition hover:bg-black/10"
                       onClick={() => setSelectedTierId(tier.id)}
                     >
                       {tier.name}
@@ -300,7 +300,7 @@ export default function TierListPage() {
                     </button>
                   </div>
                   <div
-                    className="flex min-h-20 flex-wrap content-start gap-2 p-2"
+                    className="flex min-h-24 flex-wrap content-start gap-3 p-3"
                     onDragOver={allowDrop}
                     onDrop={(event) => dropToTier(event, tier.id)}
                   >
@@ -315,7 +315,7 @@ export default function TierListPage() {
                       />
                     ))}
                     {!tierTeams.length ? (
-                      <div className="grid min-h-16 flex-1 place-items-center rounded-md border border-dashed border-line text-sm font-semibold text-muted">
+                      <div className="grid min-h-20 flex-1 place-items-center rounded-md border border-dashed border-line text-sm font-semibold text-muted">
                         여기에 팀을 드래그
                       </div>
                     ) : null}
@@ -336,7 +336,7 @@ export default function TierListPage() {
               {unrankedTeams.length}팀
             </span>
           </div>
-          <div className="flex min-h-24 flex-wrap content-start gap-2 rounded-md border border-dashed border-line bg-field/60 p-3">
+          <div className="flex min-h-28 flex-wrap content-start gap-3 rounded-md border border-dashed border-line bg-field/60 p-3">
             {unrankedTeams.map((team) => (
               <TierTeamChip key={team.id} team={team} tone={teamTone} layout={teamLayout} onDragStart={() => handleDragStart(team.id)} />
             ))}
@@ -455,11 +455,11 @@ function TierTeamChip({
           if (onDropBefore) event.preventDefault();
         }}
         onDrop={onDropBefore}
-        className="grid h-16 w-16 cursor-grab place-items-center rounded-md border border-line bg-field shadow-sm transition hover:border-cyan active:cursor-grabbing"
+        className="grid h-20 w-20 cursor-grab place-items-center rounded-md border border-line bg-field shadow-sm transition hover:border-cyan active:cursor-grabbing"
         style={chipStyle}
         title={team.name}
       >
-        <TeamLogo team={team} size="md" highlighted={isVictory} useVictoryLogo={isVictory} />
+        <TeamLogo team={team} size="lg" highlighted={isVictory} useVictoryLogo={isVictory} />
       </div>
     );
   }
@@ -472,13 +472,13 @@ function TierTeamChip({
         if (onDropBefore) event.preventDefault();
       }}
       onDrop={onDropBefore}
-      className="flex h-16 min-w-48 cursor-grab items-center gap-2 rounded-md border border-line bg-field px-3 shadow-sm transition hover:border-cyan active:cursor-grabbing"
+      className="flex h-20 min-w-56 cursor-grab items-center gap-3 rounded-md border border-line bg-field px-4 shadow-sm transition hover:border-cyan active:cursor-grabbing"
       style={chipStyle}
     >
-      <TeamLogo team={team} size="sm" highlighted={isVictory} useVictoryLogo={isVictory} />
+      <TeamLogo team={team} size="md" highlighted={isVictory} useVictoryLogo={isVictory} />
       <div className="min-w-0">
-        <div className="truncate text-sm font-black text-ink" style={textStyle}>{team.shortName || team.name}</div>
-        <div className="truncate text-xs font-semibold text-muted" style={textStyle}>{team.name}</div>
+        <div className="truncate text-base font-black text-ink" style={textStyle}>{team.shortName || team.name}</div>
+        <div className="truncate text-sm font-semibold text-muted" style={textStyle}>{team.name}</div>
       </div>
     </div>
   );
