@@ -7,6 +7,7 @@ import clsx from "clsx";
 import type { Match, MatchParticipant, Team } from "@/lib/core/models";
 import { createRandomHeadToHeadScore } from "@/lib/core/randomResults";
 import { TeamLogo } from "@/components/teams/TeamLogo";
+import { useUiStore, type TeamDisplaySize } from "@/store/uiStore";
 import {
   getTeamBracketAccentColor,
   getTeamReadableScoreTextColor,
@@ -50,6 +51,8 @@ export function MatchCard({
   const isLockedBye = match.status === "bye";
   const isLocked = locked || isLockedBye;
   const hasBothTeams = Boolean(teamA?.id && teamB?.id);
+  const teamDisplaySize = useUiStore((state) => state.teamDisplaySize);
+  const size = bracketTeamSizeClass[teamDisplaySize];
 
   useEffect(() => {
     if (inputARef.current && document.activeElement !== inputARef.current) {
@@ -109,7 +112,8 @@ export function MatchCard({
       data-match-card="true"
       data-match-id={match.id}
       className={clsx(
-        "relative w-64 shrink-0 border border-line bg-panel shadow-panel",
+        "relative shrink-0 border border-line bg-panel shadow-panel",
+        size.card,
         active && !isLocked && "ring-2 ring-cyan shadow-[0_0_26px_rgba(47,230,255,0.26)]",
         match.winnerId && "border-lime",
         locked && "opacity-60"
@@ -148,6 +152,7 @@ export function MatchCard({
           isLoser={Boolean(match.winnerId && teamA?.id && match.winnerId !== teamA.id)}
           disabled={isLocked}
           onInput={scheduleAutoApply}
+          size={size}
         />
         <BracketTeamRow
           participant={match.participantB}
@@ -160,11 +165,70 @@ export function MatchCard({
           isLoser={Boolean(match.winnerId && teamB?.id && match.winnerId !== teamB.id)}
           disabled={isLocked}
           onInput={scheduleAutoApply}
+          size={size}
         />
       </div>
     </article>
   );
 }
+
+type BracketTeamSizeClass = {
+  card: string;
+  row: string;
+  teamCell: string;
+  logo: "xs" | "sm" | "md" | "lg" | "xl";
+  primaryText: string;
+  secondaryText: string;
+  scoreText: string;
+};
+
+const bracketTeamSizeClass: Record<TeamDisplaySize, BracketTeamSizeClass> = {
+  1: {
+    card: "w-56",
+    row: "h-9 grid-cols-[1fr_44px]",
+    teamCell: "gap-1.5 px-1.5",
+    logo: "xs",
+    primaryText: "text-[10px]",
+    secondaryText: "text-[9px]",
+    scoreText: "text-sm"
+  },
+  2: {
+    card: "w-60",
+    row: "h-10 grid-cols-[1fr_48px]",
+    teamCell: "gap-2 px-2",
+    logo: "sm",
+    primaryText: "text-[11px]",
+    secondaryText: "text-[10px]",
+    scoreText: "text-sm"
+  },
+  3: {
+    card: "w-64",
+    row: "h-11 grid-cols-[1fr_52px]",
+    teamCell: "gap-2 px-2",
+    logo: "sm",
+    primaryText: "text-xs",
+    secondaryText: "text-[10px]",
+    scoreText: "text-base"
+  },
+  4: {
+    card: "w-72",
+    row: "h-12 grid-cols-[1fr_56px]",
+    teamCell: "gap-2.5 px-2.5",
+    logo: "md",
+    primaryText: "text-sm",
+    secondaryText: "text-xs",
+    scoreText: "text-lg"
+  },
+  5: {
+    card: "w-80",
+    row: "h-14 grid-cols-[1fr_60px]",
+    teamCell: "gap-3 px-3",
+    logo: "md",
+    primaryText: "text-base",
+    secondaryText: "text-sm",
+    scoreText: "text-xl"
+  }
+};
 
 function BracketTeamRow({
   participant,
@@ -176,7 +240,8 @@ function BracketTeamRow({
   isWinner,
   isLoser,
   disabled,
-  onInput
+  onInput,
+  size
 }: {
   participant?: MatchParticipant;
   matchId: string;
@@ -188,6 +253,7 @@ function BracketTeamRow({
   isLoser?: boolean;
   disabled?: boolean;
   onInput: () => void;
+  size: BracketTeamSizeClass;
 }) {
   const isBye = participant?.isBye;
   const isPlaceholder = !isBye && !team;
@@ -204,7 +270,8 @@ function BracketTeamRow({
       data-slot={slot}
       data-team-id={team?.id}
       className={clsx(
-        "grid h-11 grid-cols-[1fr_52px] items-stretch overflow-hidden border border-line bg-field text-ink transition",
+        "grid items-stretch overflow-hidden border border-line bg-field text-ink transition",
+        size.row,
         isWinner && "shadow-[0_0_24px_rgba(47,230,255,0.14)]",
         isLoser && "opacity-55 saturate-75",
         isBye && "border-dashed opacity-70",
@@ -214,7 +281,8 @@ function BracketTeamRow({
     >
       <div
         className={clsx(
-          "flex min-w-0 items-center gap-2 px-2 transition",
+          "flex min-w-0 items-center transition",
+          size.teamCell,
           isWinner && "shadow-[0_0_18px_rgba(47,230,255,0.18)]",
           isPlaceholder && "bg-cyan/5"
         )}
@@ -223,17 +291,17 @@ function BracketTeamRow({
         {isPlaceholder ? (
           <TbdMark />
         ) : (
-          <TeamLogo team={team} size="sm" highlighted={isWinner} useVictoryLogo={isWinner} />
+          <TeamLogo team={team} size={size.logo} highlighted={isWinner} useVictoryLogo={isWinner} />
         )}
         <div className="min-w-0">
           <div
-            className={clsx("truncate text-xs font-black uppercase tracking-wide", isPlaceholder && "text-cyan")}
+            className={clsx("truncate font-black uppercase tracking-wide", size.primaryText, isPlaceholder && "text-cyan")}
             style={textStyle}
           >
             {label}
           </div>
           {team?.shortName ? (
-            <div className="truncate text-[10px] font-bold" style={textStyle}>{team.name}</div>
+            <div className={clsx("truncate font-bold", size.secondaryText)} style={textStyle}>{team.name}</div>
           ) : null}
         </div>
       </div>
@@ -249,7 +317,8 @@ function BracketTeamRow({
           onInput();
         }}
         className={clsx(
-          "h-full w-full border-0 bg-panel px-1 text-center text-base font-black text-ink outline-none transition focus:bg-cyan/10 focus:text-cyan disabled:text-slate-500",
+          "h-full w-full border-0 bg-panel px-1 text-center font-black text-ink outline-none transition focus:bg-cyan/10 focus:text-cyan disabled:text-slate-500",
+          size.scoreText,
           isWinner && "bg-lime text-arena focus:bg-lime focus:text-arena",
           isPlaceholder && "bg-panel/40 text-cyan/50"
         )}

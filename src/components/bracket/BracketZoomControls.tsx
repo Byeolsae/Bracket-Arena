@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { TeamDisplaySizeControl } from "@/components/settings/TeamDisplaySizeControl";
 
 type BracketZoomControlsProps = {
   zoom: number;
@@ -15,6 +16,7 @@ export function BracketZoomControls({ zoom, onChange, actions }: BracketZoomCont
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
       {actions}
+      <TeamDisplaySizeControl />
       <div className="flex items-center overflow-hidden rounded-md border border-line bg-field">
         <button
           type="button"

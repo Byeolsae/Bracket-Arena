@@ -9,16 +9,26 @@ import { getTeamInitial } from "@/lib/core/team";
 
 type TeamLogoProps = {
   team?: Team;
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
   highlighted?: boolean;
   useVictoryLogo?: boolean;
   variant?: "default" | "light" | "dark" | "auto";
 };
 
 const sizeClass = {
+  xs: "h-6 w-6",
   sm: "h-8 w-8",
   md: "h-10 w-10",
-  lg: "h-16 w-16"
+  lg: "h-16 w-16",
+  xl: "h-20 w-20"
+};
+
+const initialTextClass = {
+  xs: "text-[10px]",
+  sm: "text-xs",
+  md: "text-sm",
+  lg: "text-lg",
+  xl: "text-xl"
 };
 
 export function TeamLogo({
@@ -110,7 +120,7 @@ export function TeamLogo({
       )}
       aria-label={team ? `${team.name} placeholder logo` : "Empty team placeholder logo"}
     >
-      <span className="text-sm font-black uppercase tracking-wide">{getTeamInitial(team)}</span>
+      <span className={clsx("font-black uppercase tracking-wide", initialTextClass[size])}>{getTeamInitial(team)}</span>
     </div>
   );
 }

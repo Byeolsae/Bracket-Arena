@@ -3,13 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, DragEvent } from "react";
 import Link from "next/link";
+import clsx from "clsx";
 import { Grid2X2, Medal, Plus, Printer, RotateCcw, Rows3, Shield, SlidersHorizontal, Trash2, Users } from "lucide-react";
+import { TeamDisplaySizeControl } from "@/components/settings/TeamDisplaySizeControl";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import { getTeamThemeTextColor, getTeamVictoryTextColor, getTeamWinnerAccentColor, getTeamWinnerColor } from "@/lib/core/color";
 import type { Team } from "@/lib/core/models";
 import type { TierListTier } from "@/store/tierListStore";
 import { useTeamStore } from "@/store/teamStore";
 import { useTierListStore } from "@/store/tierListStore";
+import { useUiStore, type TeamDisplaySize } from "@/store/uiStore";
 
 type TierTeamTone = "normal" | "victory";
 type TierTeamLayout = "detail" | "logo";
@@ -25,6 +28,7 @@ export default function TierListPage() {
   const [teamTone, setTeamTone] = useState<TierTeamTone>("normal");
   const [teamLayout, setTeamLayout] = useState<TierTeamLayout>("detail");
   const [tierOverrides, setTierOverrides] = useState<Record<string, TierStylePatch>>({});
+  const teamDisplaySize = useUiStore((state) => state.teamDisplaySize);
   const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
   const visibleTiers = useMemo(
     () => tiers.map((tier) => (tierOverrides[tier.id] ? { ...tier, ...tierOverrides[tier.id] } : tier)),
@@ -207,6 +211,7 @@ export default function TierListPage() {
               로고
             </button>
           </div>
+          <TeamDisplaySizeControl />
           <Link href="/teams" className="button-muted">
             <Users className="h-4 w-4" />팀 관리
           </Link>
@@ -310,6 +315,7 @@ export default function TierListPage() {
                         team={team}
                         tone={teamTone}
                         layout={teamLayout}
+                        sizeLevel={teamDisplaySize}
                         onDragStart={() => handleDragStart(team.id)}
                         onDropBefore={(event) => dropToTier(event, tier.id, team.id)}
                       />
@@ -338,7 +344,7 @@ export default function TierListPage() {
           </div>
           <div className="flex min-h-28 flex-wrap content-start gap-3 rounded-md border border-dashed border-line bg-field/60 p-3">
             {unrankedTeams.map((team) => (
-              <TierTeamChip key={team.id} team={team} tone={teamTone} layout={teamLayout} onDragStart={() => handleDragStart(team.id)} />
+              <TierTeamChip key={team.id} team={team} tone={teamTone} layout={teamLayout} sizeLevel={teamDisplaySize} onDragStart={() => handleDragStart(team.id)} />
             ))}
             {!teams.length ? (
               <div className="grid flex-1 place-items-center text-sm font-semibold text-muted">
@@ -433,18 +439,21 @@ function TierTeamChip({
   team,
   tone,
   layout,
+  sizeLevel,
   onDragStart,
   onDropBefore
 }: {
   team: Team;
   tone: TierTeamTone;
   layout: TierTeamLayout;
+  sizeLevel: TeamDisplaySize;
   onDragStart: () => void;
   onDropBefore?: (event: DragEvent) => void;
 }) {
   const isVictory = tone === "victory";
   const chipStyle = getTierTeamChipStyle(team, isVictory, layout);
   const textStyle = getTierTeamTextStyle(team, isVictory);
+  const size = tierTeamSizeClass[sizeLevel];
 
   if (layout === "logo") {
     return (
@@ -455,11 +464,14 @@ function TierTeamChip({
           if (onDropBefore) event.preventDefault();
         }}
         onDrop={onDropBefore}
-        className="grid h-20 w-20 cursor-grab place-items-center rounded-md border border-line bg-field shadow-sm transition hover:border-cyan active:cursor-grabbing"
+        className={clsx(
+          "grid cursor-grab place-items-center rounded-md border border-line bg-field shadow-sm transition hover:border-cyan active:cursor-grabbing",
+          size.logoTile
+        )}
         style={chipStyle}
         title={team.name}
       >
-        <TeamLogo team={team} size="lg" highlighted={isVictory} useVictoryLogo={isVictory} />
+        <TeamLogo team={team} size={size.logoOnlyLogo} highlighted={isVictory} useVictoryLogo={isVictory} />
       </div>
     );
   }
@@ -472,17 +484,73 @@ function TierTeamChip({
         if (onDropBefore) event.preventDefault();
       }}
       onDrop={onDropBefore}
-      className="flex h-20 min-w-56 cursor-grab items-center gap-3 rounded-md border border-line bg-field px-4 shadow-sm transition hover:border-cyan active:cursor-grabbing"
+      className={clsx(
+        "flex cursor-grab items-center rounded-md border border-line bg-field shadow-sm transition hover:border-cyan active:cursor-grabbing",
+        size.detailCard
+      )}
       style={chipStyle}
     >
-      <TeamLogo team={team} size="md" highlighted={isVictory} useVictoryLogo={isVictory} />
+      <TeamLogo team={team} size={size.detailLogo} highlighted={isVictory} useVictoryLogo={isVictory} />
       <div className="min-w-0">
-        <div className="truncate text-base font-black text-ink" style={textStyle}>{team.shortName || team.name}</div>
-        <div className="truncate text-sm font-semibold text-muted" style={textStyle}>{team.name}</div>
+        <div className={clsx("truncate font-black text-ink", size.primaryText)} style={textStyle}>{team.shortName || team.name}</div>
+        <div className={clsx("truncate font-semibold text-muted", size.secondaryText)} style={textStyle}>{team.name}</div>
       </div>
     </div>
   );
 }
+
+const tierTeamSizeClass: Record<
+  TeamDisplaySize,
+  {
+    logoTile: string;
+    logoOnlyLogo: "xs" | "sm" | "md" | "lg" | "xl";
+    detailCard: string;
+    detailLogo: "xs" | "sm" | "md" | "lg" | "xl";
+    primaryText: string;
+    secondaryText: string;
+  }
+> = {
+  1: {
+    logoTile: "h-12 w-12",
+    logoOnlyLogo: "sm",
+    detailCard: "h-12 min-w-40 gap-2 px-2",
+    detailLogo: "xs",
+    primaryText: "text-xs",
+    secondaryText: "text-[10px]"
+  },
+  2: {
+    logoTile: "h-14 w-14",
+    logoOnlyLogo: "md",
+    detailCard: "h-14 min-w-44 gap-2 px-3",
+    detailLogo: "sm",
+    primaryText: "text-sm",
+    secondaryText: "text-xs"
+  },
+  3: {
+    logoTile: "h-16 w-16",
+    logoOnlyLogo: "md",
+    detailCard: "h-16 min-w-48 gap-2 px-3",
+    detailLogo: "sm",
+    primaryText: "text-sm",
+    secondaryText: "text-xs"
+  },
+  4: {
+    logoTile: "h-20 w-20",
+    logoOnlyLogo: "lg",
+    detailCard: "h-20 min-w-56 gap-3 px-4",
+    detailLogo: "md",
+    primaryText: "text-base",
+    secondaryText: "text-sm"
+  },
+  5: {
+    logoTile: "h-24 w-24",
+    logoOnlyLogo: "xl",
+    detailCard: "h-24 min-w-64 gap-3 px-4",
+    detailLogo: "lg",
+    primaryText: "text-lg",
+    secondaryText: "text-base"
+  }
+};
 
 function getTierTeamChipStyle(team: Team, isVictory: boolean, layout: TierTeamLayout): CSSProperties | undefined {
   if (!isVictory) return undefined;
