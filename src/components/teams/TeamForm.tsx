@@ -45,7 +45,7 @@ const logoNameFieldByLogoField: Record<LogoField, LogoNameField> = {
   logoVictoryDark: "logoVictoryDarkName"
 };
 const maxLogoSize = 256;
-const maxLogoDataUrlLength = 110_000;
+const maxLogoDataUrlLength = 5_000_000;
 
 const ui = {
   defaultLogo: "\uAE30\uBCF8 \uB85C\uACE0",

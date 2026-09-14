@@ -1,5 +1,7 @@
 "use client";
 
+import { requestPersistentStorage } from "@/lib/browser/persistentStorage";
+
 const logoRefPrefix = "idb-logo:";
 const dbName = "bracket-arena-logo-storage";
 const storeName = "logos";
@@ -11,6 +13,7 @@ export function isStoredLogoRef(value: string | undefined): value is string {
 
 export async function storeLogoDataUrl(dataUrl: string): Promise<string> {
   if (!dataUrl.startsWith("data:image/") || typeof indexedDB === "undefined") return dataUrl;
+  requestPersistentStorage();
   const id = `${logoRefPrefix}${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
   await withLogoStore("readwrite", (store) => store.put(dataUrl, id));
   return id;

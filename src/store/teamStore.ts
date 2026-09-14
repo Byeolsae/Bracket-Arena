@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
+import { requestPersistentStorage } from "@/lib/browser/persistentStorage";
 import type { Team, TeamFolder, TeamSetPreset } from "@/lib/core/models";
 
 type TeamInput = Omit<Team, "id"> & { id?: string };
@@ -32,7 +33,7 @@ const createId = (prefix: string) =>
   `${prefix}-${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
 const teamItem = (teamId: string) => `team:${teamId}`;
 const folderItem = (folderId: string) => `folder:${folderId}`;
-const maxPersistedLogoLength = 110_000;
+const maxPersistedLogoLength = 5_000_000;
 const teamStorageName = "bracket-arena-teams";
 const teamStorageDbName = "bracket-arena-storage";
 const teamStorageStoreName = "zustand";
@@ -275,6 +276,7 @@ const indexedDbStorage: StateStorage<Promise<void>> = {
     }
   },
   async setItem(name, value) {
+    requestPersistentStorage();
     await withTeamStorage("readwrite", (store) => store.put(value, name));
     try {
       window.localStorage.removeItem(name);
