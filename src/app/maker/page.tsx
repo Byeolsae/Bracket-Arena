@@ -218,6 +218,14 @@ function getStageLimitLabel(format: StageFormat) {
   return "자유";
 }
 
+function getStageRecommendationLabel(format: StageFormat) {
+  if (format === "double") return "권장 팀수: 4 / 8 / 16팀";
+  if (format === "triple") return "권장 팀수: 8팀";
+  if (format === "group_double_elimination") return "권장 팀수: 조당 4팀, 전체 4의 배수";
+  if (format === "group_triple_elimination") return "권장 팀수: 조당 8팀, 전체 8의 배수";
+  return `${getStageLimitLabel(format)} 가능`;
+}
+
 function getStageDisplayLabel(format: StageFormat) {
   return `${STAGE_LABELS[format].label} (${getStageLimitLabel(format)})`;
 }
@@ -543,6 +551,13 @@ export default function MakerPage() {
   const bracketSize = nextPowerOfTwo(Math.max(selectedTeams.length, 2));
   const byeCount = Math.max(0, bracketSize - selectedTeams.length);
   const canCreate = selectedTeams.length >= 2;
+  const qualifierLimitMessage = mode === "two-stage" ? getStageLimitMessage(qualifierFormat, selectedTeams) : undefined;
+  const finalLimitMessage = getStageLimitMessage(
+    finalFormat,
+    mode === "two-stage"
+      ? Array.from({ length: projectedFinalTeamCount }, (_, index) => ({ id: `projected-${index + 1}`, name: `Projected ${index + 1}` }) as Team)
+      : selectedTeams
+  );
 
   function setQualifierWithCompatibility(format: StageFormat) {
     const allowedFinals = QUALIFIER_FINAL_COMPATIBILITY[format] ?? TWO_STAGE_FINAL_OPTIONS;
@@ -790,16 +805,18 @@ export default function MakerPage() {
 
       <div className="mb-5 flex flex-wrap items-center gap-2">
         {mode === "two-stage" ? (
-          <button className="button-primary" disabled={!canCreate} onClick={() => createStage(qualifierFormat, "qualifier")}>
+          <button className="button-primary" disabled={!canCreate || Boolean(qualifierLimitMessage)} onClick={() => createStage(qualifierFormat, "qualifier")}>
             <Play className="h-4 w-4" />
             예선 생성
           </button>
         ) : null}
-        <button className="button-muted" disabled={!canCreate} onClick={() => createStage(finalFormat, "final")}>
+        <button className="button-muted" disabled={!canCreate || Boolean(finalLimitMessage)} onClick={() => createStage(finalFormat, "final")}>
           <Swords className="h-4 w-4" />
           {mode === "two-stage" ? "본선 생성" : "대진표 생성"}
         </button>
         {selectedTeams.length < 2 ? <span className="text-sm font-semibold text-danger">최소 2팀을 선택해야 합니다.</span> : null}
+        {qualifierLimitMessage ? <span className="text-sm font-semibold text-danger">{qualifierLimitMessage}</span> : null}
+        {finalLimitMessage ? <span className="text-sm font-semibold text-danger">{finalLimitMessage}</span> : null}
         {creationNotice ? <span className="text-sm font-semibold text-gold">{creationNotice}</span> : null}
       </div>
 
@@ -1659,6 +1676,7 @@ function StageSelect({
       </select>
       <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-muted">
         <span className="rounded border border-cyan/30 bg-cyan/10 px-2 py-0.5 text-cyan">{getStageLimitLabel(value)}</span>
+        <span className="rounded border border-line bg-field px-2 py-0.5">{getStageRecommendationLabel(value)}</span>
         {selectedDisabledReason ? (
           <span className="rounded border border-danger/40 bg-danger/10 px-2 py-0.5 text-danger">
             {selectedDisabledReason}

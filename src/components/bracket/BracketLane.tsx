@@ -359,26 +359,33 @@ function buildBracketConnectionPaths(root: HTMLElement, matches: BracketStageMat
 function getBracketConnectionSegments(matches: BracketStageMatch[]) {
   const segments: Array<{ fromMatchId: string; toMatchId: string; toSlot?: "A" | "B" }> = [];
   const matchIds = new Set(matches.map((match) => match.id));
+  const explicitFromIds = new Set<string>();
 
   matches.forEach((match) => {
     if (match.nextMatchId && matchIds.has(match.nextMatchId)) {
       segments.push({ fromMatchId: match.id, toMatchId: match.nextMatchId, toSlot: match.nextMatchSlot });
+      explicitFromIds.add(match.id);
     }
 
     if (match.loserNextMatchId && matchIds.has(match.loserNextMatchId)) {
       segments.push({ fromMatchId: match.id, toMatchId: match.loserNextMatchId, toSlot: match.loserNextMatchSlot });
+      explicitFromIds.add(match.id);
     }
 
     matches.forEach((target) => {
       if (target.id === match.id) return;
       if (target.participantA?.sourceMatchId === match.id) {
         segments.push({ fromMatchId: match.id, toMatchId: target.id, toSlot: "A" });
+        explicitFromIds.add(match.id);
       }
       if (target.participantB?.sourceMatchId === match.id) {
         segments.push({ fromMatchId: match.id, toMatchId: target.id, toSlot: "B" });
+        explicitFromIds.add(match.id);
       }
     });
   });
+
+  segments.push(...inferAdjacentRoundSegments(matches, explicitFromIds));
 
   const seen = new Set<string>();
   return segments.filter((segment) => {
@@ -387,6 +394,36 @@ function getBracketConnectionSegments(matches: BracketStageMatch[]) {
     seen.add(key);
     return true;
   });
+}
+
+function inferAdjacentRoundSegments(matches: BracketStageMatch[], explicitFromIds: Set<string>) {
+  const rounds = groupByRound(matches);
+  const segments: Array<{ fromMatchId: string; toMatchId: string; toSlot?: "A" | "B" }> = [];
+
+  for (let roundIndex = 0; roundIndex < rounds.length - 1; roundIndex += 1) {
+    const currentMatches = rounds[roundIndex].matches.filter((match) => !match.id.startsWith("placeholder-"));
+    const nextMatches = rounds[roundIndex + 1].matches.filter((match) => !match.id.startsWith("placeholder-"));
+    if (!currentMatches.length || !nextMatches.length) continue;
+
+    currentMatches.forEach((match, matchIndex) => {
+      if (explicitFromIds.has(match.id)) return;
+      const targetIndex = getInferredTargetIndex(matchIndex, currentMatches.length, nextMatches.length);
+      const target = nextMatches[targetIndex];
+      if (!target) return;
+      segments.push({
+        fromMatchId: match.id,
+        toMatchId: target.id,
+        toSlot: matchIndex % 2 === 0 ? "A" : "B"
+      });
+    });
+  }
+
+  return segments;
+}
+
+function getInferredTargetIndex(matchIndex: number, currentCount: number, nextCount: number) {
+  if (nextCount >= currentCount) return Math.min(nextCount - 1, matchIndex);
+  return Math.min(nextCount - 1, Math.floor((matchIndex * nextCount) / Math.max(1, currentCount)));
 }
 
 function getElementPoint(root: HTMLElement, element: HTMLElement, side: "left" | "right") {
