@@ -426,11 +426,6 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
                   {ui.chooseImage}
                   <input type="file" accept="image/*" className="sr-only" onChange={(event) => handleLogoChange(item.field, event)} />
                 </label>
-                {form[logoNameFieldByLogoField[item.field]] ? (
-                  <p className="mt-2 truncate text-center text-xs font-semibold text-muted" title={form[logoNameFieldByLogoField[item.field]]}>
-                    {form[logoNameFieldByLogoField[item.field]]}
-                  </p>
-                ) : null}
               </div>
             );
           })}
