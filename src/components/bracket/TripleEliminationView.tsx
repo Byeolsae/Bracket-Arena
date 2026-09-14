@@ -394,8 +394,8 @@ function createWaitingMatches(
       round,
       roundName,
       matchNumber,
-      participantA: { teamId: teamAId },
-      participantB: { teamId: teamBId },
+      participantA: teamAId ? { teamId: teamAId } : undefined,
+      participantB: teamBId ? { teamId: teamBId } : undefined,
       status: "pending" as const,
       bracketGroup: group
     });

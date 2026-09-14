@@ -151,7 +151,7 @@ export function BracketLane({
                 </div>
                 <div className="flex flex-1 flex-col justify-around gap-5">
                   {round.matches.map((match) => (
-                    <div key={match.id} className="relative">
+                    <div key={getMatchRenderKey(match)} className="relative">
                       <MatchCard
                         match={match}
                         teamsById={teamsById}
@@ -280,7 +280,7 @@ function SplitBranchRounds({
                 const centerY = isOddCarryMatch ? nextCenterY : baseCenterY;
                 return (
                 <div
-                  key={match.id}
+                  key={getMatchRenderKey(match)}
                   className="absolute left-0"
                   style={{
                     top: centerY + 56,
@@ -333,6 +333,15 @@ function BracketConnectorOverlay({ paths }: { paths: string[] }) {
       ))}
     </svg>
   );
+}
+
+function getMatchRenderKey(match: BracketStageMatch) {
+  return [
+    match.id,
+    match.participantA?.teamId ?? "empty-a",
+    match.participantB?.teamId ?? "empty-b",
+    match.winnerId ?? "open"
+  ].join(":");
 }
 
 function buildBracketConnectionPaths(root: HTMLElement, matches: BracketStageMatch[]) {
