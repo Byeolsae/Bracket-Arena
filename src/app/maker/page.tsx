@@ -205,9 +205,10 @@ function getStageLimitLabel(format: StageFormat) {
   if (format === "triple") return "8팀 고정";
   if (format === "group_double_elimination") return "조당 4팀 고정";
   if (format === "group_triple_elimination") return "조당 8팀 고정";
+  if (format === "single") return `2-${MAX_SINGLE_ELIMINATION_TEAMS}팀`;
 
   const limit = ELIMINATION_TEAM_LIMITS[format];
-  if (limit) return `0-${limit}팀`;
+  if (limit) return `2-${limit}팀`;
 
   if (format === "group") return "조별 자유";
   if (format === "swiss") return "자유";
@@ -215,6 +216,10 @@ function getStageLimitLabel(format: StageFormat) {
   if (format === "battle_royale") return "자유";
 
   return "자유";
+}
+
+function getStageDisplayLabel(format: StageFormat) {
+  return `${STAGE_LABELS[format].label} (${getStageLimitLabel(format)})`;
 }
 
 function getProjectedAdvancingCount(
@@ -970,12 +975,12 @@ function BracketLaunchPanel({
             {mode === "two-stage" ? (
               <div className="flex justify-between gap-3">
                 <span className="text-muted">예선</span>
-                <span>{STAGE_LABELS[qualifierFormat].label}</span>
+                <span>{getStageDisplayLabel(qualifierFormat)}</span>
               </div>
             ) : null}
             <div className="flex justify-between gap-3">
               <span className="text-muted">본선</span>
-              <span>{STAGE_LABELS[finalFormat].label}</span>
+              <span>{getStageDisplayLabel(finalFormat)}</span>
             </div>
             <div className="flex justify-between gap-3">
               <span className="text-muted">참가팀</span>
@@ -1646,9 +1651,7 @@ function StageSelect({
 
           return (
             <option key={option} value={option} disabled={Boolean(disabledReason)}>
-              {STAGE_LABELS[option].label}
-              {" "}
-              ({getStageLimitLabel(option)})
+              {getStageDisplayLabel(option)}
               {disabledReason ? ` (${disabledReason})` : ""}
             </option>
           );

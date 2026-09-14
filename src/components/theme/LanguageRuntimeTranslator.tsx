@@ -202,6 +202,7 @@ const exactTranslations: Record<string, string> = {
 
 const regexTranslations: Array<[RegExp, (match: RegExpMatchArray) => string]> = [
   [/^(\d+)팀$/, (match) => `${match[1]} teams`],
+  [/^(\d+)-(\d+)팀$/, (match) => `${match[1]}-${match[2]} teams`],
   [/^(\d+)\/(\d+)팀$/, (match) => `${match[1]}/${match[2]} teams`],
   [/^(\d+)팀 참가 · 기준 브래킷 (\d+)강 · 부전승 (\d+)$/, (match) => `${match[1]} selected · ${match[2]}-slot bracket · ${match[3]} byes`],
   [/^진출권 상위 (\d+)팀 \/ 본선 (\d+)강 \/ 부전승 (\d+)$/, (match) => `Top ${match[1]} advance / ${match[2]}-slot playoff / ${match[3]} byes`],
@@ -229,6 +230,7 @@ const regexTranslations: Array<[RegExp, (match: RegExpMatchArray) => string]> = 
   [/^(.+)은 8팀일 때만 생성할 수 있습니다\. 현재 (\d+)팀입니다\.$/, (match) => `${translateText(match[1])} can only be created with 8 teams. Current: ${match[2]}.`],
   [/^(.+)은 조별 (\d+)팀 고정입니다\. (.+)가 (\d+)팀입니다\.$/, (match) => `${translateText(match[1])} requires exactly ${match[2]} teams per group. ${translateText(match[3])} has ${match[4]} teams.`],
   [/^(.+)은 조별 최대 (\d+)팀까지만 생성할 수 있습니다\. (.+)가 (\d+)팀입니다\.$/, (match) => `${translateText(match[1])} supports up to ${match[2]} teams per group. ${translateText(match[3])} has ${match[4]} teams.`],
+  [/^(.+) \((.+)\)$/, (match) => `${translateText(match[1])} (${translateText(match[2])})`],
   [/^(.+) · (.+)$/, (match) => `${translateText(match[1])} · ${match[2]}`],
   [/^(.+) 폴더를 삭제할까요\?$/, (match) => `Delete the "${match[1]}" folder?`]
 ];
