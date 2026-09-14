@@ -1,7 +1,7 @@
 "use client";
 
 import { ChangeEvent, FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { Eye, ImagePlus, Save, X } from "lucide-react";
+import { Eye, ImagePlus, RotateCcw, Save, X } from "lucide-react";
 import clsx from "clsx";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import { removeStoredLogo, storeLogoDataUrl } from "@/lib/browser/logoStorage";
@@ -46,6 +46,13 @@ const logoNameFieldByLogoField: Record<LogoField, LogoNameField> = {
 };
 const maxLogoSize = 256;
 const maxLogoDataUrlLength = 110_000;
+const defaultLogoShadow = {
+  enabled: false,
+  color: "#000000",
+  blur: 4,
+  opacity: 0.68,
+  offsetY: 2
+};
 
 const ui = {
   defaultLogo: "\uAE30\uBCF8 \uB85C\uACE0",
@@ -91,6 +98,7 @@ const ui = {
   logoShadowThickness: "\uB450\uAED8",
   logoShadowStrength: "\uAC15\uB3C4",
   logoShadowDistance: "\uAC70\uB9AC",
+  resetLogoShadow: "\uAE30\uBCF8\uC73C\uB85C",
   enableLightColor: "\uB77C\uC774\uD2B8 \uC804\uC6A9 \uC0C9\uC0C1 \uD65C\uC131\uD654",
   enableDarkColor: "\uB2E4\uD06C \uC804\uC6A9 \uC0C9\uC0C1 \uD65C\uC131\uD654",
   memo: "\uBA54\uBAA8",
@@ -119,21 +127,21 @@ const emptyForm = {
   logoVictoryName: "",
   logoVictoryLightName: "",
   logoVictoryDarkName: "",
-  logoShadowEnabled: false,
-  logoShadowColor: "#000000",
-  logoShadowBlur: 4,
-  logoShadowOpacity: 0.68,
-  logoShadowOffsetY: 2,
-  logoShadowVictoryLightEnabled: false,
-  logoShadowVictoryLightColor: "#000000",
-  logoShadowVictoryLightBlur: 4,
-  logoShadowVictoryLightOpacity: 0.68,
-  logoShadowVictoryLightOffsetY: 2,
-  logoShadowVictoryDarkEnabled: false,
-  logoShadowVictoryDarkColor: "#000000",
-  logoShadowVictoryDarkBlur: 4,
-  logoShadowVictoryDarkOpacity: 0.68,
-  logoShadowVictoryDarkOffsetY: 2,
+  logoShadowEnabled: defaultLogoShadow.enabled,
+  logoShadowColor: defaultLogoShadow.color,
+  logoShadowBlur: defaultLogoShadow.blur,
+  logoShadowOpacity: defaultLogoShadow.opacity,
+  logoShadowOffsetY: defaultLogoShadow.offsetY,
+  logoShadowVictoryLightEnabled: defaultLogoShadow.enabled,
+  logoShadowVictoryLightColor: defaultLogoShadow.color,
+  logoShadowVictoryLightBlur: defaultLogoShadow.blur,
+  logoShadowVictoryLightOpacity: defaultLogoShadow.opacity,
+  logoShadowVictoryLightOffsetY: defaultLogoShadow.offsetY,
+  logoShadowVictoryDarkEnabled: defaultLogoShadow.enabled,
+  logoShadowVictoryDarkColor: defaultLogoShadow.color,
+  logoShadowVictoryDarkBlur: defaultLogoShadow.blur,
+  logoShadowVictoryDarkOpacity: defaultLogoShadow.opacity,
+  logoShadowVictoryDarkOffsetY: defaultLogoShadow.offsetY,
   primaryColor: defaultPrimary,
   bracketAccentColor: "",
   bracketAccentColorLight: "",
@@ -267,21 +275,21 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
             logoVictoryName: team.logoVictoryName ?? "",
             logoVictoryLightName: team.logoVictoryLightName ?? "",
             logoVictoryDarkName: team.logoVictoryDarkName ?? "",
-            logoShadowEnabled: team.logoShadowEnabled ?? false,
-            logoShadowColor: optionalColor(team.logoShadowColor) ?? "#000000",
-            logoShadowBlur: clampNumber(team.logoShadowBlur, 0, 14, 4),
-            logoShadowOpacity: clampNumber(team.logoShadowOpacity, 0, 1, 0.68),
-            logoShadowOffsetY: clampNumber(team.logoShadowOffsetY, 0, 8, 2),
-            logoShadowVictoryLightEnabled: team.logoShadowVictoryLightEnabled ?? false,
-            logoShadowVictoryLightColor: optionalColor(team.logoShadowVictoryLightColor) ?? "#000000",
-            logoShadowVictoryLightBlur: clampNumber(team.logoShadowVictoryLightBlur, 0, 14, 4),
-            logoShadowVictoryLightOpacity: clampNumber(team.logoShadowVictoryLightOpacity, 0, 1, 0.68),
-            logoShadowVictoryLightOffsetY: clampNumber(team.logoShadowVictoryLightOffsetY, 0, 8, 2),
-            logoShadowVictoryDarkEnabled: team.logoShadowVictoryDarkEnabled ?? false,
-            logoShadowVictoryDarkColor: optionalColor(team.logoShadowVictoryDarkColor) ?? "#000000",
-            logoShadowVictoryDarkBlur: clampNumber(team.logoShadowVictoryDarkBlur, 0, 14, 4),
-            logoShadowVictoryDarkOpacity: clampNumber(team.logoShadowVictoryDarkOpacity, 0, 1, 0.68),
-            logoShadowVictoryDarkOffsetY: clampNumber(team.logoShadowVictoryDarkOffsetY, 0, 8, 2),
+            logoShadowEnabled: team.logoShadowEnabled ?? defaultLogoShadow.enabled,
+            logoShadowColor: optionalColor(team.logoShadowColor) ?? defaultLogoShadow.color,
+            logoShadowBlur: clampNumber(team.logoShadowBlur, 0, 14, defaultLogoShadow.blur),
+            logoShadowOpacity: clampNumber(team.logoShadowOpacity, 0, 1, defaultLogoShadow.opacity),
+            logoShadowOffsetY: clampNumber(team.logoShadowOffsetY, 0, 8, defaultLogoShadow.offsetY),
+            logoShadowVictoryLightEnabled: team.logoShadowVictoryLightEnabled ?? defaultLogoShadow.enabled,
+            logoShadowVictoryLightColor: optionalColor(team.logoShadowVictoryLightColor) ?? defaultLogoShadow.color,
+            logoShadowVictoryLightBlur: clampNumber(team.logoShadowVictoryLightBlur, 0, 14, defaultLogoShadow.blur),
+            logoShadowVictoryLightOpacity: clampNumber(team.logoShadowVictoryLightOpacity, 0, 1, defaultLogoShadow.opacity),
+            logoShadowVictoryLightOffsetY: clampNumber(team.logoShadowVictoryLightOffsetY, 0, 8, defaultLogoShadow.offsetY),
+            logoShadowVictoryDarkEnabled: team.logoShadowVictoryDarkEnabled ?? defaultLogoShadow.enabled,
+            logoShadowVictoryDarkColor: optionalColor(team.logoShadowVictoryDarkColor) ?? defaultLogoShadow.color,
+            logoShadowVictoryDarkBlur: clampNumber(team.logoShadowVictoryDarkBlur, 0, 14, defaultLogoShadow.blur),
+            logoShadowVictoryDarkOpacity: clampNumber(team.logoShadowVictoryDarkOpacity, 0, 1, defaultLogoShadow.opacity),
+            logoShadowVictoryDarkOffsetY: clampNumber(team.logoShadowVictoryDarkOffsetY, 0, 8, defaultLogoShadow.offsetY),
             primaryColor: normalizeColor(team.primaryColor, defaultPrimary),
             bracketAccentColor: optionalColor(team.bracketAccentColor) ?? "",
             bracketAccentColorLight: optionalColor(team.bracketAccentColorLight) ?? "",
@@ -558,16 +566,33 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
                       setForm((current) => ({
                         ...current,
                         logoShadowEnabled: event.target.checked,
-                        logoShadowColor: current.logoShadowColor || "#000000",
-                        logoShadowBlur: current.logoShadowBlur || 4,
-                        logoShadowOpacity: current.logoShadowOpacity || 0.68,
-                        logoShadowOffsetY: current.logoShadowOffsetY || 2
+                        logoShadowColor: current.logoShadowColor || defaultLogoShadow.color,
+                        logoShadowBlur: current.logoShadowBlur || defaultLogoShadow.blur,
+                        logoShadowOpacity: current.logoShadowOpacity || defaultLogoShadow.opacity,
+                        logoShadowOffsetY: current.logoShadowOffsetY || defaultLogoShadow.offsetY
                       }))
                     }
                     className="h-4 w-4 accent-cyan"
                   />
                   {ui.enableLogoShadow}
                 </label>
+                <button
+                  type="button"
+                  className="button-muted min-h-0 px-2 py-1 text-[10px] uppercase tracking-[0.14em]"
+                  onClick={() =>
+                    setForm((current) => ({
+                      ...current,
+                      logoShadowEnabled: defaultLogoShadow.enabled,
+                      logoShadowColor: defaultLogoShadow.color,
+                      logoShadowBlur: defaultLogoShadow.blur,
+                      logoShadowOpacity: defaultLogoShadow.opacity,
+                      logoShadowOffsetY: defaultLogoShadow.offsetY
+                    }))
+                  }
+                >
+                  <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                  {ui.resetLogoShadow}
+                </button>
               </div>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <ColorField
@@ -743,10 +768,20 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
                           setForm((current) => ({
                             ...current,
                             logoShadowVictoryLightEnabled,
-                            logoShadowVictoryLightColor: current.logoShadowVictoryLightColor || "#000000",
-                            logoShadowVictoryLightBlur: current.logoShadowVictoryLightBlur || 4,
-                            logoShadowVictoryLightOpacity: current.logoShadowVictoryLightOpacity || 0.68,
-                            logoShadowVictoryLightOffsetY: current.logoShadowVictoryLightOffsetY || 2
+                            logoShadowVictoryLightColor: current.logoShadowVictoryLightColor || defaultLogoShadow.color,
+                            logoShadowVictoryLightBlur: current.logoShadowVictoryLightBlur || defaultLogoShadow.blur,
+                            logoShadowVictoryLightOpacity: current.logoShadowVictoryLightOpacity || defaultLogoShadow.opacity,
+                            logoShadowVictoryLightOffsetY: current.logoShadowVictoryLightOffsetY || defaultLogoShadow.offsetY
+                          }))
+                        }
+                        onReset={() =>
+                          setForm((current) => ({
+                            ...current,
+                            logoShadowVictoryLightEnabled: defaultLogoShadow.enabled,
+                            logoShadowVictoryLightColor: defaultLogoShadow.color,
+                            logoShadowVictoryLightBlur: defaultLogoShadow.blur,
+                            logoShadowVictoryLightOpacity: defaultLogoShadow.opacity,
+                            logoShadowVictoryLightOffsetY: defaultLogoShadow.offsetY
                           }))
                         }
                         onColorChange={(logoShadowVictoryLightColor) => setForm({ ...form, logoShadowVictoryLightColor })}
@@ -823,10 +858,20 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
                           setForm((current) => ({
                             ...current,
                             logoShadowVictoryDarkEnabled,
-                            logoShadowVictoryDarkColor: current.logoShadowVictoryDarkColor || "#000000",
-                            logoShadowVictoryDarkBlur: current.logoShadowVictoryDarkBlur || 4,
-                            logoShadowVictoryDarkOpacity: current.logoShadowVictoryDarkOpacity || 0.68,
-                            logoShadowVictoryDarkOffsetY: current.logoShadowVictoryDarkOffsetY || 2
+                            logoShadowVictoryDarkColor: current.logoShadowVictoryDarkColor || defaultLogoShadow.color,
+                            logoShadowVictoryDarkBlur: current.logoShadowVictoryDarkBlur || defaultLogoShadow.blur,
+                            logoShadowVictoryDarkOpacity: current.logoShadowVictoryDarkOpacity || defaultLogoShadow.opacity,
+                            logoShadowVictoryDarkOffsetY: current.logoShadowVictoryDarkOffsetY || defaultLogoShadow.offsetY
+                          }))
+                        }
+                        onReset={() =>
+                          setForm((current) => ({
+                            ...current,
+                            logoShadowVictoryDarkEnabled: defaultLogoShadow.enabled,
+                            logoShadowVictoryDarkColor: defaultLogoShadow.color,
+                            logoShadowVictoryDarkBlur: defaultLogoShadow.blur,
+                            logoShadowVictoryDarkOpacity: defaultLogoShadow.opacity,
+                            logoShadowVictoryDarkOffsetY: defaultLogoShadow.offsetY
                           }))
                         }
                         onColorChange={(logoShadowVictoryDarkColor) => setForm({ ...form, logoShadowVictoryDarkColor })}
@@ -982,6 +1027,7 @@ function LogoShadowControls({
   opacity,
   offsetY,
   onToggle,
+  onReset,
   onColorChange,
   onBlurChange,
   onOpacityChange,
@@ -994,6 +1040,7 @@ function LogoShadowControls({
   opacity: number;
   offsetY: number;
   onToggle: (enabled: boolean) => void;
+  onReset: () => void;
   onColorChange: (value: string) => void;
   onBlurChange: (value: number) => void;
   onOpacityChange: (value: number) => void;
@@ -1015,6 +1062,15 @@ function LogoShadowControls({
           />
           {ui.enableLogoShadow}
         </label>
+        <button
+          type="button"
+          className="button-muted min-h-0 px-2 py-1 text-[10px] uppercase tracking-[0.14em]"
+          disabled={disabled}
+          onClick={onReset}
+        >
+          <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+          {ui.resetLogoShadow}
+        </button>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <ColorField
