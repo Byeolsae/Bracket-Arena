@@ -13,6 +13,7 @@ import { useTierListStore } from "@/store/tierListStore";
 
 type TierTeamTone = "normal" | "victory";
 type TierTeamLayout = "detail" | "logo";
+type TierStylePatch = Partial<Pick<TierListTier, "name" | "color" | "textColor">>;
 
 export default function TierListPage() {
   const { teams } = useTeamStore();
@@ -23,14 +24,19 @@ export default function TierListPage() {
   const [isTierSettingsOpen, setIsTierSettingsOpen] = useState(false);
   const [teamTone, setTeamTone] = useState<TierTeamTone>("normal");
   const [teamLayout, setTeamLayout] = useState<TierTeamLayout>("detail");
+  const [tierOverrides, setTierOverrides] = useState<Record<string, TierStylePatch>>({});
   const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
+  const visibleTiers = useMemo(
+    () => tiers.map((tier) => (tierOverrides[tier.id] ? { ...tier, ...tierOverrides[tier.id] } : tier)),
+    [tierOverrides, tiers]
+  );
   const assignedTeamIds = useMemo(
-    () => new Set(tiers.flatMap((tier) => tier.teamIds)),
-    [tiers]
+    () => new Set(visibleTiers.flatMap((tier) => tier.teamIds)),
+    [visibleTiers]
   );
   const selectedTier = useMemo(
-    () => tiers.find((tier) => tier.id === selectedTierId) || tiers[0],
-    [selectedTierId, tiers]
+    () => visibleTiers.find((tier) => tier.id === selectedTierId) || visibleTiers[0],
+    [selectedTierId, visibleTiers]
   );
   const unrankedTeams = useMemo(
     () => teams.filter((team) => !assignedTeamIds.has(team.id)),
@@ -47,6 +53,29 @@ export default function TierListPage() {
       setSelectedTierId(tiers[0]?.id ?? null);
     }
   }, [selectedTierId, tiers]);
+
+  useEffect(() => {
+    setTierOverrides((current) => {
+      let changed = false;
+      const next = { ...current };
+
+      for (const [tierId, patch] of Object.entries(current)) {
+        const syncedTier = tiers.find((tier) => tier.id === tierId);
+        const isSynced =
+          !syncedTier ||
+          ((patch.name === undefined || patch.name === syncedTier.name) &&
+            (patch.color === undefined || patch.color === syncedTier.color) &&
+            (patch.textColor === undefined || patch.textColor === syncedTier.textColor));
+
+        if (isSynced) {
+          delete next[tierId];
+          changed = true;
+        }
+      }
+
+      return changed ? next : current;
+    });
+  }, [tiers]);
 
   function handleDragStart(teamId: string) {
     setDraggedTeamId(teamId);
@@ -74,6 +103,29 @@ export default function TierListPage() {
     const tierId = addTier();
     setSelectedTierId(tierId);
     setIsTierSettingsOpen(true);
+  }
+
+  function applyTierPatch(id: string, patch: TierStylePatch) {
+    setTierOverrides((current) => ({
+      ...current,
+      [id]: { ...current[id], ...patch }
+    }));
+    updateTier(id, patch);
+  }
+
+  function handleDeleteTier(id: string) {
+    setTierOverrides((current) => {
+      if (!current[id]) return current;
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+    deleteTier(id);
+  }
+
+  function handleResetTiers() {
+    setTierOverrides({});
+    resetTiers();
   }
 
   function printTierListAsPdf() {
@@ -175,7 +227,7 @@ export default function TierListPage() {
             <Plus className="h-4 w-4" />
             등급 추가
           </button>
-          <button type="button" className="button-muted" onClick={resetTiers}>
+          <button type="button" className="button-muted" onClick={handleResetTiers}>
             <RotateCcw className="h-4 w-4" />
             초기화
           </button>
@@ -194,7 +246,7 @@ export default function TierListPage() {
             value={selectedTier?.id ?? ""}
             onChange={(event) => setSelectedTierId(event.target.value)}
           >
-            {tiers.map((tier) => (
+            {visibleTiers.map((tier) => (
               <option key={tier.id} value={tier.id}>
                 {tier.name}
               </option>
@@ -202,7 +254,7 @@ export default function TierListPage() {
           </select>
         </div>
         {selectedTier ? (
-          <TierStyleEditor tier={selectedTier} updateTier={updateTier} />
+          <TierStyleEditor key={selectedTier.id} tier={selectedTier} updateTier={applyTierPatch} />
         ) : (
           <div className="rounded-md border border-dashed border-line p-4 text-sm font-semibold text-muted">
             설정할 등급이 없습니다.
@@ -218,7 +270,7 @@ export default function TierListPage() {
             <h1 className="mt-2 text-3xl font-black uppercase tracking-wide text-ink">티어리스트</h1>
           </div>
           <div className="divide-y divide-line">
-            {tiers.map((tier) => {
+            {visibleTiers.map((tier) => {
               const tierTeams = tier.teamIds.map((teamId) => teamsById.get(teamId)).filter(Boolean) as Team[];
               const tierTextColor = normalizeColor(tier.textColor, "#111827");
               const tierColor = normalizeColor(tier.color, "#2fe6ff");
@@ -240,7 +292,7 @@ export default function TierListPage() {
                       type="button"
                       className="no-print absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded border border-black/15 bg-black/10 opacity-55 transition hover:bg-black/25 hover:opacity-100"
                       style={{ color: tierTextColor }}
-                      onClick={() => deleteTier(tier.id)}
+                      onClick={() => handleDeleteTier(tier.id)}
                       aria-label={`${tier.name} 등급 삭제`}
                       title="등급 삭제"
                     >
