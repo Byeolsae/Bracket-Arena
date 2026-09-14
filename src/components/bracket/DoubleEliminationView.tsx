@@ -57,13 +57,13 @@ export function DoubleEliminationView({
     ...createWaitingMatchesByPrefix(actualWinners, bracket.pendingTeamIds, "W", "winners", "Winners Bracket"),
     ...grandFinalAsWinnerMatch
   ].filter((match) => hasAnyAssignedParticipant(match));
-  const losers = [
+  const losers = normalizeDisplayRounds([
     ...actualLosers,
     ...createWaitingMatchesByPrefix(actualLosers, bracket.pendingTeamIds, "L", "losers", "Losers Bracket")
-  ]
+  ])
     .filter((match) => hasAnyAssignedParticipant(match))
     .map((match) =>
-      match.round === loserFinalRound && loserFinalRound > 1
+      match.round === getActualRoundCount(normalizeDisplayRounds(actualLosers)) && loserFinalRound > 1
         ? { ...match, roundName: "Losers Final" }
         : match
     );
@@ -260,6 +260,21 @@ function matchNumberFromPendingKey(key: string) {
 
 function getActualRoundCount(matches: BracketStageMatch[]) {
   return matches.length ? Math.max(...matches.map((match) => match.round)) : 0;
+}
+
+function normalizeDisplayRounds(matches: BracketStageMatch[]) {
+  const sourceRounds = Array.from(new Set(matches.map((match) => match.round))).sort((left, right) => left - right);
+  const displayRoundBySourceRound = new Map(sourceRounds.map((round, index) => [round, index + 1]));
+
+  return matches.map((match) => {
+    const displayRound = displayRoundBySourceRound.get(match.round) ?? match.round;
+    const isExplicitFinal = /final/i.test(match.roundName);
+    return {
+      ...match,
+      round: displayRound,
+      roundName: isExplicitFinal ? match.roundName : `Losers Bracket ${displayRound}`
+    };
+  });
 }
 
 function hasAnyAssignedParticipant(match: BracketStageMatch) {

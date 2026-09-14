@@ -242,7 +242,10 @@ function createLaneDisplayMatches(
   }
 
   if (group === "one-loss") {
-    return renameTerminalLossRounds(mergeStandardMiddleDisplayRounds(laneMatches), group);
+    return renameTerminalLossRounds(
+      normalizeLossLaneDisplayRounds(mergeStandardMiddleDisplayRounds(laneMatches), "Middle Round"),
+      group
+    );
   }
 
   if (group === "two-loss") {
