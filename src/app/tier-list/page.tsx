@@ -276,14 +276,14 @@ export default function TierListPage() {
               const tierColor = normalizeColor(tier.color, "#2fe6ff");
 
               return (
-                <div key={tier.id} className="grid min-h-28 grid-cols-[112px_1fr] bg-card/70">
+                <div key={tier.id} className="grid min-h-20 grid-cols-[112px_1fr] bg-card/70">
                   <div
                     className="relative flex flex-col border-r border-line"
                     style={{ backgroundColor: tierColor, color: tierTextColor }}
                   >
                     <button
                       type="button"
-                      className="min-h-28 flex-1 px-3 text-center text-3xl font-black uppercase outline-none transition hover:bg-black/10"
+                      className="min-h-20 flex-1 px-3 text-center text-3xl font-black uppercase outline-none transition hover:bg-black/10"
                       onClick={() => setSelectedTierId(tier.id)}
                     >
                       {tier.name}
@@ -300,7 +300,7 @@ export default function TierListPage() {
                     </button>
                   </div>
                   <div
-                    className="flex min-h-28 flex-wrap content-start gap-2 p-3"
+                    className="flex min-h-20 flex-wrap content-start gap-2 p-2"
                     onDragOver={allowDrop}
                     onDrop={(event) => dropToTier(event, tier.id)}
                   >
