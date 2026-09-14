@@ -443,7 +443,7 @@ function TierTeamChip({
   onDropBefore?: (event: DragEvent) => void;
 }) {
   const isVictory = tone === "victory";
-  const chipStyle = getTierTeamChipStyle(team, isVictory);
+  const chipStyle = getTierTeamChipStyle(team, isVictory, layout);
   const textStyle = getTierTeamTextStyle(team, isVictory);
 
   if (layout === "logo") {
@@ -484,11 +484,13 @@ function TierTeamChip({
   );
 }
 
-function getTierTeamChipStyle(team: Team, isVictory: boolean): CSSProperties | undefined {
+function getTierTeamChipStyle(team: Team, isVictory: boolean, layout: TierTeamLayout): CSSProperties | undefined {
   if (!isVictory) return undefined;
   const primary = getTeamWinnerColor(team);
-  const accent = getTeamWinnerAccentColor(team) ?? primary;
   if (!primary) return undefined;
+  if (layout === "logo") return { backgroundColor: primary };
+
+  const accent = getTeamWinnerAccentColor(team) ?? primary;
   return {
     borderColor: accent,
     background: `linear-gradient(90deg, ${accent} 0 4px, ${primary} 4px 100%)`
