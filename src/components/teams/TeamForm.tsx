@@ -36,6 +36,8 @@ type EyeDropperConstructor = new () => { open: () => Promise<EyeDropperResult> }
 const defaultPrimary = "#2fe6ff";
 const transparentPreviewClass =
   "bg-[linear-gradient(45deg,#e5e7eb_25%,transparent_25%,transparent_75%,#e5e7eb_75%),linear-gradient(45deg,#e5e7eb_25%,transparent_25%,transparent_75%,#e5e7eb_75%)] bg-white bg-[length:16px_16px] bg-[position:0_0,8px_8px]";
+const lightModePreviewClass = "bg-[#f3f7fc] text-[#0f172a]";
+const darkModePreviewClass = "bg-[#0b1020] text-[#f8fbff]";
 const logoNameFieldByLogoField: Record<LogoField, LogoNameField> = {
   logoDefault: "logoDefaultName",
   logoLight: "logoLightName",
@@ -154,14 +156,14 @@ const logoFields: Array<{
     title: ui.lightLogo,
     hint: ui.lightLogoHint,
     variant: "light",
-    previewClass: "bg-white"
+    previewClass: lightModePreviewClass
   },
   {
     field: "logoDark",
     title: ui.darkLogo,
     hint: ui.darkLogoHint,
     variant: "dark",
-    previewClass: "bg-black"
+    previewClass: darkModePreviewClass
   },
   {
     field: "logoVictory",
@@ -175,14 +177,14 @@ const logoFields: Array<{
     title: ui.victoryLightLogo,
     hint: ui.victoryLightLogoHint,
     variant: "light",
-    previewClass: "bg-white"
+    previewClass: lightModePreviewClass
   },
   {
     field: "logoVictoryDark",
     title: ui.victoryDarkLogo,
     hint: ui.victoryDarkLogoHint,
     variant: "dark",
-    previewClass: "bg-black"
+    previewClass: darkModePreviewClass
   }
 ];
 
@@ -552,7 +554,7 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
                   title={ui.lightModeColor}
                   enableLabel={ui.enableLightColor}
                   enabled={lightColorEnabled}
-                  previewClass="bg-white"
+                  previewClass={lightModePreviewClass}
                   primaryValue={form.bracketAccentColorLight}
                   primaryFallback={form.bracketAccentColor || defaultPrimary}
                   accentValue={form.bracketAccentColorLight}
@@ -576,7 +578,7 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
                     title={ui.victoryLightModeColor}
                     enableLabel={ui.enableVictoryLightColor}
                     enabled={victoryLightColorEnabled}
-                    previewClass="bg-white"
+                    previewClass={lightModePreviewClass}
                     hidePreview
                     primaryValue={form.victoryColorLight}
                     primaryFallback={form.victoryColor || form.bracketAccentColor || defaultPrimary}
@@ -607,7 +609,7 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
                   title={ui.darkModeColor}
                   enableLabel={ui.enableDarkColor}
                   enabled={darkColorEnabled}
-                  previewClass="bg-black"
+                  previewClass={darkModePreviewClass}
                   primaryValue={form.bracketAccentColorDark}
                   primaryFallback={form.bracketAccentColor || defaultPrimary}
                   accentValue={form.bracketAccentColorDark}
@@ -631,7 +633,7 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
                     title={ui.victoryDarkModeColor}
                     enableLabel={ui.enableVictoryDarkColor}
                     enabled={victoryDarkColorEnabled}
-                    previewClass="bg-black"
+                    previewClass={darkModePreviewClass}
                     hidePreview
                     primaryValue={form.victoryColorDark}
                     primaryFallback={form.victoryColor || form.bracketAccentColor || defaultPrimary}
@@ -827,21 +829,21 @@ function NormalSampleCard({
 }) {
   const surfaceClass =
     surface === "light"
-      ? "bg-white text-slate-950"
+      ? "bg-[#f3f7fc] text-slate-950"
       : surface === "dark"
-        ? "bg-black text-white"
+        ? "bg-[#0b1020] text-white"
         : "bg-arena text-ink";
   const innerClass =
     surface === "light"
-      ? "border-slate-300 bg-white text-slate-950"
+      ? "border-[#b9c8da] bg-[#f8fbff] text-slate-950"
       : surface === "dark"
-        ? "border-slate-700 bg-slate-950 text-white"
+        ? "border-[#334158] bg-[#111827] text-white"
         : "border-line bg-panel/80 text-ink";
   const scoreClass =
     surface === "light"
-      ? "border-slate-300 text-slate-950"
+      ? "border-[#b9c8da] text-slate-950"
       : surface === "dark"
-        ? "border-slate-700 text-white"
+        ? "border-[#334158] text-white"
         : "border-line text-ink";
   const fullLabel = displayName || team.name || "New Team";
   const shortLabel = displayShortName || team.shortName || fullLabel;
@@ -895,9 +897,9 @@ function VictorySampleCard({
   const text = getTeamVictoryTextColor(team) ?? scoreText;
   const surfaceClass =
     surface === "light"
-      ? "bg-white text-slate-950"
+      ? "bg-[#f3f7fc] text-slate-950"
       : surface === "dark"
-        ? "bg-black text-white"
+        ? "bg-[#0b1020] text-white"
         : "bg-arena text-ink";
   const fullLabel = displayName || team.name || "New Team";
   const shortLabel = displayShortName || team.shortName || fullLabel;
