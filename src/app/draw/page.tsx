@@ -47,11 +47,11 @@ const doubleEliminationCounts = [4, 8, 16];
 const tripleEliminationCount = 8;
 
 function getStageLimitLabel(format: StageFormat) {
-  if (format === "triple") return "(8)";
-  if (format === "group_double_elimination") return "조당 (4)";
-  if (format === "group_triple_elimination") return "조당 (8)";
+  if (format === "triple") return "8팀";
+  if (format === "group_double_elimination") return "조당 4팀";
+  if (format === "group_triple_elimination") return "조당 8팀";
   if (format === "single") return "0-32팀";
-  if (format === "double") return "(4, 8, 16)";
+  if (format === "double") return "4/8/16팀";
   if (format === "group") return "조별 자유";
   return "자유";
 }
@@ -101,16 +101,16 @@ function supportsGroupDraw(format: StageFormat) {
 
 function getFixedFormatError(format: StageFormat, teamCount: number, label: string) {
   if (format === "double" && !doubleEliminationCounts.includes(teamCount)) {
-    return `${label} 더블 엘리미네이션은 (4, 8, 16)팀만 가능합니다. 현재 ${teamCount}팀입니다.`;
+    return `${label} 더블 엘리미네이션은 4/8/16팀만 가능합니다. 현재 ${teamCount}팀입니다.`;
   }
   if (format === "triple" && teamCount !== tripleEliminationCount) {
-    return `${label} 트리플 엘리미네이션은 (8)팀만 가능합니다. 현재 ${teamCount}팀입니다.`;
+    return `${label} 트리플 엘리미네이션은 8팀만 가능합니다. 현재 ${teamCount}팀입니다.`;
   }
   if (format === "group_double_elimination" && teamCount % 4 !== 0) {
-    return `예선 그룹 더블 엘리미네이션은 조당 (4)팀 고정입니다. 현재 ${teamCount}팀이라 4의 배수가 아닙니다.`;
+    return `예선 그룹 더블 엘리미네이션은 조당 4팀 고정입니다. 현재 ${teamCount}팀이라 4의 배수가 아닙니다.`;
   }
   if (format === "group_triple_elimination" && teamCount % 8 !== 0) {
-    return `예선 그룹 트리플 엘리미네이션은 조당 (8)팀 고정입니다. 현재 ${teamCount}팀이라 8의 배수가 아닙니다.`;
+    return `예선 그룹 트리플 엘리미네이션은 조당 8팀 고정입니다. 현재 ${teamCount}팀이라 8의 배수가 아닙니다.`;
   }
   return undefined;
 }
