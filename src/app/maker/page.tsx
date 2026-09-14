@@ -201,10 +201,10 @@ function getFixedGroupConfig(format: StageFormat) {
 }
 
 function getStageLimitLabel(format: StageFormat) {
-  if (format === "double") return "4/8/16팀";
-  if (format === "triple") return "8팀 고정";
-  if (format === "group_double_elimination") return "조당 4팀 고정";
-  if (format === "group_triple_elimination") return "조당 8팀 고정";
+  if (format === "double") return "(4, 8, 16)";
+  if (format === "triple") return "(8)";
+  if (format === "group_double_elimination") return "조당 (4)";
+  if (format === "group_triple_elimination") return "조당 (8)";
   if (format === "single") return `2-${MAX_SINGLE_ELIMINATION_TEAMS}팀`;
 
   const limit = ELIMINATION_TEAM_LIMITS[format];
@@ -219,10 +219,10 @@ function getStageLimitLabel(format: StageFormat) {
 }
 
 function getStageRecommendationLabel(format: StageFormat) {
-  if (format === "double") return "권장 팀수: 4 / 8 / 16팀";
-  if (format === "triple") return "권장 팀수: 8팀";
-  if (format === "group_double_elimination") return "권장 팀수: 조당 4팀, 전체 4의 배수";
-  if (format === "group_triple_elimination") return "권장 팀수: 조당 8팀, 전체 8의 배수";
+  if (format === "double") return "권장 팀수: (4, 8, 16)";
+  if (format === "triple") return "권장 팀수: (8)";
+  if (format === "group_double_elimination") return "권장 팀수: 조당 (4), 전체 4의 배수";
+  if (format === "group_triple_elimination") return "권장 팀수: 조당 (8), 전체 8의 배수";
   return `${getStageLimitLabel(format)} 가능`;
 }
 
@@ -264,10 +264,10 @@ function getFinalFormatDisabledReason(format: StageFormat, teamCount: number) {
     return `진출팀 ${teamCount}팀, 최대 ${MAX_SINGLE_ELIMINATION_TEAMS}팀`;
   }
   if (format === "double" && !DOUBLE_ELIMINATION_ALLOWED_TEAM_COUNTS.includes(teamCount)) {
-    return `진출팀 ${teamCount}팀, 4/8/16팀 필요`;
+    return `진출팀 ${teamCount}팀, (4, 8, 16) 필요`;
   }
   if (format === "triple" && teamCount !== MAX_TRIPLE_ELIMINATION_TEAMS) {
-    return `진출팀 ${teamCount}팀, 8팀 필요`;
+    return `진출팀 ${teamCount}팀, (8) 필요`;
   }
   return undefined;
 }
@@ -607,10 +607,10 @@ export default function MakerPage() {
 
     if (!isGroupFormat(format)) {
       if (format === "double" && !DOUBLE_ELIMINATION_ALLOWED_TEAM_COUNTS.includes(stageTeams.length)) {
-        return `${STAGE_LABELS[format].label}은 4팀, 8팀, 16팀일 때만 생성할 수 있습니다. 현재 ${stageTeams.length}팀입니다.`;
+        return `${STAGE_LABELS[format].label}은 (4, 8, 16)팀일 때만 생성할 수 있습니다. 현재 ${stageTeams.length}팀입니다.`;
       }
       if (format === "triple" && stageTeams.length !== MAX_TRIPLE_ELIMINATION_TEAMS) {
-        return `${STAGE_LABELS[format].label}은 8팀일 때만 생성할 수 있습니다. 현재 ${stageTeams.length}팀입니다.`;
+        return `${STAGE_LABELS[format].label}은 (8)팀일 때만 생성할 수 있습니다. 현재 ${stageTeams.length}팀입니다.`;
       }
       return stageTeams.length > maxTeams
         ? `${STAGE_LABELS[format].label}은 최대 ${maxTeams}팀까지만 생성할 수 있습니다.`

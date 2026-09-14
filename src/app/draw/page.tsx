@@ -43,13 +43,15 @@ const qualifierStageOptions: StageFormat[] = [
   "battle_royale"
 ];
 const finalStageOptions: StageFormat[] = ["single", "double", "triple", "stepladder", "battle_royale"];
+const doubleEliminationCounts = [4, 8, 16];
+const tripleEliminationCount = 8;
 
 function getStageLimitLabel(format: StageFormat) {
-  if (format === "triple") return "8팀 고정";
-  if (format === "group_double_elimination") return "한 조당 0-4팀";
-  if (format === "group_triple_elimination") return "한 조당 0-8팀";
+  if (format === "triple") return "(8)";
+  if (format === "group_double_elimination") return "조당 (4)";
+  if (format === "group_triple_elimination") return "조당 (8)";
   if (format === "single") return "0-32팀";
-  if (format === "double") return "0-16팀";
+  if (format === "double") return "(4, 8, 16)";
   if (format === "group") return "조별 자유";
   return "자유";
 }
@@ -95,6 +97,22 @@ function getFixedQualifierTeamsPerGroup(format: StageFormat) {
 
 function supportsGroupDraw(format: StageFormat) {
   return format === "group" || format === "group_double_elimination" || format === "group_triple_elimination";
+}
+
+function getFixedFormatError(format: StageFormat, teamCount: number, label: string) {
+  if (format === "double" && !doubleEliminationCounts.includes(teamCount)) {
+    return `${label} 더블 엘리미네이션은 (4, 8, 16)팀만 가능합니다. 현재 ${teamCount}팀입니다.`;
+  }
+  if (format === "triple" && teamCount !== tripleEliminationCount) {
+    return `${label} 트리플 엘리미네이션은 (8)팀만 가능합니다. 현재 ${teamCount}팀입니다.`;
+  }
+  if (format === "group_double_elimination" && teamCount % 4 !== 0) {
+    return `예선 그룹 더블 엘리미네이션은 조당 (4)팀 고정입니다. 현재 ${teamCount}팀이라 4의 배수가 아닙니다.`;
+  }
+  if (format === "group_triple_elimination" && teamCount % 8 !== 0) {
+    return `예선 그룹 트리플 엘리미네이션은 조당 (8)팀 고정입니다. 현재 ${teamCount}팀이라 8의 배수가 아닙니다.`;
+  }
+  return undefined;
 }
 
 function getGroupShapeFromGroupCount(teamCount: number, groupCount: number) {
@@ -248,6 +266,15 @@ export default function DrawPage() {
       .sort((a, b) => (a.slotIndex ?? 0) - (b.slotIndex ?? 0))
   }));
   const seedResults = [...revealedResults].sort((a, b) => (a.seed ?? 0) - (b.seed ?? 0));
+  const projectedFinalTeamCount =
+    tournamentMode === "final-only"
+      ? selectedTeams.length
+      : qualifierFormat === "group_double_elimination"
+        ? safeGroupCount * 2
+        : qualifierFormat === "group_triple_elimination"
+          ? safeGroupCount * 4
+          : undefined;
+  const importBlockReason = getImportBlockReason();
 
   useEffect(() => {
     setSelectedTeamIds((current) => current.filter((teamId) => teams.some((team) => team.id === teamId)));
@@ -448,6 +475,7 @@ export default function DrawPage() {
   }
 
   function importToBracket() {
+    if (importBlockReason) return;
     if (!revealedResults.length || typeof window === "undefined") return;
     const orderedResults = [...revealedResults].sort((a, b) => a.order - b.order);
     const payload =
@@ -481,6 +509,19 @@ export default function DrawPage() {
 
     window.localStorage.setItem("bracket-arena-draw-import", JSON.stringify(payload));
     window.location.href = "/maker";
+  }
+
+  function getImportBlockReason() {
+    if (selectedTeams.length < 2) return "최소 2팀을 선택해야 브래킷으로 가져올 수 있습니다.";
+    if (tournamentMode === "two-stage") {
+      return (
+        getFixedFormatError(qualifierFormat, selectedTeams.length, "예선") ??
+        (typeof projectedFinalTeamCount === "number"
+          ? getFixedFormatError(finalFormat, projectedFinalTeamCount, "본선 진출")
+          : undefined)
+      );
+    }
+    return getFixedFormatError(finalFormat, selectedTeams.length, "본선");
   }
 
   return (
@@ -643,6 +684,11 @@ export default function DrawPage() {
                 <DrawStageSelect label="예선 방식" value={qualifierFormat} options={qualifierStageOptions} onChange={setQualifierFormat} />
               ) : null}
               <DrawStageSelect label="본선 방식" value={finalFormat} options={finalStageOptions} onChange={setFinalFormat} />
+              {importBlockReason ? (
+                <div className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-bold leading-5 text-danger">
+                  {importBlockReason}
+                </div>
+              ) : null}
             </div>
           </section>
 
@@ -783,6 +829,7 @@ export default function DrawPage() {
               onGroupChange={assignManualGroup}
               onApply={applyManualAssignments}
               onImport={importToBracket}
+              importBlockReason={importBlockReason}
             />
           ) : (
             <section className="arena-card overflow-hidden">
@@ -818,11 +865,16 @@ export default function DrawPage() {
                   </span>
                   <span className={skipDrawAnimation ? "text-lime" : "text-muted"}>ON</span>
                 </button>
-                <button type="button" className="button-primary" onClick={importToBracket} disabled={!revealedResults.length || isDrawing}>
+                <button type="button" className="button-primary" onClick={importToBracket} disabled={!revealedResults.length || isDrawing || Boolean(importBlockReason)}>
                   <ArrowRight className="h-4 w-4" />
                   브래킷으로 가져오기
                 </button>
               </div>
+              {importBlockReason ? (
+                <div className="border-b border-danger/30 bg-danger/10 px-5 py-3 text-sm font-bold text-danger">
+                  {importBlockReason}
+                </div>
+              ) : null}
 
               <div className="grid gap-5 p-5 xl:grid-cols-[minmax(360px,430px)_minmax(0,1fr)]">
                 <DrawMachine
@@ -915,7 +967,8 @@ function ManualAssignmentPanel({
   onSeedChange,
   onGroupChange,
   onApply,
-  onImport
+  onImport,
+  importBlockReason
 }: {
   drawType: DrawType;
   selectedTeams: Team[];
@@ -928,6 +981,7 @@ function ManualAssignmentPanel({
   onGroupChange: (teamId: string, groupIndex: number) => void;
   onApply: () => void;
   onImport: () => void;
+  importBlockReason?: string;
 }) {
   const title = drawType === "seed" ? "시드 수동 부여" : "조 수동 부여";
   const groupColumns = Array.from({ length: Math.max(1, groupCount) }, (_, groupIndex) => ({
@@ -958,7 +1012,7 @@ function ManualAssignmentPanel({
             <Play className="h-4 w-4" />
             수동 결과 적용
           </button>
-          <button type="button" className="button-muted" onClick={onImport} disabled={!revealedCount || isBusy}>
+          <button type="button" className="button-muted" onClick={onImport} disabled={!revealedCount || isBusy || Boolean(importBlockReason)}>
             <ArrowRight className="h-4 w-4" />
             브래킷으로 가져오기
           </button>
@@ -966,6 +1020,11 @@ function ManualAssignmentPanel({
       </div>
 
       <div className="p-5">
+        {importBlockReason ? (
+          <div className="mb-4 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-bold text-danger">
+            {importBlockReason}
+          </div>
+        ) : null}
         <div className="mb-4 rounded-md border border-line bg-field px-3 py-2 text-xs font-semibold leading-5 text-muted">
           {drawType === "seed" ? "중복 시드는 자동으로 서로 교체됩니다." : "팀 카드를 원하는 조 칸으로 드래그해서 배정하세요."}
         </div>
