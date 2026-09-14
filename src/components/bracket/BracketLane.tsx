@@ -66,16 +66,12 @@ export function BracketLane({
     ? applyRoundNameOverrides(rawDisplayRounds, roundNameOverrides)
     : rawDisplayRounds;
   const displayedMatches = useMemo(() => displayRounds.flatMap((round) => round.matches), [displayRounds]);
-  const pathMatches = useMemo(
-    () => displayedMatches.filter((match) => !match.id.startsWith("placeholder-")),
-    [displayedMatches]
-  );
 
   useEffect(() => {
     let frameId = 0;
     const updateConnectorPaths = () => {
       const root = (splitBranches && rounds.length > 0 ? splitBoardRef.current : boardRef.current) ?? undefined;
-      const nextPaths = root ? buildBracketConnectionPaths(root, pathMatches) : [];
+      const nextPaths = root ? buildBracketConnectionPaths(root, displayedMatches) : [];
       setConnectorPaths((currentPaths) =>
         currentPaths.join("|") === nextPaths.join("|") ? currentPaths : nextPaths
       );
@@ -103,7 +99,7 @@ export function BracketLane({
       window.removeEventListener("resize", scheduleUpdate);
       observer?.disconnect();
     };
-  }, [pathMatches, rounds.length, splitBranches]);
+  }, [displayedMatches, rounds.length, splitBranches]);
 
   return (
     <section className="min-w-0 space-y-3">
@@ -372,6 +368,10 @@ function getBracketConnectionSegments(matches: BracketStageMatch[]) {
   const matchIds = new Set(matches.map((match) => match.id));
   const explicitFromIds = new Set<string>();
 
+  if (matches.some(isPlaceholderMatch)) {
+    return dedupeConnectionSegments(inferAdjacentRoundSegments(matches, explicitFromIds, true));
+  }
+
   matches.forEach((match) => {
     if (match.nextMatchId && matchIds.has(match.nextMatchId)) {
       segments.push({ fromMatchId: match.id, toMatchId: match.nextMatchId, toSlot: match.nextMatchSlot });
@@ -398,6 +398,10 @@ function getBracketConnectionSegments(matches: BracketStageMatch[]) {
 
   segments.push(...inferAdjacentRoundSegments(matches, explicitFromIds));
 
+  return dedupeConnectionSegments(segments);
+}
+
+function dedupeConnectionSegments(segments: Array<{ fromMatchId: string; toMatchId: string; toSlot?: "A" | "B" }>) {
   const seen = new Set<string>();
   return segments.filter((segment) => {
     const key = `${segment.fromMatchId}->${segment.toMatchId}:${segment.toSlot ?? ""}`;
@@ -407,13 +411,21 @@ function getBracketConnectionSegments(matches: BracketStageMatch[]) {
   });
 }
 
-function inferAdjacentRoundSegments(matches: BracketStageMatch[], explicitFromIds: Set<string>) {
+function inferAdjacentRoundSegments(
+  matches: BracketStageMatch[],
+  explicitFromIds: Set<string>,
+  includePlaceholders = false
+) {
   const rounds = groupByRound(matches);
   const segments: Array<{ fromMatchId: string; toMatchId: string; toSlot?: "A" | "B" }> = [];
 
   for (let roundIndex = 0; roundIndex < rounds.length - 1; roundIndex += 1) {
-    const currentMatches = rounds[roundIndex].matches.filter((match) => !match.id.startsWith("placeholder-"));
-    const nextMatches = rounds[roundIndex + 1].matches.filter((match) => !match.id.startsWith("placeholder-"));
+    const currentMatches = rounds[roundIndex].matches.filter(
+      (match) => includePlaceholders || !isPlaceholderMatch(match)
+    );
+    const nextMatches = rounds[roundIndex + 1].matches.filter(
+      (match) => includePlaceholders || !isPlaceholderMatch(match)
+    );
     if (!currentMatches.length || !nextMatches.length) continue;
 
     currentMatches.forEach((match, matchIndex) => {
@@ -429,6 +441,10 @@ function inferAdjacentRoundSegments(matches: BracketStageMatch[], explicitFromId
   }
 
   return segments;
+}
+
+function isPlaceholderMatch(match: Pick<BracketStageMatch, "id">) {
+  return match.id.startsWith("placeholder-");
 }
 
 function getInferredTargetIndex(matchIndex: number, currentCount: number, nextCount: number) {
