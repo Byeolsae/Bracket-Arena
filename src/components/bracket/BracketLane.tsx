@@ -489,19 +489,31 @@ function fillSinglePathDisplayRounds(
       expectedMatchCountsByRound?.[round] ?? fallbackMatchCount,
       existingRound?.matches.length ?? 0
     );
-    const existingByNumber = new Map(existingRound?.matches.map((match) => [match.matchNumber, match]) ?? []);
+    const existingMatches = existingRound?.matches ?? [];
+    const existingByNumber = new Map(existingMatches.map((match) => [match.matchNumber, match]));
+    const usedMatchIds = new Set<string>();
     const matches = Array.from({ length: expectedMatchCount }, (_, matchIndex) => {
       const matchNumber = matchIndex + 1;
-      return (
-        existingByNumber.get(matchNumber) ?? {
-          id: `placeholder-${title}-${round}-${matchNumber}`,
-          round,
-          roundName: existingRound?.name ?? roundNameFromBase(firstRoundName, round),
-          matchNumber,
-          status: "pending" as const,
-          bracketGroup
-        }
-      );
+      const exactMatch = existingByNumber.get(matchNumber);
+      if (exactMatch && !usedMatchIds.has(exactMatch.id)) {
+        usedMatchIds.add(exactMatch.id);
+        return exactMatch;
+      }
+
+      const compactMatch = existingMatches.find((match) => !usedMatchIds.has(match.id));
+      if (compactMatch) {
+        usedMatchIds.add(compactMatch.id);
+        return compactMatch;
+      }
+
+      return {
+        id: `placeholder-${title}-${round}-${matchNumber}`,
+        round,
+        roundName: existingRound?.name ?? roundNameFromBase(firstRoundName, round),
+        matchNumber,
+        status: "pending" as const,
+        bracketGroup
+      };
     });
 
     return {
