@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, DragEvent } from "react";
 import Link from "next/link";
 import clsx from "clsx";
-import { Grid2X2, Medal, Plus, Printer, RotateCcw, Rows3, Shield, SlidersHorizontal, Trash2, Users } from "lucide-react";
+import { ChevronDown, ChevronRight, Folder, Grid2X2, Medal, Plus, Printer, RotateCcw, Rows3, Shield, SlidersHorizontal, Trash2, Users } from "lucide-react";
 import { TeamDisplaySizeControl } from "@/components/settings/TeamDisplaySizeControl";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import { getTeamThemeTextColor, getTeamVictoryTextColor, getTeamWinnerColor } from "@/lib/core/color";
-import type { Team } from "@/lib/core/models";
+import type { Team, TeamFolder } from "@/lib/core/models";
 import type { TierListTier } from "@/store/tierListStore";
 import { useTeamStore } from "@/store/teamStore";
 import { useTierListStore } from "@/store/tierListStore";
@@ -19,7 +19,7 @@ type TierTeamLayout = "detail" | "logo";
 type TierStylePatch = Partial<Pick<TierListTier, "name" | "color" | "textColor">>;
 
 export default function TierListPage() {
-  const { teams } = useTeamStore();
+  const { teams, folders } = useTeamStore();
   const { tiers, addTier, updateTier, deleteTier, moveTeamToTier, resetTiers, removeMissingTeams } =
     useTierListStore();
   const [draggedTeamId, setDraggedTeamId] = useState<string | null>(null);
@@ -28,6 +28,7 @@ export default function TierListPage() {
   const [teamTone, setTeamTone] = useState<TierTeamTone>("normal");
   const [teamLayout, setTeamLayout] = useState<TierTeamLayout>("detail");
   const [tierOverrides, setTierOverrides] = useState<Record<string, TierStylePatch>>({});
+  const [openFolderIds, setOpenFolderIds] = useState<Set<string>>(() => new Set(["folder-default"]));
   const teamDisplaySize = useUiStore((state) => state.teamDisplaySize);
   const tierSize = tierListSizeClass[teamDisplaySize];
   const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
@@ -46,6 +47,10 @@ export default function TierListPage() {
   const unrankedTeams = useMemo(
     () => teams.filter((team) => !assignedTeamIds.has(team.id)),
     [assignedTeamIds, teams]
+  );
+  const unrankedFolderTree = useMemo(
+    () => buildTierFolderTree(folders, unrankedTeams),
+    [folders, unrankedTeams]
   );
 
   useEffect(() => {
@@ -102,6 +107,15 @@ export default function TierListPage() {
     if (!draggedTeamId) return;
     moveTeamToTier(draggedTeamId, null);
     setDraggedTeamId(null);
+  }
+
+  function toggleFolder(folderId: string) {
+    setOpenFolderIds((current) => {
+      const next = new Set(current);
+      if (next.has(folderId)) next.delete(folderId);
+      else next.add(folderId);
+      return next;
+    });
   }
 
   function handleAddTier() {
@@ -343,10 +357,22 @@ export default function TierListPage() {
               {unrankedTeams.length}팀
             </span>
           </div>
-          <div className="flex min-h-28 flex-wrap content-start gap-3 rounded-md border border-dashed border-line bg-field/60 p-3">
-            {unrankedTeams.map((team) => (
-              <TierTeamChip key={team.id} team={team} tone={teamTone} layout={teamLayout} sizeLevel={teamDisplaySize} onDragStart={() => handleDragStart(team.id)} />
-            ))}
+          <div className="min-h-28 space-y-2 rounded-md border border-dashed border-line bg-field/60 p-3">
+            {unrankedTeams.length
+              ? unrankedFolderTree.map((folder) => (
+                  <TierFolderSection
+                    key={folder.id}
+                    folder={folder}
+                    teamsById={teamsById}
+                    openFolderIds={openFolderIds}
+                    teamTone={teamTone}
+                    teamLayout={teamLayout}
+                    teamDisplaySize={teamDisplaySize}
+                    onToggleFolder={toggleFolder}
+                    onDragStart={handleDragStart}
+                  />
+                ))
+              : null}
             {!teams.length ? (
               <div className="grid flex-1 place-items-center text-sm font-semibold text-muted">
                 아직 팀이 없습니다. 팀 관리에서 먼저 추가하세요.
@@ -433,6 +459,144 @@ function ColorControl({
         />
       </div>
     </label>
+  );
+}
+
+type TierFolderNode = {
+  id: string;
+  name: string;
+  teamIds: string[];
+  children: TierFolderNode[];
+};
+
+function buildTierFolderTree(folders: TeamFolder[], teams: Team[]): TierFolderNode[] {
+  const defaultFolderId = "folder-default";
+  const visibleTeamIds = new Set(teams.map((team) => team.id));
+  const folderMap = new Map(
+    (Array.isArray(folders) ? folders : []).map((folder) => [
+      folder.id,
+      {
+        ...folder,
+        teamIds: (folder.teamIds ?? []).filter((teamId) => visibleTeamIds.has(teamId)),
+        itemIds: folder.itemIds ?? []
+      }
+    ])
+  );
+  const root = folderMap.get(defaultFolderId) ?? {
+    id: defaultFolderId,
+    name: "바탕화면",
+    teamIds: teams.map((team) => team.id),
+    itemIds: teams.map((team) => `team:${team.id}`)
+  };
+
+  function build(folderId: string): TierFolderNode {
+    const folder = folderMap.get(folderId) ?? root;
+    const children = (folder.itemIds ?? [])
+      .filter((itemId) => itemId.startsWith("folder:"))
+      .map((itemId) => itemId.slice("folder:".length))
+      .filter((childId) => folderMap.has(childId))
+      .map(build)
+      .filter((child) => getNestedTierTeamIds(child).length > 0);
+    const orderedTeamIds = (folder.itemIds ?? [])
+      .filter((itemId) => itemId.startsWith("team:"))
+      .map((itemId) => itemId.slice("team:".length))
+      .filter((teamId) => folder.teamIds.includes(teamId) && visibleTeamIds.has(teamId));
+
+    for (const teamId of folder.teamIds) {
+      if (!orderedTeamIds.includes(teamId)) orderedTeamIds.push(teamId);
+    }
+
+    return { id: folder.id, name: folder.name, teamIds: orderedTeamIds, children };
+  }
+
+  return [build(root.id)];
+}
+
+function getNestedTierTeamIds(folder: TierFolderNode): string[] {
+  return [...folder.teamIds, ...folder.children.flatMap(getNestedTierTeamIds)];
+}
+
+function TierFolderSection({
+  folder,
+  teamsById,
+  openFolderIds,
+  teamTone,
+  teamLayout,
+  teamDisplaySize,
+  onToggleFolder,
+  onDragStart,
+  depth = 0
+}: {
+  folder: TierFolderNode;
+  teamsById: Map<string, Team>;
+  openFolderIds: Set<string>;
+  teamTone: TierTeamTone;
+  teamLayout: TierTeamLayout;
+  teamDisplaySize: TeamDisplaySize;
+  onToggleFolder: (folderId: string) => void;
+  onDragStart: (teamId: string) => void;
+  depth?: number;
+}) {
+  const isOpen = openFolderIds.has(folder.id);
+  const nestedTeamIds = getNestedTierTeamIds(folder);
+  const hasContents = nestedTeamIds.length > 0;
+
+  return (
+    <div className="rounded-md border border-line bg-panel/70">
+      <div className="flex items-center gap-2 px-3 py-2" style={{ paddingLeft: `${12 + depth * 16}px` }}>
+        <button
+          type="button"
+          className="grid h-7 w-7 place-items-center rounded border border-line bg-field text-muted"
+          onClick={() => onToggleFolder(folder.id)}
+          disabled={!hasContents}
+          title={isOpen ? "폴더 접기" : "폴더 펼치기"}
+        >
+          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        <Folder className="h-4 w-4 shrink-0 text-cyan" />
+        <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onToggleFolder(folder.id)} disabled={!hasContents}>
+          <span className="block truncate text-sm font-black uppercase text-ink">{folder.name}</span>
+          <span className="block text-xs font-semibold text-muted">{nestedTeamIds.length}팀 미배치</span>
+        </button>
+      </div>
+      {isOpen ? (
+        <div className="space-y-2 border-t border-line p-2">
+          {folder.children.map((child) => (
+            <TierFolderSection
+              key={child.id}
+              folder={child}
+              teamsById={teamsById}
+              openFolderIds={openFolderIds}
+              teamTone={teamTone}
+              teamLayout={teamLayout}
+              teamDisplaySize={teamDisplaySize}
+              onToggleFolder={onToggleFolder}
+              onDragStart={onDragStart}
+              depth={depth + 1}
+            />
+          ))}
+          {folder.teamIds.length ? (
+            <div className="flex flex-wrap content-start gap-3">
+              {folder.teamIds.map((teamId) => {
+                const team = teamsById.get(teamId);
+                if (!team) return null;
+                return (
+                  <TierTeamChip
+                    key={team.id}
+                    team={team}
+                    tone={teamTone}
+                    layout={teamLayout}
+                    sizeLevel={teamDisplaySize}
+                    onDragStart={() => onDragStart(team.id)}
+                  />
+                );
+              })}
+            </div>
+          ) : null}
+          {!hasContents ? <div className="rounded-md border border-dashed border-line p-3 text-sm font-semibold text-muted">비어 있는 폴더입니다.</div> : null}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
