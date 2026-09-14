@@ -28,8 +28,12 @@ export function BracketView({ tournament, teams, onSaveResult, onClearResult }: 
     const thirdPlaceMatch = tournament.matches.find((match) => match.id === "third-place") as
       | BracketStageMatch
       | undefined;
-    return (thirdPlaceMatch ? [...rounds.flat(), thirdPlaceMatch] : rounds.flat()) as BracketStageMatch[];
-  }, [tournament.matches]);
+    const displayMatches = buildSingleEliminationDisplayMatches(
+      rounds.flat() as BracketStageMatch[],
+      tournament.rounds
+    );
+    return thirdPlaceMatch ? [...displayMatches, thirdPlaceMatch] : displayMatches;
+  }, [tournament.matches, tournament.rounds]);
   const activeMatchIds = useMemo(() => getCurrentPlayableMatchIds(mainMatches), [mainMatches]);
   const champion = tournament.championId ? teamsById.get(tournament.championId) : undefined;
   const placementText = champion ? `1위 결정 · ${champion.shortName || champion.name}` : "1위 결정";
@@ -90,4 +94,43 @@ export function BracketView({ tournament, teams, onSaveResult, onClearResult }: 
       </section>
     </div>
   );
+}
+
+function buildSingleEliminationDisplayMatches(matches: BracketStageMatch[], totalRounds: number): BracketStageMatch[] {
+  const matchesById = new Map(matches.map((match) => [match.id, match]));
+  const nextMatches = [...matches];
+
+  for (let round = 2; round <= totalRounds; round += 1) {
+    const matchCount = Math.max(1, 2 ** (totalRounds - round));
+
+    for (let matchNumber = 1; matchNumber <= matchCount; matchNumber += 1) {
+      const id = createSingleDisplayMatchId(round, matchNumber);
+      if (matchesById.has(id)) continue;
+
+      nextMatches.push({
+        id,
+        round,
+        roundName: getSingleDisplayRoundName(round, totalRounds),
+        matchNumber,
+        participantA: { sourceMatchId: createSingleDisplayMatchId(round - 1, matchNumber * 2 - 1) },
+        participantB: { sourceMatchId: createSingleDisplayMatchId(round - 1, matchNumber * 2) },
+        status: "pending",
+        bracketGroup: "winners"
+      });
+    }
+  }
+
+  return nextMatches.sort((left, right) => left.round - right.round || left.matchNumber - right.matchNumber);
+}
+
+function createSingleDisplayMatchId(round: number, matchNumber: number) {
+  return `r${round}-m${matchNumber}`;
+}
+
+function getSingleDisplayRoundName(round: number, totalRounds: number) {
+  const remaining = totalRounds - round;
+  if (remaining === 0) return "Final";
+  if (remaining === 1) return "Semifinal";
+  if (remaining === 2) return "Quarterfinal";
+  return `Round of ${2 ** (remaining + 1)}`;
 }
