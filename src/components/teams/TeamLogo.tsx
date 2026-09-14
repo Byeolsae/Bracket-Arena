@@ -1,10 +1,10 @@
 "use client";
 
 import clsx from "clsx";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { resolveStoredLogo } from "@/lib/browser/logoStorage";
 import type { Team } from "@/lib/core/models";
-import { getTeamInitial, getTeamLogo } from "@/lib/core/team";
+import { getTeamInitial } from "@/lib/core/team";
 
 type TeamLogoProps = {
   team?: Team;
@@ -51,7 +51,11 @@ export function TeamLogo({
     return () => observer.disconnect();
   }, [variant]);
 
-  const logo = getLogoForVariant(team, activeVariant, useVictoryLogo);
+  const logoCandidates = useMemo(
+    () => getLogoCandidatesForVariant(team, activeVariant, useVictoryLogo),
+    [activeVariant, team, useVictoryLogo]
+  );
+  const logo = logoCandidates[0];
   const isVictoryLogo = Boolean(
     useVictoryLogo &&
       logo &&
@@ -60,15 +64,15 @@ export function TeamLogo({
 
   useEffect(() => {
     let cancelled = false;
-    if (!logo) {
+    if (!logoCandidates.length) {
       setResolvedLogo("");
       return;
     }
 
     setResolvedLogo("");
-    resolveStoredLogo(logo)
-      .then((nextLogo) => {
-        if (!cancelled) setResolvedLogo(nextLogo);
+    Promise.all(logoCandidates.map((candidate) => resolveStoredLogo(candidate)))
+      .then((resolvedLogos) => {
+        if (!cancelled) setResolvedLogo(resolvedLogos.find(Boolean) ?? "");
       })
       .catch(() => {
         if (!cancelled) setResolvedLogo("");
@@ -77,7 +81,7 @@ export function TeamLogo({
     return () => {
       cancelled = true;
     };
-  }, [logo]);
+  }, [logoCandidates]);
 
   if (resolvedLogo) {
     return (
@@ -109,11 +113,20 @@ export function TeamLogo({
   );
 }
 
-function getLogoForVariant(team: Team | undefined, variant: "default" | "light" | "dark", useVictoryLogo?: boolean) {
-  if (useVictoryLogo) {
-    if (variant === "light") return getTeamLogo(team, "victory-light");
-    if (variant === "dark") return getTeamLogo(team, "victory-dark");
-    return getTeamLogo(team, "victory");
-  }
-  return getTeamLogo(team, variant);
+function getLogoCandidatesForVariant(team: Team | undefined, variant: "default" | "light" | "dark", useVictoryLogo?: boolean) {
+  if (!team) return [];
+
+  const candidates = useVictoryLogo
+    ? variant === "light"
+      ? [team.logoVictoryLight, team.logoVictory, team.logoDefault, team.logoLight, team.logoDark]
+      : variant === "dark"
+        ? [team.logoVictoryDark, team.logoVictory, team.logoDefault, team.logoDark, team.logoLight]
+        : [team.logoVictory, team.logoDefault, team.logoVictoryDark, team.logoVictoryLight, team.logoDark, team.logoLight]
+    : variant === "light"
+      ? [team.logoLight, team.logoDefault, team.logoDark]
+      : variant === "dark"
+        ? [team.logoDark, team.logoDefault, team.logoLight]
+        : [team.logoDefault, team.logoDark, team.logoLight];
+
+  return candidates.filter((candidate): candidate is string => Boolean(candidate));
 }
