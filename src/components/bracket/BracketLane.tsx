@@ -288,20 +288,19 @@ function SplitBranchRounds({
                     transform: "translateY(-50%)"
                   }}
                 >
-                  {isPlaceholder ? null : (
-                    <MatchCard
-                      match={match}
-                      teamsById={teamsById}
-                      locked={
-                        match.status !== "complete" &&
-                        (locked || Boolean(activeMatchIds && !activeMatchIds.has(match.id)))
-                      }
-                      active={Boolean(activeMatchIds?.has(match.id))}
-                      roundToneClassName={roundToneClassName}
-                      onSaveResult={onSaveResult}
-                      onClearResult={onClearResult}
-                    />
-                  )}
+                  <MatchCard
+                    match={match}
+                    teamsById={teamsById}
+                    locked={
+                      isPlaceholder ||
+                      (match.status !== "complete" &&
+                        (locked || Boolean(activeMatchIds && !activeMatchIds.has(match.id))))
+                    }
+                    active={!isPlaceholder && Boolean(activeMatchIds?.has(match.id))}
+                    roundToneClassName={roundToneClassName}
+                    onSaveResult={onSaveResult}
+                    onClearResult={onClearResult}
+                  />
                 </div>
                 );
               })}

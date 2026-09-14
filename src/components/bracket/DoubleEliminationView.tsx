@@ -12,6 +12,7 @@ import { autoFillCurrentBracketRound } from "@/components/bracket/randomRound";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import {
   getDoubleLosersMatchCountByRound,
+  getUpperMatchCountByRound,
   getUpperBracketRoundCount,
   getUpperFirstRoundMatchCount
 } from "@/lib/core/eliminationSizing";
@@ -45,6 +46,10 @@ export function DoubleEliminationView({
   const grandFinalRound = winnersRoundCount + 1;
   const loserMatchCounts = getDoubleLosersMatchCountByRound(bracketTeamCount);
   const loserFinalRound = Math.max(...Object.keys(loserMatchCounts).map(Number), 0);
+  const winnerMatchCounts = {
+    ...getUpperMatchCountByRound(bracketTeamCount),
+    [grandFinalRound]: 1
+  };
   const grandFinalAsWinnerMatch = grandFinal.slice(0, 1).map((match) => ({
     ...match,
     bracketGroup: "winners" as const,
@@ -56,19 +61,18 @@ export function DoubleEliminationView({
     ...actualWinners,
     ...createWaitingMatchesByPrefix(actualWinners, bracket.pendingTeamIds, "W", "winners", "Winners Bracket"),
     ...grandFinalAsWinnerMatch
-  ].filter((match) => hasAnyAssignedParticipant(match));
+  ];
   const losers = normalizeDisplayRounds([
     ...actualLosers,
     ...createWaitingMatchesByPrefix(actualLosers, bracket.pendingTeamIds, "L", "losers", "Losers Bracket")
   ])
-    .filter((match) => hasAnyAssignedParticipant(match))
     .map((match) =>
       match.round === getActualRoundCount(normalizeDisplayRounds(actualLosers)) && loserFinalRound > 1
         ? { ...match, roundName: "Losers Final" }
         : match
     );
-  const winnersDisplayRoundCount = Math.max(1, getActualRoundCount(winners));
-  const losersDisplayRoundCount = getActualRoundCount(losers);
+  const winnersDisplayRoundCount = Math.max(grandFinalRound, getActualRoundCount(winners));
+  const losersDisplayRoundCount = Math.max(loserFinalRound, getActualRoundCount(losers));
   const activeMatchIds = getCurrentPlayableMatchIds([...winners, ...losers]);
   const completedGrandFinal = [...grandFinal].reverse().find((match) => match.status === "complete");
   const runnerUp = completedGrandFinal?.loserId ? teamsById.get(completedGrandFinal.loserId) : undefined;
@@ -128,7 +132,7 @@ export function DoubleEliminationView({
                   scrollable={false}
                   expectedFirstRoundMatchCount={winnersFirstRoundSize}
                   expectedRoundCount={winnersDisplayRoundCount}
-                  expectedMatchCountsByRound={undefined}
+                  expectedMatchCountsByRound={winnerMatchCounts}
                   activeMatchIds={activeMatchIds}
                   minHeight="600px"
                   onSaveResult={onSaveResult}
@@ -149,7 +153,7 @@ export function DoubleEliminationView({
                   scrollable={false}
                   expectedFirstRoundMatchCount={losersFirstRoundSize}
                   expectedRoundCount={Math.max(1, losersDisplayRoundCount)}
-                  expectedMatchCountsByRound={undefined}
+                  expectedMatchCountsByRound={loserMatchCounts}
                   activeMatchIds={activeMatchIds}
                   minHeight="430px"
                   onSaveResult={onSaveResult}
@@ -275,14 +279,4 @@ function normalizeDisplayRounds(matches: BracketStageMatch[]) {
       roundName: isExplicitFinal ? match.roundName : `Losers Bracket ${displayRound}`
     };
   });
-}
-
-function hasAnyAssignedParticipant(match: BracketStageMatch) {
-  return isDisplayableTeamId(match.participantA?.teamId) || isDisplayableTeamId(match.participantB?.teamId);
-}
-
-function isDisplayableTeamId(teamId?: string | null) {
-  if (!teamId) return false;
-  const normalized = teamId.toLowerCase();
-  return normalized !== "bye" && !normalized.startsWith("tbd") && !normalized.startsWith("pending");
 }

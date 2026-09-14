@@ -12,6 +12,7 @@ import { getCurrentPlayableMatchIds } from "@/lib/core/bracketOrder";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import {
   getLossGroupFirstRoundMatchCount,
+  getTripleLossGroupRoundCount,
   getTripleLossGroupMatchCountByRound
 } from "@/lib/core/eliminationSizing";
 
@@ -149,11 +150,9 @@ export function TripleEliminationView({ stage, teams, onChange }: TripleEliminat
               {lanes.map((lane) => {
                 const laneMatches = createLaneDisplayMatches(displayMatches, lane.group);
                 const firstRoundSize = expectedFirstRoundSize(lane.group, bracketTeamCount);
-                const roundCount = getActualDisplayRoundCount(laneMatches);
-                const matchCountsByRound = capExpectedMatchCountsByRound(
-                  expectedMatchCountsByRound(lane.group, bracketTeamCount),
-                  roundCount
-                );
+                const expectedRoundCount = expectedRoundSize(lane.group, bracketTeamCount);
+                const roundCount = Math.max(expectedRoundCount, getActualDisplayRoundCount(laneMatches));
+                const matchCountsByRound = expectedMatchCountsByRound(lane.group, bracketTeamCount);
                 const laneHeight = getTripleLaneHeight(lane.minHeight, firstRoundSize, roundCount, matchCountsByRound, laneMatches);
                 const placementTeam =
                   lane.group === "zero-loss" ? champion : lane.group === "one-loss" ? runnerUp : thirdPlace;
@@ -187,7 +186,7 @@ export function TripleEliminationView({ stage, teams, onChange }: TripleEliminat
                         scrollable={false}
                         expectedFirstRoundMatchCount={firstRoundSize}
                         expectedRoundCount={roundCount}
-                        expectedMatchCountsByRound={undefined}
+                        expectedMatchCountsByRound={matchCountsByRound}
                         activeMatchIds={activeMatchIds}
                         minHeight={`${laneHeight}px`}
                         onSaveResult={saveResult}
@@ -323,12 +322,6 @@ function getActualDisplayRoundCount(matches: TripleEliminationStage["matches"]) 
   return Math.max(...matches.map((match) => match.round));
 }
 
-function capExpectedMatchCountsByRound(expectedCountsByRound: Record<number, number>, roundCount: number) {
-  return Object.fromEntries(
-    Object.entries(expectedCountsByRound).filter(([round]) => Number(round) <= roundCount)
-  );
-}
-
 function expectedFirstRoundSize(group: BracketGroup, teamCount: number) {
   if (group === "one-loss") return getLossGroupFirstRoundMatchCount(teamCount, 1);
   if (group === "two-loss") return getLossGroupFirstRoundMatchCount(teamCount, 2);
@@ -339,6 +332,12 @@ function expectedMatchCountsByRound(group: BracketGroup, teamCount: number) {
   if (group === "one-loss") return getTripleLossGroupMatchCountByRound(teamCount, 1);
   if (group === "two-loss") return getTripleLossGroupMatchCountByRound(teamCount, 2);
   return getTripleLossGroupMatchCountByRound(teamCount, 0);
+}
+
+function expectedRoundSize(group: BracketGroup, teamCount: number) {
+  if (group === "one-loss") return getTripleLossGroupRoundCount(teamCount, 1);
+  if (group === "two-loss") return getTripleLossGroupRoundCount(teamCount, 2);
+  return getTripleLossGroupRoundCount(teamCount, 0);
 }
 
 function getTripleLaneHeight(
