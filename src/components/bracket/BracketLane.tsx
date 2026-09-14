@@ -87,6 +87,7 @@ export function BracketLane({
     };
 
     scheduleUpdate();
+    const timeoutId = window.setTimeout(scheduleUpdate, 80);
     window.addEventListener("resize", scheduleUpdate);
 
     const root = (splitBranches && rounds.length > 0 ? splitBoardRef.current : boardRef.current) ?? undefined;
@@ -98,6 +99,7 @@ export function BracketLane({
 
     return () => {
       if (frameId) window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
       window.removeEventListener("resize", scheduleUpdate);
       observer?.disconnect();
     };
@@ -129,7 +131,7 @@ export function BracketLane({
       <div className={`${scrollable ? "overflow-x-auto" : "overflow-visible"} pb-4`}>
         <div
           ref={boardRef}
-          className="relative grid min-w-max auto-cols-[minmax(300px,340px)] grid-flow-col gap-14"
+          className="relative isolate grid min-w-max auto-cols-[minmax(300px,340px)] grid-flow-col gap-14"
         >
           <BracketConnectorOverlay paths={connectorPaths} />
           {displayRounds.map((round, roundIndex) => {
@@ -216,7 +218,7 @@ function SplitBranchRounds({
     <div className={`${scrollable ? "overflow-x-auto" : "overflow-visible"} pb-4`}>
       <div
         ref={boardRef}
-        className="relative min-w-max"
+        className="relative isolate min-w-max"
         style={{
           width: rounds.length * cardWidth + Math.max(0, rounds.length - 1) * columnGap,
           height: canvasHeight + 56
@@ -249,6 +251,7 @@ function SplitBranchRounds({
               </div>
 
               {round.matches.map((match, matchIndex) => {
+                const isPlaceholder = match.id.startsWith("placeholder-");
                 const baseCenterY = getTreeCenterY(
                   matchIndex,
                   roundIndex,
@@ -285,18 +288,20 @@ function SplitBranchRounds({
                     transform: "translateY(-50%)"
                   }}
                 >
-                  <MatchCard
-                    match={match}
-                    teamsById={teamsById}
-                    locked={
-                      match.status !== "complete" &&
-                      (locked || Boolean(activeMatchIds && !activeMatchIds.has(match.id)))
-                    }
-                    active={Boolean(activeMatchIds?.has(match.id))}
-                    roundToneClassName={roundToneClassName}
-                    onSaveResult={onSaveResult}
-                    onClearResult={onClearResult}
-                  />
+                  {isPlaceholder ? null : (
+                    <MatchCard
+                      match={match}
+                      teamsById={teamsById}
+                      locked={
+                        match.status !== "complete" &&
+                        (locked || Boolean(activeMatchIds && !activeMatchIds.has(match.id)))
+                      }
+                      active={Boolean(activeMatchIds?.has(match.id))}
+                      roundToneClassName={roundToneClassName}
+                      onSaveResult={onSaveResult}
+                      onClearResult={onClearResult}
+                    />
+                  )}
                 </div>
                 );
               })}
@@ -312,7 +317,7 @@ function BracketConnectorOverlay({ paths }: { paths: string[] }) {
   if (!paths.length) return null;
 
   return (
-    <svg className="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible" aria-hidden="true">
+    <svg className="pointer-events-none absolute inset-0 z-[1] h-full w-full overflow-visible" aria-hidden="true">
       {paths.map((path, index) => (
         <path
           key={`${path}-${index}`}

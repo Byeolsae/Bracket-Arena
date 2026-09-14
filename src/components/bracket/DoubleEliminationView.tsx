@@ -232,7 +232,7 @@ function createWaitingMatchesByPrefix(
     for (let index = 0; index < teamIds.length; index += 2) {
       const teamAId = teamIds[index];
       const teamBId = teamIds[index + 1];
-      if (!teamAId && !teamBId) continue;
+      if (!teamAId || !teamBId) continue;
       const matchNumber = explicitMatchNumber || existingInRound + waitingMatches.length + 1;
       waitingMatches.push({
         id: `waiting-${group}-${round}-${matchNumber}-${teamAId}-${teamBId}`,

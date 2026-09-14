@@ -1225,6 +1225,11 @@ function TeamPicker({
     });
   }
 
+  function toggleFolderTeams(folderTeamIds: string[]) {
+    const selectedInFolder = folderTeamIds.filter((teamId) => selectedTeamIds.includes(teamId)).length;
+    setFolderTeams(folderTeamIds, selectedInFolder !== folderTeamIds.length);
+  }
+
   return (
     <div className="arena-card p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -1290,7 +1295,7 @@ function TeamPicker({
             groupCount={groupCount}
             teamGroupAssignments={teamGroupAssignments}
             onToggleFolder={toggleFolder}
-            onSetFolderTeams={setFolderTeams}
+            onToggleFolderTeams={toggleFolderTeams}
             onGroupChange={onGroupChange}
             onSeedChange={onSeedChange}
             onToggleTeam={(teamId) =>
@@ -1454,7 +1459,7 @@ function FolderSelectSection({
   groupCount,
   teamGroupAssignments,
   onToggleFolder,
-  onSetFolderTeams,
+  onToggleFolderTeams,
   onGroupChange,
   onSeedChange,
   onToggleTeam,
@@ -1469,7 +1474,7 @@ function FolderSelectSection({
   groupCount: number;
   teamGroupAssignments: Record<string, number>;
   onToggleFolder: (folderId: string) => void;
-  onSetFolderTeams: (teamIds: string[], checked: boolean) => void;
+  onToggleFolderTeams: (teamIds: string[]) => void;
   onGroupChange: (teamId: string, groupIndex: number) => void;
   onSeedChange: (teamId: string, seed: number) => void;
   onToggleTeam: (teamId: string) => void;
@@ -1479,6 +1484,7 @@ function FolderSelectSection({
   const nestedTeamIds = getNestedTeamIds(folder);
   const selectedInFolder = nestedTeamIds.filter((teamId) => selectedTeamIds.includes(teamId)).length;
   const hasContents = nestedTeamIds.length > 0 || folder.children.length > 0;
+  const isFullySelected = nestedTeamIds.length > 0 && selectedInFolder === nestedTeamIds.length;
 
   return (
     <div className="rounded-md border border-line bg-panel/70">
@@ -1494,14 +1500,19 @@ function FolderSelectSection({
           </span>
         </button>
         {nestedTeamIds.length ? (
-          <div className="flex shrink-0 gap-1">
-            <button type="button" className="button-muted px-2 py-1 text-xs" onClick={() => onSetFolderTeams(nestedTeamIds, true)}>
-              선택
-            </button>
-            <button type="button" className="button-muted px-2 py-1 text-xs" onClick={() => onSetFolderTeams(nestedTeamIds, false)}>
-              해제
-            </button>
-          </div>
+          <button
+            type="button"
+            className={`shrink-0 rounded border px-3 py-1 text-xs font-black uppercase transition ${
+              isFullySelected
+                ? "border-cyan bg-cyan text-arena"
+                : "border-line bg-field text-muted hover:border-cyan hover:text-cyan"
+            }`}
+            onClick={() => onToggleFolderTeams(nestedTeamIds)}
+            title={isFullySelected ? "폴더 전체 선택 해제" : "폴더 전체 선택"}
+            aria-label={`${folder.name} ${isFullySelected ? "전체 선택 해제" : "전체 선택"}`}
+          >
+            {isFullySelected ? "선택됨" : "전체선택"}
+          </button>
         ) : null}
       </div>
       {isOpen ? (
@@ -1518,7 +1529,7 @@ function FolderSelectSection({
               groupCount={groupCount}
               teamGroupAssignments={teamGroupAssignments}
               onToggleFolder={onToggleFolder}
-              onSetFolderTeams={onSetFolderTeams}
+              onToggleFolderTeams={onToggleFolderTeams}
               onGroupChange={onGroupChange}
               onSeedChange={onSeedChange}
               onToggleTeam={onToggleTeam}

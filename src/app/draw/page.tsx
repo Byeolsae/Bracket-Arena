@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Check, Layers3, Play, RotateCcw, Shuffle, Trophy, Users, X } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronRight, Folder, Layers3, Play, RotateCcw, Shuffle, Trophy, Users } from "lucide-react";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import type { Team, TeamFolder } from "@/lib/core/models";
 import { useTeamStore } from "@/store/teamStore";
@@ -210,6 +210,7 @@ export default function DrawPage() {
   const [manualSeedAssignments, setManualSeedAssignments] = useState<Record<string, number>>({});
   const [manualGroupAssignments, setManualGroupAssignments] = useState<Record<string, number>>({});
   const [potAssignments, setPotAssignments] = useState<Record<string, number>>({});
+  const [openFolderIds, setOpenFolderIds] = useState<Set<string>>(() => new Set(["folder-default"]));
   const [draggedTeamId, setDraggedTeamId] = useState<string | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [skipDrawAnimation, setSkipDrawAnimation] = useState(false);
@@ -348,6 +349,20 @@ export default function DrawPage() {
     const nextTeams = teams.filter((team) => selectedTeamIds.includes(team.id) && !teamIdSet.has(team.id));
     setSelectedTeamIds(nextTeams.map((team) => team.id));
     setPotAssignments(makePotAssignments(nextTeams, safePotCount));
+  }
+
+  function toggleFolderOpen(folderId: string) {
+    setOpenFolderIds((current) => {
+      const next = new Set(current);
+      if (next.has(folderId)) next.delete(folderId);
+      else next.add(folderId);
+      return next;
+    });
+  }
+
+  function toggleFolderSelection(teamIds: string[], selectedCount: number) {
+    if (selectedCount === teamIds.length) clearFolderTeams(teamIds);
+    else selectFolderTeams(teamIds);
   }
 
   function moveTeamToPot(teamId: string, potIndex: number) {
@@ -669,39 +684,47 @@ export default function DrawPage() {
             <div className="max-h-[560px] space-y-3 overflow-auto pr-1">
               {folderRows.map((folder) => {
                 const selectedInFolder = folder.allTeamIds.filter((teamId) => selectedTeamIds.includes(teamId)).length;
+                const isOpen = openFolderIds.has(folder.id);
+                const isFullySelected = folder.allTeamIds.length > 0 && selectedInFolder === folder.allTeamIds.length;
                 return (
                   <section key={folder.id} className="rounded-md border border-line bg-field/70">
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-3 py-2">
-                      <div className="min-w-0" style={{ paddingLeft: folder.depth * 12 }}>
-                        <h3 className="truncate text-sm font-black uppercase tracking-wide text-ink">{folder.name}</h3>
-                        <p className="text-xs font-semibold text-muted">
-                          {selectedInFolder}/{folder.allTeamIds.length}팀 선택
-                        </p>
+                      <div className="flex min-w-0 flex-1 items-center gap-2" style={{ paddingLeft: folder.depth * 12 }}>
+                        <button
+                          type="button"
+                          className="grid h-7 w-7 shrink-0 place-items-center rounded border border-line bg-panel text-muted transition hover:border-cyan hover:text-cyan"
+                          onClick={() => toggleFolderOpen(folder.id)}
+                          aria-label={`${folder.name} ${isOpen ? "접기" : "펼치기"}`}
+                          title={isOpen ? "폴더 접기" : "폴더 펼치기"}
+                        >
+                          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </button>
+                        <Folder className="h-4 w-4 shrink-0 text-cyan" />
+                        <button type="button" className="min-w-0 flex-1 text-left" onClick={() => toggleFolderOpen(folder.id)}>
+                          <h3 className="truncate text-sm font-black uppercase tracking-wide text-ink">{folder.name}</h3>
+                          <p className="text-xs font-semibold text-muted">
+                            {selectedInFolder}/{folder.allTeamIds.length}팀 선택
+                          </p>
+                        </button>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
-                          className="inline-flex h-8 w-8 items-center justify-center rounded border border-line bg-panel text-muted transition hover:border-cyan hover:text-cyan"
-                          onClick={() => selectFolderTeams(folder.allTeamIds)}
+                          className={`inline-flex h-8 items-center justify-center rounded border px-3 text-xs font-black uppercase transition ${
+                            isFullySelected
+                              ? "border-cyan bg-cyan text-arena"
+                              : "border-line bg-panel text-muted hover:border-cyan hover:text-cyan"
+                          }`}
+                          onClick={() => toggleFolderSelection(folder.allTeamIds, selectedInFolder)}
                           disabled={!folder.allTeamIds.length}
-                          title="폴더 전체 선택"
-                          aria-label={`${folder.name} 전체 선택`}
+                          title={isFullySelected ? "폴더 전체 선택 해제" : "폴더 전체 선택"}
+                          aria-label={`${folder.name} ${isFullySelected ? "전체 선택 해제" : "전체 선택"}`}
                         >
-                          <Check className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          className="inline-flex h-8 w-8 items-center justify-center rounded border border-line bg-panel text-muted transition hover:border-danger hover:text-danger"
-                          onClick={() => clearFolderTeams(folder.allTeamIds)}
-                          disabled={!folder.allTeamIds.length}
-                          title="폴더 선택 해제"
-                          aria-label={`${folder.name} 선택 해제`}
-                        >
-                          <X className="h-4 w-4" />
+                          {isFullySelected ? "선택됨" : "전체선택"}
                         </button>
                       </div>
                     </div>
-                    <div className="grid gap-2 p-2 md:grid-cols-2 2xl:grid-cols-3">
+                    {isOpen ? <div className="grid gap-2 p-2 md:grid-cols-2 2xl:grid-cols-3">
                       {folder.teams.map((team) => {
                         const checked = selectedTeamIds.includes(team.id);
                         const potIndex = normalizePotIndex(potAssignments[team.id], safePotCount);
@@ -732,7 +755,7 @@ export default function DrawPage() {
                           이 폴더에는 직접 들어있는 팀이 없습니다.
                         </div>
                       ) : null}
-                    </div>
+                    </div> : null}
                   </section>
                 );
               })}

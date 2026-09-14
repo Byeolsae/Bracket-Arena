@@ -424,35 +424,11 @@ function createWaitingTbdSlots(
   group: BracketGroup,
   roundNamePrefix: string
 ): TripleEliminationStage["matches"] {
-  if (!pendingTeamIds.length) return [];
-
-  const existingWaitingTeamIds = new Set(
-    matches
-      .filter(
-        (match) =>
-          match.status === "pending" &&
-          Boolean(match.participantA?.teamId) !== Boolean(match.participantB?.teamId)
-      )
-      .flatMap((match) => [match.participantA?.teamId, match.participantB?.teamId])
-      .filter(Boolean) as string[]
-  );
-  const teamIds = pendingTeamIds.filter((teamId) => !existingWaitingTeamIds.has(teamId));
-  if (!teamIds.length) return [];
-
-  const round = getDisplayTargetRound(matches);
-  const existingInRound = matches.filter((match) => match.round === round).length;
-  const roundName = `${roundNamePrefix} ${round}`;
-
-  return teamIds.map((teamId, index) => ({
-    id: `waiting-${group}-${round}-${existingInRound + index + 1}-${teamId}-tbd`,
-    round,
-    roundName,
-    matchNumber: existingInRound + index + 1,
-    participantA: { teamId },
-    participantB: undefined,
-    status: "pending" as const,
-    bracketGroup: group
-  }));
+  void matches;
+  void pendingTeamIds;
+  void group;
+  void roundNamePrefix;
+  return [];
 }
 
 function hasOpenFeederPath(matches: TripleEliminationStage["matches"], feederGroup: BracketGroup) {
