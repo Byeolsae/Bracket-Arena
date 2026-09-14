@@ -37,6 +37,12 @@ const maxPersistedLogoLength = 5_000_000;
 const teamStorageName = "bracket-arena-teams";
 const teamStorageDbName = "bracket-arena-storage";
 const teamStorageStoreName = "zustand";
+const teamStorageChunkSize = 900_000;
+
+type ChunkedStorageManifest = {
+  __chunked: true;
+  chunks: number;
+};
 
 const starterTeams: Team[] = [];
 
@@ -260,11 +266,79 @@ async function withTeamStorage<T>(mode: IDBTransactionMode, action: (store: IDBO
   });
 }
 
+function isChunkedStorageManifest(value: unknown): value is ChunkedStorageManifest {
+  return (
+    Boolean(value) &&
+    typeof value === "object" &&
+    (value as Partial<ChunkedStorageManifest>).__chunked === true &&
+    typeof (value as Partial<ChunkedStorageManifest>).chunks === "number"
+  );
+}
+
+function chunkKey(name: string, index: number) {
+  return `${name}:chunk:${index}`;
+}
+
+async function readChunkedStorageValue(name: string): Promise<string | undefined> {
+  const stored = await withTeamStorage<string | ChunkedStorageManifest | undefined>("readonly", (store) => store.get(name));
+  if (!isChunkedStorageManifest(stored)) return stored;
+
+  const chunks = await Promise.all(
+    Array.from({ length: stored.chunks }, (_, index) =>
+      withTeamStorage<string | undefined>("readonly", (store) => store.get(chunkKey(name, index)))
+    )
+  );
+
+  return chunks.every((chunk): chunk is string => typeof chunk === "string") ? chunks.join("") : undefined;
+}
+
+async function writeChunkedStorageValue(name: string, value: string) {
+  const previousCountValue = await withTeamStorage<string | undefined>("readonly", (store) => store.get(`${name}:chunk-count`));
+  const previousCount = Number(previousCountValue);
+  const chunkCount = Math.max(1, Math.ceil(value.length / teamStorageChunkSize));
+  await withTeamStorage("readwrite", (store) => {
+    for (let index = 0; index < chunkCount; index += 1) {
+      store.put(value.slice(index * teamStorageChunkSize, (index + 1) * teamStorageChunkSize), chunkKey(name, index));
+    }
+    store.put({ __chunked: true, chunks: chunkCount } satisfies ChunkedStorageManifest, name);
+    return store.put(chunkCount.toString(), `${name}:chunk-count`);
+  });
+  await cleanupOldChunks(name, chunkCount, previousCount);
+}
+
+async function cleanupOldChunks(name: string, keepFromIndex: number, previousCount: number) {
+  try {
+    if (!Number.isFinite(previousCount) || previousCount <= keepFromIndex) return;
+    await withTeamStorage("readwrite", (store) => {
+      for (let index = keepFromIndex; index < previousCount; index += 1) {
+        store.delete(chunkKey(name, index));
+      }
+      return store.get(`${name}:chunk-count`);
+    });
+  } catch {
+    // Stale chunks only waste space; they do not block reading the current manifest.
+  }
+}
+
+async function removeChunkedStorageValue(name: string) {
+  const previousCountValue = await withTeamStorage<string | undefined>("readonly", (store) => store.get(`${name}:chunk-count`));
+  const previousCount = Number(previousCountValue);
+  await withTeamStorage("readwrite", (store) => {
+    if (Number.isFinite(previousCount)) {
+      for (let index = 0; index < previousCount; index += 1) {
+        store.delete(chunkKey(name, index));
+      }
+    }
+    store.delete(`${name}:chunk-count`);
+    return store.delete(name);
+  });
+}
+
 const indexedDbStorage: StateStorage<Promise<void>> = {
   async getItem(name) {
     if (typeof indexedDB === "undefined") return null;
     try {
-      const stored = await withTeamStorage<string | undefined>("readonly", (store) => store.get(name));
+      const stored = await readChunkedStorageValue(name);
       if (stored) return stored;
     } catch {
       // Fall through to localStorage migration.
@@ -277,7 +351,7 @@ const indexedDbStorage: StateStorage<Promise<void>> = {
   },
   async setItem(name, value) {
     requestPersistentStorage();
-    await withTeamStorage("readwrite", (store) => store.put(value, name));
+    await writeChunkedStorageValue(name, value);
     try {
       window.localStorage.removeItem(name);
     } catch {
@@ -285,7 +359,7 @@ const indexedDbStorage: StateStorage<Promise<void>> = {
     }
   },
   async removeItem(name) {
-    await withTeamStorage("readwrite", (store) => store.delete(name));
+    await removeChunkedStorageValue(name);
     try {
       window.localStorage.removeItem(name);
     } catch {
