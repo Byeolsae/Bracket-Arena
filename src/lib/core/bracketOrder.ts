@@ -30,15 +30,11 @@ export function getBracketGroupOrder(group: BracketGroup) {
 export function getBracketPlayOrder(match: Partial<Pick<BracketStageMatch, "bracketGroup" | "round">>) {
   const round = Math.max(1, match.round ?? 1);
 
-  if (match.bracketGroup === "winners") return round * 3 - 2;
-  if (match.bracketGroup === "losers") {
-    if (round === 1) return 2;
-    const winnersCheckpoint = Math.ceil(round / 2);
-    return winnersCheckpoint * 3 - 1 + (round % 2 === 1 ? 1 : 0);
-  }
-  if (match.bracketGroup === "zero-loss") return round * 4 - 3;
-  if (match.bracketGroup === "one-loss") return round * 4 - 2;
-  if (match.bracketGroup === "two-loss") return round * 4 - 1;
+  if (match.bracketGroup === "winners") return round * 2 - 1;
+  if (match.bracketGroup === "losers") return round * 2;
+  if (match.bracketGroup === "zero-loss") return round * 3 - 2;
+  if (match.bracketGroup === "one-loss") return round * 3 - 1;
+  if (match.bracketGroup === "two-loss") return round * 3;
   if (match.bracketGroup === "grand-final") return 999;
 
   return round;
