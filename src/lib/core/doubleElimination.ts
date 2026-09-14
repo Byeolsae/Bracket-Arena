@@ -330,7 +330,7 @@ function hasOpenLowerFeeder(
   teamCount: number
 ) {
   if (lowerRound === 1) {
-    return [lowerMatchNumber * 2 - 1, lowerMatchNumber * 2].some((matchNumber) =>
+    return getFirstRoundLoserSourceMatchNumbers(matches, lowerMatchNumber).some((matchNumber) =>
       isOpenSource(pendingTeamIds, matches, "winners", 1, matchNumber)
     );
   }
@@ -528,7 +528,7 @@ function enqueueLoserFromWinners(
   const round = getLosersDropRound(match);
   const matchNumber =
     match.round === 1
-      ? Math.ceil(match.matchNumber / 2)
+      ? getFirstRoundLoserMatchNumber(matches, match)
       : getWinnersRoundSize(matches, match.round) - match.matchNumber + 1;
 
   enqueueRoundPending(pendingTeamIds, "L", round, matchNumber, teamId);
@@ -577,6 +577,33 @@ function getNextMatchNumber(matches: BracketStageMatch[], group: "winners" | "lo
 function getLosersDropRound(match: BracketStageMatch) {
   if (match.bracketGroup === "winners") return match.round === 1 ? 1 : (match.round - 1) * 2;
   return match.round + 1;
+}
+
+function getFirstRoundLoserMatchNumber(matches: BracketStageMatch[], sourceMatch: BracketStageMatch) {
+  const playedFirstRoundMatches = matches
+    .filter(isPlayedFirstRoundWinnersMatch)
+    .sort((left, right) => left.matchNumber - right.matchNumber);
+  const playedIndex = playedFirstRoundMatches.findIndex((match) => match.id === sourceMatch.id);
+
+  return Math.ceil(((playedIndex >= 0 ? playedIndex : sourceMatch.matchNumber - 1) + 1) / 2);
+}
+
+function getFirstRoundLoserSourceMatchNumbers(matches: BracketStageMatch[], lowerMatchNumber: number) {
+  return matches
+    .filter(isPlayedFirstRoundWinnersMatch)
+    .sort((left, right) => left.matchNumber - right.matchNumber)
+    .slice((lowerMatchNumber - 1) * 2, lowerMatchNumber * 2)
+    .map((match) => match.matchNumber);
+}
+
+function isPlayedFirstRoundWinnersMatch(match: BracketStageMatch) {
+  return (
+    match.bracketGroup === "winners" &&
+    match.round === 1 &&
+    !match.isBye &&
+    Boolean(match.participantA?.teamId) &&
+    Boolean(match.participantB?.teamId)
+  );
 }
 
 function migrateLegacyPending(pendingTeamIds: Record<string, string[]>, matches: BracketStageMatch[]) {

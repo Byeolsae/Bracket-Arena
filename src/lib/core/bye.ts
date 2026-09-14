@@ -27,10 +27,11 @@ export function sortTeamsForSeeding(teams: Team[]): Team[] {
 
 export function buildSeedOrder(bracketSize: number): number[] {
   const normalizedSize = nextPowerOfTwo(bracketSize);
-  const order: number[] = [];
+  let order = [1, 2];
 
-  for (let seed = 1; seed <= normalizedSize / 2; seed += 1) {
-    order.push(seed, normalizedSize + 1 - seed);
+  while (order.length < normalizedSize) {
+    const nextSize = order.length * 2;
+    order = order.flatMap((seed) => [seed, nextSize + 1 - seed]);
   }
 
   return order;

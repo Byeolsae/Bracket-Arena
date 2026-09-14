@@ -265,7 +265,7 @@ export function getTripleEliminationChampion(stage: TripleEliminationStage): str
 function createInitialMatchesWithByes(teams: Team[]) {
   const participants = createSeededParticipants(teams);
   const matches: BracketStageMatch[] = [];
-  const byeWinnerIds: string[] = [];
+  const byeWinners: Array<{ teamId: string; matchNumber: number }> = [];
 
   for (let index = 0; index < participants.length / 2; index += 1) {
     const participantA = participants[index * 2];
@@ -275,7 +275,7 @@ function createInitialMatchesWithByes(teams: Team[]) {
     const isByeMatch = Boolean((teamAId && participantB?.isBye) || (teamBId && participantA?.isBye));
     const winnerId = isByeMatch ? teamAId ?? teamBId : undefined;
 
-    if (winnerId) byeWinnerIds.push(winnerId);
+    if (winnerId) byeWinners.push({ teamId: winnerId, matchNumber: index + 1 });
 
     matches.push({
       id: `triple-0loss-r1-m${index + 1}`,
@@ -291,7 +291,27 @@ function createInitialMatchesWithByes(teams: Team[]) {
     });
   }
 
-  return { matches, byeWinnerIds };
+  return { matches: [...matches, ...createInitialByeAdvanceMatches(byeWinners)], byeWinnerIds: [] };
+}
+
+function createInitialByeAdvanceMatches(byeWinners: Array<{ teamId: string; matchNumber: number }>): BracketStageMatch[] {
+  const byTargetMatch = new Map<number, string[]>();
+
+  byeWinners.forEach(({ teamId, matchNumber }) => {
+    const targetMatchNumber = Math.ceil(matchNumber / 2);
+    byTargetMatch.set(targetMatchNumber, [...(byTargetMatch.get(targetMatchNumber) ?? []), teamId]);
+  });
+
+  return Array.from(byTargetMatch.entries()).map(([matchNumber, teamIds]) => ({
+    id: `triple-0loss-r2-m${matchNumber}`,
+    round: 2,
+    roundName: "0-Loss Round 2",
+    matchNumber,
+    participantA: { teamId: teamIds[0] },
+    participantB: teamIds[1] ? { teamId: teamIds[1] } : undefined,
+    status: teamIds.length >= 2 ? ("ready" as const) : ("pending" as const),
+    bracketGroup: "zero-loss" as const
+  }));
 }
 
 function generateReadyMatchesFromPending(
@@ -312,6 +332,8 @@ function generateReadyMatchesFromPending(
 
     updatedExistingMatches = fillWaitingDropMatches(updatedExistingMatches, matches, nextPending, lossCount);
   });
+
+  updatedExistingMatches = fillWaitingZeroLossMatches(updatedExistingMatches, nextPending);
 
   [0, 1, 2].forEach((lossCount) => {
     const key = String(lossCount);
@@ -593,13 +615,71 @@ function fillReservedTwoLossFinalistIntoWaitingMatch(
   return true;
 }
 
+function fillWaitingZeroLossMatches(
+  existingMatches: BracketStageMatch[],
+  pendingTeamIds: Record<string, string[]>
+) {
+  const key = "0";
+  const pending = pendingTeamIds[key] ?? [];
+  if (!pending.length) return existingMatches;
+
+  const waitingMatches = existingMatches
+    .filter(
+      (match) =>
+        normalizeGroup(match.bracketGroup) === "zero-loss" &&
+        match.status === "pending" &&
+        Boolean(match.participantA?.teamId) !== Boolean(match.participantB?.teamId)
+    )
+    .sort((left, right) => left.round - right.round || left.matchNumber - right.matchNumber);
+  if (!waitingMatches.length) return existingMatches;
+
+  const usedTeamIds = new Set<string>();
+  const assignments = new Map<string, string>();
+
+  waitingMatches.forEach((waitingMatch) => {
+    const directSeedWinner = pending.find((teamId) => {
+      if (usedTeamIds.has(teamId)) return false;
+      const winMatch = getLatestCompletedWinMatch(existingMatches, teamId);
+      return (
+        winMatch &&
+        normalizeGroup(winMatch.bracketGroup) === "zero-loss" &&
+        winMatch.round === waitingMatch.round - 1 &&
+        Math.ceil(winMatch.matchNumber / 2) === waitingMatch.matchNumber
+      );
+    });
+    const fallbackWinner = directSeedWinner ?? pending.find((teamId) => !usedTeamIds.has(teamId));
+    if (!fallbackWinner) return;
+
+    assignments.set(waitingMatch.id, fallbackWinner);
+    usedTeamIds.add(fallbackWinner);
+  });
+
+  if (!assignments.size) return existingMatches;
+
+  pendingTeamIds[key] = pending.filter((teamId) => !usedTeamIds.has(teamId));
+
+  return existingMatches.map((match) => {
+    const fillId = assignments.get(match.id);
+    if (!fillId) return match;
+
+    return {
+      ...match,
+      participantA: match.participantA?.teamId ? match.participantA : { teamId: fillId },
+      participantB: match.participantB?.teamId ? match.participantB : { teamId: fillId },
+      status: "ready" as const
+    };
+  });
+}
+
 function fillWaitingDropMatches(
   existingMatches: BracketStageMatch[],
   newMatches: BracketStageMatch[],
   pendingTeamIds: Record<string, string[]>,
   lossCount: number
 ) {
-  if (lossCount <= 0) return existingMatches;
+  if (lossCount === 0) {
+    return fillWaitingZeroLossMatches(existingMatches, pendingTeamIds);
+  }
 
   const group = groupByLossCount[lossCount];
   const upperGroup = groupByLossCount[lossCount - 1];

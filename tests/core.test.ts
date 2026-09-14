@@ -9,6 +9,7 @@ import { calculateLeagueStandings } from "../src/lib/core/ranking";
 import { getAdvancingTeams } from "../src/lib/core/advancement";
 import { createSwissStage } from "../src/lib/core/swiss";
 import { getTeamInitial } from "../src/lib/core/team";
+import { buildSeedOrder } from "../src/lib/core/bye";
 import {
   getDoubleLosersMatchCountByRound,
   getDoubleLosersRoundCount,
@@ -138,6 +139,11 @@ test("10-team single elimination creates a 16-slot bracket with 6 byes", () => {
   assert.equal(tournament.matches.filter((match) => match.isBye).length, 6);
 });
 
+test("seed order spreads byes across bracket branches", () => {
+  assert.deepEqual(buildSeedOrder(8), [1, 8, 4, 5, 2, 7, 3, 6]);
+  assert.deepEqual(buildSeedOrder(16), [1, 16, 8, 9, 4, 13, 5, 12, 2, 15, 7, 10, 3, 14, 6, 11]);
+});
+
 test("single elimination result advances the winner and marks champion", () => {
   let tournament = createSingleEliminationTournament(teams(2));
   const final = tournament.matches[0];
@@ -217,6 +223,29 @@ test("double elimination applies byes for non-power-of-two teams", () => {
   const bracket = createDoubleEliminationBracket(teams(6));
   assert.equal(bracket.matches.filter((match) => match.isBye).length, 2);
   assert.equal(bracket.matches.filter((match) => match.status === "bye").length, 2);
+});
+
+test("12-team double elimination does not start upper bye teams in a late bracket column", () => {
+  let bracket = createDoubleEliminationBracket(teams(12));
+  assert.equal(bracket.matches.filter((match) => match.bracketGroup === "winners" && match.round > 1).length, 0);
+
+  const wbRoundOne = bracket.matches
+    .filter((match) => match.bracketGroup === "winners" && match.round === 1 && match.status === "ready")
+    .sort((a, b) => a.matchNumber - b.matchNumber);
+  assert.equal(wbRoundOne.length, 4);
+
+  wbRoundOne.forEach((match) => {
+    bracket = updateDoubleEliminationResult(bracket, match.id, 2, 0, match.participantA?.teamId ?? "");
+  });
+
+  assert.equal(
+    bracket.matches.filter((match) => match.bracketGroup === "winners" && match.round === 2).length,
+    4
+  );
+  assert.equal(
+    bracket.matches.filter((match) => match.bracketGroup === "losers" && match.round === 1).length,
+    2
+  );
 });
 
 test("10-team double elimination promotes lower bracket bye losers without stalling", () => {
@@ -533,7 +562,11 @@ test("team placeholder initial is created without a logo", () => {
 
 test("triple elimination handles odd teams and eventually creates placement winners", () => {
   let stage = generateTripleEliminationBracket(teams(5));
-  assert.equal(stage.pendingTeamIds?.["0"].length, 1);
+  assert.ok(
+    stage.matches.some(
+      (match) => match.bracketGroup === "zero-loss" && match.round === 2 && match.status === "pending"
+    )
+  );
 
   for (let step = 0; step < 80 && !isTriplePlacementComplete(stage); step += 1) {
     const readyMatch = stage.matches.find((match) => match.status === "ready");
@@ -566,6 +599,18 @@ test("triple elimination applies byes for non-power-of-two teams", () => {
   const stage = generateTripleEliminationBracket(teams(6));
   assert.equal(stage.matches.filter((match) => match.isBye).length, 2);
   assert.equal(stage.matches.filter((match) => match.status === "bye").length, 2);
+});
+
+test("6-team triple elimination keeps bye teams waiting for first-round winners", () => {
+  const stage = generateTripleEliminationBracket(teams(6));
+  assert.equal(
+    stage.matches.filter((match) => match.bracketGroup === "zero-loss" && match.round === 2 && match.status === "pending").length,
+    2
+  );
+  assert.equal(
+    stage.matches.filter((match) => match.bracketGroup === "zero-loss" && match.round === 2 && match.status === "ready").length,
+    0
+  );
 });
 
 test("triple elimination keeps generated 8-team rounds in the same columns", () => {
