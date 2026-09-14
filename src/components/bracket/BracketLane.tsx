@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { BracketStageMatch, Team } from "@/lib/core/models";
 import { sortBracketMatches } from "@/lib/core/bracketOrder";
 import { MatchCard } from "@/components/bracket/MatchCard";
@@ -49,8 +49,7 @@ export function BracketLane({
 }: BracketLaneProps) {
   const boardRef = useRef<HTMLDivElement>(null);
   const splitBoardRef = useRef<HTMLDivElement>(null);
-  const [hoveredTeamId, setHoveredTeamId] = useState<string | undefined>();
-  const [hoverPaths, setHoverPaths] = useState<string[]>([]);
+  const [connectorPaths, setConnectorPaths] = useState<string[]>([]);
   const rounds = groupByRound(matches);
   const rawDisplayRounds =
     splitBranches && expectedFirstRoundMatchCount
@@ -71,28 +70,38 @@ export function BracketLane({
     () => displayedMatches.filter((match) => !match.id.startsWith("placeholder-")),
     [displayedMatches]
   );
-  const updateHoverPaths = useCallback(
-    (teamId?: string) => {
-      const root = (splitBranches && rounds.length > 0 ? splitBoardRef.current : boardRef.current) ?? undefined;
-      setHoverPaths(teamId && root ? buildTeamHoverPaths(root, pathMatches, teamId) : []);
-    },
-    [pathMatches, rounds.length, splitBranches]
-  );
-  const setHoveredTeam = useCallback(
-    (teamId?: string) => {
-      setHoveredTeamId(teamId);
-      updateHoverPaths(teamId);
-    },
-    [updateHoverPaths]
-  );
 
   useEffect(() => {
-    if (!hoveredTeamId) return;
+    let frameId = 0;
+    const updateConnectorPaths = () => {
+      const root = (splitBranches && rounds.length > 0 ? splitBoardRef.current : boardRef.current) ?? undefined;
+      const nextPaths = root ? buildBracketConnectionPaths(root, pathMatches) : [];
+      setConnectorPaths((currentPaths) =>
+        currentPaths.join("|") === nextPaths.join("|") ? currentPaths : nextPaths
+      );
+    };
 
-    const update = () => updateHoverPaths(hoveredTeamId);
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, [hoveredTeamId, updateHoverPaths]);
+    const scheduleUpdate = () => {
+      if (frameId) window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(updateConnectorPaths);
+    };
+
+    scheduleUpdate();
+    window.addEventListener("resize", scheduleUpdate);
+
+    const root = (splitBranches && rounds.length > 0 ? splitBoardRef.current : boardRef.current) ?? undefined;
+    const observer =
+      root && "ResizeObserver" in window
+        ? new ResizeObserver(scheduleUpdate)
+        : undefined;
+    if (root) observer?.observe(root);
+
+    return () => {
+      if (frameId) window.cancelAnimationFrame(frameId);
+      window.removeEventListener("resize", scheduleUpdate);
+      observer?.disconnect();
+    };
+  }, [pathMatches, rounds.length, splitBranches]);
 
   return (
     <section className="min-w-0 space-y-3">
@@ -114,34 +123,27 @@ export function BracketLane({
           onSaveResult={onSaveResult}
           onClearResult={onClearResult}
           activeMatchIds={activeMatchIds}
-          hoverPaths={hoverPaths}
-          onTeamHover={setHoveredTeam}
+          connectorPaths={connectorPaths}
         />
       ) : (
       <div className={`${scrollable ? "overflow-x-auto" : "overflow-visible"} pb-4`}>
         <div
           ref={boardRef}
           className="relative grid min-w-max auto-cols-[minmax(300px,340px)] grid-flow-col gap-14"
-          onMouseOver={(event) => {
-            const row = (event.target as HTMLElement).closest<HTMLElement>("[data-team-row='true']");
-            const teamId = row?.dataset.teamId;
-            if (teamId && teamId !== hoveredTeamId) setHoveredTeam(teamId);
-          }}
-          onMouseLeave={() => setHoveredTeam(undefined)}
         >
-          <BracketHoverOverlay paths={hoverPaths} />
-          {rounds.map((round, roundIndex) => {
-            const previousRound = rounds[roundIndex - 1];
+          <BracketConnectorOverlay paths={connectorPaths} />
+          {displayRounds.map((round, roundIndex) => {
+            const previousRound = displayRounds[roundIndex - 1];
             const roundHasActiveMatch = round.matches.some((match) => activeMatchIds?.has(match.id));
             const locked =
               roundIndex > 0 &&
               Boolean(previousRound?.matches.some((match) => match.status !== "complete" && match.status !== "bye"));
             const roundToneClassName = progressiveTone
-              ? roundToneClass(tone, round.name, roundIndex, rounds.length)
+              ? roundToneClass(tone, round.name, roundIndex, displayRounds.length)
               : toneClass(tone);
 
             return (
-              <div key={round.key} className="relative flex shrink-0 flex-col justify-around gap-5" style={{ minHeight }}>
+              <div key={round.key} className="relative z-10 flex shrink-0 flex-col justify-around gap-5" style={{ minHeight }}>
                 <div className={`bracket-round-label ${roundHasActiveMatch ? "ring-2 ring-cyan shadow-[0_0_22px_rgba(47,230,255,0.28)]" : ""} ${roundToneClassName}`}>
                   {round.name}
                 </div>
@@ -166,7 +168,7 @@ export function BracketLane({
               </div>
             );
           })}
-          {!rounds.length ? (
+          {!displayRounds.length ? (
             <div className="border border-dashed border-line bg-panel/70 p-6 text-sm font-semibold text-muted">
               아직 생성된 매치가 없습니다.
             </div>
@@ -189,8 +191,7 @@ function SplitBranchRounds({
   onSaveResult,
   onClearResult,
   activeMatchIds,
-  hoverPaths,
-  onTeamHover,
+  connectorPaths,
   boardRef
 }: {
   boardRef: React.RefObject<HTMLDivElement | null>;
@@ -204,8 +205,7 @@ function SplitBranchRounds({
   onSaveResult: BracketLaneProps["onSaveResult"];
   onClearResult: BracketLaneProps["onClearResult"];
   activeMatchIds?: Set<string>;
-  hoverPaths: string[];
-  onTeamHover: (teamId?: string) => void;
+  connectorPaths: string[];
 }) {
   const leafGap = 176;
   const cardWidth = 320;
@@ -221,14 +221,8 @@ function SplitBranchRounds({
           width: rounds.length * cardWidth + Math.max(0, rounds.length - 1) * columnGap,
           height: canvasHeight + 56
         }}
-        onMouseOver={(event) => {
-          const row = (event.target as HTMLElement).closest<HTMLElement>("[data-team-row='true']");
-          const teamId = row?.dataset.teamId;
-          if (teamId) onTeamHover(teamId);
-        }}
-        onMouseLeave={() => onTeamHover(undefined)}
       >
-        <BracketHoverOverlay paths={hoverPaths} />
+        <BracketConnectorOverlay paths={connectorPaths} />
         {rounds.map((round, roundIndex) => {
           const previousRound = actualRounds.find((item) => item.round === rounds[roundIndex - 1]?.round);
           const roundHasActiveMatch = round.matches.some((match) => activeMatchIds?.has(match.id));
@@ -244,7 +238,7 @@ function SplitBranchRounds({
           return (
             <div
               key={round.key}
-              className="absolute top-0"
+              className="absolute top-0 z-10"
               style={{ left: roundLeft, width: cardWidth, height: canvasHeight + 56 }}
             >
               <div
@@ -314,21 +308,21 @@ function SplitBranchRounds({
   );
 }
 
-function BracketHoverOverlay({ paths }: { paths: string[] }) {
+function BracketConnectorOverlay({ paths }: { paths: string[] }) {
   if (!paths.length) return null;
 
   return (
-    <svg className="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible" aria-hidden="true">
+    <svg className="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible" aria-hidden="true">
       {paths.map((path, index) => (
         <path
           key={`${path}-${index}`}
           d={path}
-          className="fill-none stroke-cyan"
-          strokeWidth="3"
+          className="fill-none stroke-cyan/45"
+          strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
           style={{
-            filter: "drop-shadow(0 0 8px rgba(47,230,255,0.8))"
+            filter: "drop-shadow(0 0 5px rgba(47,230,255,0.28))"
           }}
         />
       ))}
@@ -336,56 +330,47 @@ function BracketHoverOverlay({ paths }: { paths: string[] }) {
   );
 }
 
-function buildTeamHoverPaths(root: HTMLElement, matches: BracketStageMatch[], teamId: string) {
-  const segments = getTeamPathSegments(matches, teamId);
+function buildBracketConnectionPaths(root: HTMLElement, matches: BracketStageMatch[]) {
+  const segments = getBracketConnectionSegments(matches);
 
   return segments
     .map((segment) => {
-      const from = getTeamRowElement(root, segment.fromMatchId, teamId) ?? getMatchCardElement(root, segment.fromMatchId);
+      const from = getMatchCardElement(root, segment.fromMatchId);
       const to =
-        getTeamRowElement(root, segment.toMatchId, teamId) ??
         (segment.toSlot ? getSlotRowElement(root, segment.toMatchId, segment.toSlot) : undefined) ??
         getMatchCardElement(root, segment.toMatchId);
 
       if (!from || !to) return undefined;
       const fromPoint = getElementPoint(root, from, "right");
       const toPoint = getElementPoint(root, to, "left");
-      const midX = fromPoint.x + Math.max(36, (toPoint.x - fromPoint.x) / 2);
+      const gap = toPoint.x - fromPoint.x;
+      const elbowX = fromPoint.x + Math.max(34, gap * 0.48);
 
-      return `M ${fromPoint.x} ${fromPoint.y} C ${midX} ${fromPoint.y}, ${midX} ${toPoint.y}, ${toPoint.x} ${toPoint.y}`;
+      return `M ${fromPoint.x} ${fromPoint.y} H ${elbowX} V ${toPoint.y} H ${toPoint.x}`;
     })
     .filter((path): path is string => Boolean(path));
 }
 
-function getTeamPathSegments(matches: BracketStageMatch[], teamId: string) {
+function getBracketConnectionSegments(matches: BracketStageMatch[]) {
   const segments: Array<{ fromMatchId: string; toMatchId: string; toSlot?: "A" | "B" }> = [];
+  const matchIds = new Set(matches.map((match) => match.id));
 
   matches.forEach((match) => {
-    if (doesTeamAdvanceFromMatch(match, teamId) && match.nextMatchId) {
+    if (match.nextMatchId && matchIds.has(match.nextMatchId)) {
       segments.push({ fromMatchId: match.id, toMatchId: match.nextMatchId, toSlot: match.nextMatchSlot });
     }
 
-    if (match.loserId === teamId && match.loserNextMatchId) {
+    if (match.loserNextMatchId && matchIds.has(match.loserNextMatchId)) {
       segments.push({ fromMatchId: match.id, toMatchId: match.loserNextMatchId, toSlot: match.loserNextMatchSlot });
     }
 
     matches.forEach((target) => {
       if (target.id === match.id) return;
-      if (doesTeamAdvanceFromMatch(match, teamId)) {
-        if (target.participantA?.sourceMatchId === match.id && target.participantA.teamId === teamId) {
-          segments.push({ fromMatchId: match.id, toMatchId: target.id, toSlot: "A" });
-        }
-        if (target.participantB?.sourceMatchId === match.id && target.participantB.teamId === teamId) {
-          segments.push({ fromMatchId: match.id, toMatchId: target.id, toSlot: "B" });
-        }
+      if (target.participantA?.sourceMatchId === match.id) {
+        segments.push({ fromMatchId: match.id, toMatchId: target.id, toSlot: "A" });
       }
-      if (match.loserId === teamId) {
-        if (target.participantA?.sourceMatchId === match.id && target.participantA.teamId === teamId) {
-          segments.push({ fromMatchId: match.id, toMatchId: target.id, toSlot: "A" });
-        }
-        if (target.participantB?.sourceMatchId === match.id && target.participantB.teamId === teamId) {
-          segments.push({ fromMatchId: match.id, toMatchId: target.id, toSlot: "B" });
-        }
+      if (target.participantB?.sourceMatchId === match.id) {
+        segments.push({ fromMatchId: match.id, toMatchId: target.id, toSlot: "B" });
       }
     });
   });
@@ -399,10 +384,6 @@ function getTeamPathSegments(matches: BracketStageMatch[], teamId: string) {
   });
 }
 
-function doesTeamAdvanceFromMatch(match: BracketStageMatch, teamId: string) {
-  return match.winnerId === teamId || (match.status === "bye" && match.participantA?.teamId === teamId);
-}
-
 function getElementPoint(root: HTMLElement, element: HTMLElement, side: "left" | "right") {
   const rootRect = root.getBoundingClientRect();
   const rect = element.getBoundingClientRect();
@@ -414,15 +395,6 @@ function getElementPoint(root: HTMLElement, element: HTMLElement, side: "left" |
 
 function getMatchCardElement(root: HTMLElement, matchId: string) {
   return findDataElement(root, "matchCard", "true", (element) => element.dataset.matchId === matchId);
-}
-
-function getTeamRowElement(root: HTMLElement, matchId: string, teamId: string) {
-  return findDataElement(
-    root,
-    "teamRow",
-    "true",
-    (element) => element.dataset.matchId === matchId && element.dataset.teamId === teamId
-  );
 }
 
 function getSlotRowElement(root: HTMLElement, matchId: string, slot: "A" | "B") {
