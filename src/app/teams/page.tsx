@@ -1,6 +1,6 @@
 "use client";
 
-import { DragEvent, MouseEvent, useMemo, useRef, useState } from "react";
+import { DragEvent, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Edit3, Folder, FolderPlus, Plus, Trash2, X } from "lucide-react";
 import type { Team, TeamFolder } from "@/lib/core/models";
 import { TeamForm } from "@/components/teams/TeamForm";
@@ -61,9 +61,14 @@ export default function TeamsPage() {
   const [dropIntoFolderId, setDropIntoFolderId] = useState<string | null>(null);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(() => new Set());
   const [selectionBox, setSelectionBox] = useState<SelectionBox>(null);
+  const [teamOverrides, setTeamOverrides] = useState<Record<string, Team>>({});
   const desktopRef = useRef<HTMLElement | null>(null);
 
-  const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
+  const visibleTeams = useMemo(
+    () => teams.map((team) => teamOverrides[team.id] ?? team),
+    [teamOverrides, teams]
+  );
+  const teamsById = useMemo(() => new Map(visibleTeams.map((team) => [team.id, team])), [visibleTeams]);
   const foldersById = useMemo(() => new Map(folders.map((folder) => [folder.id, folder])), [folders]);
   const currentFolder = foldersById.get(openFolderId) ?? foldersById.get(outsideFolderId);
   const currentItems = useMemo(
@@ -72,6 +77,23 @@ export default function TeamsPage() {
   );
   const openPath = useMemo(() => buildPath(openFolderId, foldersById), [openFolderId, foldersById]);
   const isRoot = openFolderId === outsideFolderId;
+
+  useEffect(() => {
+    setTeamOverrides((current) => {
+      const next = { ...current };
+      let changed = false;
+
+      for (const team of teams) {
+        const override = next[team.id];
+        if (override && JSON.stringify(override) === JSON.stringify(team)) {
+          delete next[team.id];
+          changed = true;
+        }
+      }
+
+      return changed ? next : current;
+    });
+  }, [teams]);
 
   const createFolder = () => {
     const folderId = addFolder(text.newFolder, openFolderId);
@@ -97,6 +119,7 @@ export default function TeamsPage() {
   const saveTeamForm = (teamInput: Omit<Team, "id" | "defaultSeed"> & { id?: string }) => {
     if (formMode === "edit" && editingTeam?.id) {
       const updatedTeam = { ...teamInput, id: editingTeam.id };
+      setTeamOverrides((current) => ({ ...current, [editingTeam.id]: updatedTeam }));
       updateTeam(editingTeam.id, updatedTeam);
       setEditingTeam(updatedTeam);
     } else {
