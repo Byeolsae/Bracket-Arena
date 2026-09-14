@@ -85,6 +85,12 @@ const ui = {
   textColorDefault: "\uAE30\uBCF8 \uAE00\uC528 \uC0C9\uC0C1",
   textColorLight: "\uB77C\uC774\uD2B8\uBAA8\uB4DC \uAE00\uC528",
   textColorDark: "\uB2E4\uD06C\uBAA8\uB4DC \uAE00\uC528",
+  logoShadow: "\uB85C\uACE0 \uD14C\uB450\uB9AC / Shadow",
+  enableLogoShadow: "\uB85C\uACE0 shadow",
+  logoShadowColor: "Shadow \uC0C9\uC0C1",
+  logoShadowThickness: "\uB450\uAED8",
+  logoShadowStrength: "\uAC15\uB3C4",
+  logoShadowDistance: "\uAC70\uB9AC",
   enableLightColor: "\uB77C\uC774\uD2B8 \uC804\uC6A9 \uC0C9\uC0C1 \uD65C\uC131\uD654",
   enableDarkColor: "\uB2E4\uD06C \uC804\uC6A9 \uC0C9\uC0C1 \uD65C\uC131\uD654",
   memo: "\uBA54\uBAA8",
@@ -113,6 +119,11 @@ const emptyForm = {
   logoVictoryName: "",
   logoVictoryLightName: "",
   logoVictoryDarkName: "",
+  logoShadowEnabled: true,
+  logoShadowColor: "#000000",
+  logoShadowBlur: 4,
+  logoShadowOpacity: 0.68,
+  logoShadowOffsetY: 2,
   primaryColor: defaultPrimary,
   bracketAccentColor: "",
   bracketAccentColorLight: "",
@@ -242,6 +253,11 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
             logoVictoryName: team.logoVictoryName ?? "",
             logoVictoryLightName: team.logoVictoryLightName ?? "",
             logoVictoryDarkName: team.logoVictoryDarkName ?? "",
+            logoShadowEnabled: team.logoShadowEnabled ?? true,
+            logoShadowColor: optionalColor(team.logoShadowColor) ?? "#000000",
+            logoShadowBlur: clampNumber(team.logoShadowBlur, 0, 14, 4),
+            logoShadowOpacity: clampNumber(team.logoShadowOpacity, 0, 1, 0.68),
+            logoShadowOffsetY: clampNumber(team.logoShadowOffsetY, 0, 8, 2),
             primaryColor: normalizeColor(team.primaryColor, defaultPrimary),
             bracketAccentColor: optionalColor(team.bracketAccentColor) ?? "",
             bracketAccentColorLight: optionalColor(team.bracketAccentColorLight) ?? "",
@@ -284,6 +300,11 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
       logoVictoryName: form.logoVictoryName || undefined,
       logoVictoryLightName: form.logoVictoryLightName || undefined,
       logoVictoryDarkName: form.logoVictoryDarkName || undefined,
+      logoShadowEnabled: form.logoShadowEnabled,
+      logoShadowColor: optionalColor(form.logoShadowColor),
+      logoShadowBlur: form.logoShadowBlur,
+      logoShadowOpacity: form.logoShadowOpacity,
+      logoShadowOffsetY: form.logoShadowOffsetY,
       primaryColor: normalizeColor(form.primaryColor, defaultPrimary),
       bracketAccentColor: optionalColor(form.bracketAccentColor),
       bracketAccentColorLight: lightColorEnabled ? optionalColor(form.bracketAccentColorLight) : undefined,
@@ -327,6 +348,11 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
       logoVictoryName: optional(form.logoVictoryName),
       logoVictoryLightName: optional(form.logoVictoryLightName),
       logoVictoryDarkName: optional(form.logoVictoryDarkName),
+      logoShadowEnabled: form.logoShadowEnabled,
+      logoShadowColor: optionalColor(form.logoShadowColor),
+      logoShadowBlur: form.logoShadowBlur,
+      logoShadowOpacity: form.logoShadowOpacity,
+      logoShadowOffsetY: form.logoShadowOffsetY,
       primaryColor: optional(normalizeColor(form.primaryColor, defaultPrimary)),
       secondaryColor: undefined,
       bracketAccentColor: optionalColor(form.bracketAccentColor),
@@ -474,6 +500,65 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
                   optional
                   hideLabel
                   onChange={(textColor) => setForm({ ...form, textColor })}
+                />
+              </div>
+            </div>
+            <div className={clsx("mt-3 rounded-md border border-line bg-field/65 p-3", !form.logoShadowEnabled && "opacity-80")}>
+              <div className="mb-3 flex min-h-7 flex-wrap items-center justify-between gap-2">
+                <span className="text-sm font-black text-ink">{ui.logoShadow}</span>
+                <label className="inline-flex items-center gap-2 rounded border border-line bg-panel px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-muted">
+                  <input
+                    type="checkbox"
+                    checked={form.logoShadowEnabled}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        logoShadowEnabled: event.target.checked,
+                        logoShadowColor: current.logoShadowColor || "#000000",
+                        logoShadowBlur: current.logoShadowBlur || 4,
+                        logoShadowOpacity: current.logoShadowOpacity || 0.68,
+                        logoShadowOffsetY: current.logoShadowOffsetY || 2
+                      }))
+                    }
+                    className="h-4 w-4 accent-cyan"
+                  />
+                  {ui.enableLogoShadow}
+                </label>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <ColorField
+                  label={ui.logoShadowColor}
+                  value={form.logoShadowColor}
+                  fallback="#000000"
+                  disabled={!form.logoShadowEnabled}
+                  onChange={(logoShadowColor) => setForm({ ...form, logoShadowColor })}
+                />
+                <NumberSlider
+                  label={ui.logoShadowThickness}
+                  value={form.logoShadowBlur}
+                  min={0}
+                  max={14}
+                  step={1}
+                  disabled={!form.logoShadowEnabled}
+                  onChange={(logoShadowBlur) => setForm({ ...form, logoShadowBlur })}
+                />
+                <NumberSlider
+                  label={ui.logoShadowStrength}
+                  value={form.logoShadowOpacity}
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  disabled={!form.logoShadowEnabled}
+                  onChange={(logoShadowOpacity) => setForm({ ...form, logoShadowOpacity })}
+                />
+                <NumberSlider
+                  label={ui.logoShadowDistance}
+                  value={form.logoShadowOffsetY}
+                  min={0}
+                  max={8}
+                  step={1}
+                  disabled={!form.logoShadowEnabled}
+                  onChange={(logoShadowOffsetY) => setForm({ ...form, logoShadowOffsetY })}
                 />
               </div>
             </div>
@@ -1123,11 +1208,65 @@ function ColorField({
   );
 }
 
+function NumberSlider({
+  label,
+  value,
+  min,
+  max,
+  step,
+  disabled,
+  onChange
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  disabled?: boolean;
+  onChange: (value: number) => void;
+}) {
+  const displayValue = step >= 1 ? value.toFixed(0) : value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+  const updateValue = (nextValue: string) => onChange(clampNumber(Number(nextValue), min, max, value));
+
+  return (
+    <label className={clsx("space-y-1.5", disabled && "opacity-45")}>
+      <span className="text-sm font-bold text-ink">{label}</span>
+      <div className="flex items-center gap-2">
+        <input
+          type="range"
+          value={value}
+          min={min}
+          max={max}
+          step={step}
+          disabled={disabled}
+          onChange={(event) => updateValue(event.target.value)}
+          className="min-w-0 flex-1 accent-cyan"
+        />
+        <input
+          type="number"
+          value={displayValue}
+          min={min}
+          max={max}
+          step={step}
+          disabled={disabled}
+          onChange={(event) => updateValue(event.target.value)}
+          className="input w-20 px-2 text-right"
+        />
+      </div>
+    </label>
+  );
+}
+
 function prefixHex(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return "#";
   if (trimmed.startsWith("#")) return trimmed;
   return `#${trimmed}`;
+}
+
+function clampNumber(value: number | undefined, min: number, max: number, fallback: number) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(max, Math.max(min, value));
 }
 
 function normalizeColor(value: string | undefined, fallback: string): string {

@@ -14,6 +14,11 @@ export type Team = {
   logoVictoryName?: string;
   logoVictoryLightName?: string;
   logoVictoryDarkName?: string;
+  logoShadowEnabled?: boolean;
+  logoShadowColor?: string;
+  logoShadowBlur?: number;
+  logoShadowOpacity?: number;
+  logoShadowOffsetY?: number;
   primaryColor?: string;
   secondaryColor?: string;
   bracketAccentColor?: string;
