@@ -7,7 +7,7 @@ import clsx from "clsx";
 import { Grid2X2, Medal, Plus, Printer, RotateCcw, Rows3, Shield, SlidersHorizontal, Trash2, Users } from "lucide-react";
 import { TeamDisplaySizeControl } from "@/components/settings/TeamDisplaySizeControl";
 import { TeamLogo } from "@/components/teams/TeamLogo";
-import { getTeamThemeTextColor, getTeamVictoryTextColor, getTeamWinnerAccentColor, getTeamWinnerColor } from "@/lib/core/color";
+import { getTeamThemeTextColor, getTeamVictoryTextColor, getTeamWinnerColor } from "@/lib/core/color";
 import type { Team } from "@/lib/core/models";
 import type { TierListTier } from "@/store/tierListStore";
 import { useTeamStore } from "@/store/teamStore";
@@ -606,10 +606,9 @@ function getTierTeamChipStyle(team: Team, isVictory: boolean, layout: TierTeamLa
   if (!primary) return undefined;
   if (layout === "logo") return { backgroundColor: primary };
 
-  const accent = getTeamWinnerAccentColor(team) ?? primary;
   return {
-    borderColor: accent,
-    background: `linear-gradient(90deg, ${accent} 0 4px, ${primary} 4px 100%)`
+    borderColor: primary,
+    backgroundColor: primary
   };
 }
 
