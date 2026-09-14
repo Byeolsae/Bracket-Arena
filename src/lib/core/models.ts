@@ -19,6 +19,16 @@ export type Team = {
   logoShadowBlur?: number;
   logoShadowOpacity?: number;
   logoShadowOffsetY?: number;
+  logoShadowVictoryLightEnabled?: boolean;
+  logoShadowVictoryLightColor?: string;
+  logoShadowVictoryLightBlur?: number;
+  logoShadowVictoryLightOpacity?: number;
+  logoShadowVictoryLightOffsetY?: number;
+  logoShadowVictoryDarkEnabled?: boolean;
+  logoShadowVictoryDarkColor?: string;
+  logoShadowVictoryDarkBlur?: number;
+  logoShadowVictoryDarkOpacity?: number;
+  logoShadowVictoryDarkOffsetY?: number;
   primaryColor?: string;
   secondaryColor?: string;
   bracketAccentColor?: string;

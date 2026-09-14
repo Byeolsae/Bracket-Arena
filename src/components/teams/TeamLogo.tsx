@@ -62,7 +62,7 @@ export function TeamLogo({
       logo &&
       [team?.logoVictory, team?.logoVictoryLight, team?.logoVictoryDark].some((victoryLogo) => victoryLogo && victoryLogo === logo)
   );
-  const logoStyle = getLogoShadowStyle(team);
+  const logoStyle = getLogoShadowStyle(team, useVictoryLogo, activeVariant);
 
   useEffect(() => {
     let cancelled = false;
@@ -133,16 +133,47 @@ function getLogoCandidatesForVariant(team: Team | undefined, variant: "default" 
   return candidates.filter((candidate): candidate is string => Boolean(candidate));
 }
 
-function getLogoShadowStyle(team?: Team): CSSProperties | undefined {
-  if (team?.logoShadowEnabled === false) return undefined;
+function getLogoShadowStyle(team: Team | undefined, useVictoryLogo: boolean | undefined, variant: "default" | "light" | "dark"): CSSProperties | undefined {
+  const shadow = getLogoShadowConfig(team, useVictoryLogo, variant);
+  if (!shadow.enabled) return undefined;
 
-  const color = normalizeShadowColor(team?.logoShadowColor ?? "#000000");
-  const blur = clampNumber(team?.logoShadowBlur, 0, 14, 4);
-  const opacity = clampNumber(team?.logoShadowOpacity, 0, 1, 0.68);
-  const offsetY = clampNumber(team?.logoShadowOffsetY, 0, 8, 2);
+  const color = normalizeShadowColor(shadow.color);
+  const blur = clampNumber(shadow.blur, 0, 14, 4);
+  const opacity = clampNumber(shadow.opacity, 0, 1, 0.68);
+  const offsetY = clampNumber(shadow.offsetY, 0, 8, 2);
   const rgba = hexToRgba(color, opacity);
 
   return { filter: `drop-shadow(0 ${offsetY}px ${blur}px ${rgba})` };
+}
+
+function getLogoShadowConfig(team: Team | undefined, useVictoryLogo: boolean | undefined, variant: "default" | "light" | "dark") {
+  if (useVictoryLogo && variant === "light") {
+    return {
+      enabled: team?.logoShadowVictoryLightEnabled ?? false,
+      color: team?.logoShadowVictoryLightColor ?? "#000000",
+      blur: team?.logoShadowVictoryLightBlur,
+      opacity: team?.logoShadowVictoryLightOpacity,
+      offsetY: team?.logoShadowVictoryLightOffsetY
+    };
+  }
+
+  if (useVictoryLogo && variant === "dark") {
+    return {
+      enabled: team?.logoShadowVictoryDarkEnabled ?? false,
+      color: team?.logoShadowVictoryDarkColor ?? "#000000",
+      blur: team?.logoShadowVictoryDarkBlur,
+      opacity: team?.logoShadowVictoryDarkOpacity,
+      offsetY: team?.logoShadowVictoryDarkOffsetY
+    };
+  }
+
+  return {
+    enabled: team?.logoShadowEnabled ?? false,
+    color: team?.logoShadowColor ?? "#000000",
+    blur: team?.logoShadowBlur,
+    opacity: team?.logoShadowOpacity,
+    offsetY: team?.logoShadowOffsetY
+  };
 }
 
 function normalizeShadowColor(value: string) {

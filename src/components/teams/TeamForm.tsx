@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Eye, ImagePlus, Save, X } from "lucide-react";
 import clsx from "clsx";
 import { TeamLogo } from "@/components/teams/TeamLogo";
@@ -119,11 +119,21 @@ const emptyForm = {
   logoVictoryName: "",
   logoVictoryLightName: "",
   logoVictoryDarkName: "",
-  logoShadowEnabled: true,
+  logoShadowEnabled: false,
   logoShadowColor: "#000000",
   logoShadowBlur: 4,
   logoShadowOpacity: 0.68,
   logoShadowOffsetY: 2,
+  logoShadowVictoryLightEnabled: false,
+  logoShadowVictoryLightColor: "#000000",
+  logoShadowVictoryLightBlur: 4,
+  logoShadowVictoryLightOpacity: 0.68,
+  logoShadowVictoryLightOffsetY: 2,
+  logoShadowVictoryDarkEnabled: false,
+  logoShadowVictoryDarkColor: "#000000",
+  logoShadowVictoryDarkBlur: 4,
+  logoShadowVictoryDarkOpacity: 0.68,
+  logoShadowVictoryDarkOffsetY: 2,
   primaryColor: defaultPrimary,
   bracketAccentColor: "",
   bracketAccentColorLight: "",
@@ -219,21 +229,25 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
             optionalColor(team?.victoryAccentColorDark) ||
             optionalColor(team?.victoryTextColor) ||
             optionalColor(team?.victoryTextColorLight) ||
-            optionalColor(team?.victoryTextColorDark))
+            optionalColor(team?.victoryTextColorDark) ||
+            team?.logoShadowVictoryLightEnabled ||
+            team?.logoShadowVictoryDarkEnabled)
       )
     );
     setVictoryLightColorEnabled(
       Boolean(
         optionalColor(team?.victoryColorLight) ||
           optionalColor(team?.victoryAccentColorLight) ||
-          optionalColor(team?.victoryTextColorLight)
+          optionalColor(team?.victoryTextColorLight) ||
+          team?.logoShadowVictoryLightEnabled
       )
     );
     setVictoryDarkColorEnabled(
       Boolean(
         optionalColor(team?.victoryColorDark) ||
           optionalColor(team?.victoryAccentColorDark) ||
-          optionalColor(team?.victoryTextColorDark)
+          optionalColor(team?.victoryTextColorDark) ||
+          team?.logoShadowVictoryDarkEnabled
       )
     );
     setForm(
@@ -253,11 +267,21 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
             logoVictoryName: team.logoVictoryName ?? "",
             logoVictoryLightName: team.logoVictoryLightName ?? "",
             logoVictoryDarkName: team.logoVictoryDarkName ?? "",
-            logoShadowEnabled: team.logoShadowEnabled ?? true,
+            logoShadowEnabled: team.logoShadowEnabled ?? false,
             logoShadowColor: optionalColor(team.logoShadowColor) ?? "#000000",
             logoShadowBlur: clampNumber(team.logoShadowBlur, 0, 14, 4),
             logoShadowOpacity: clampNumber(team.logoShadowOpacity, 0, 1, 0.68),
             logoShadowOffsetY: clampNumber(team.logoShadowOffsetY, 0, 8, 2),
+            logoShadowVictoryLightEnabled: team.logoShadowVictoryLightEnabled ?? false,
+            logoShadowVictoryLightColor: optionalColor(team.logoShadowVictoryLightColor) ?? "#000000",
+            logoShadowVictoryLightBlur: clampNumber(team.logoShadowVictoryLightBlur, 0, 14, 4),
+            logoShadowVictoryLightOpacity: clampNumber(team.logoShadowVictoryLightOpacity, 0, 1, 0.68),
+            logoShadowVictoryLightOffsetY: clampNumber(team.logoShadowVictoryLightOffsetY, 0, 8, 2),
+            logoShadowVictoryDarkEnabled: team.logoShadowVictoryDarkEnabled ?? false,
+            logoShadowVictoryDarkColor: optionalColor(team.logoShadowVictoryDarkColor) ?? "#000000",
+            logoShadowVictoryDarkBlur: clampNumber(team.logoShadowVictoryDarkBlur, 0, 14, 4),
+            logoShadowVictoryDarkOpacity: clampNumber(team.logoShadowVictoryDarkOpacity, 0, 1, 0.68),
+            logoShadowVictoryDarkOffsetY: clampNumber(team.logoShadowVictoryDarkOffsetY, 0, 8, 2),
             primaryColor: normalizeColor(team.primaryColor, defaultPrimary),
             bracketAccentColor: optionalColor(team.bracketAccentColor) ?? "",
             bracketAccentColorLight: optionalColor(team.bracketAccentColorLight) ?? "",
@@ -305,6 +329,16 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
       logoShadowBlur: form.logoShadowBlur,
       logoShadowOpacity: form.logoShadowOpacity,
       logoShadowOffsetY: form.logoShadowOffsetY,
+      logoShadowVictoryLightEnabled: form.logoShadowVictoryLightEnabled,
+      logoShadowVictoryLightColor: optionalColor(form.logoShadowVictoryLightColor),
+      logoShadowVictoryLightBlur: form.logoShadowVictoryLightBlur,
+      logoShadowVictoryLightOpacity: form.logoShadowVictoryLightOpacity,
+      logoShadowVictoryLightOffsetY: form.logoShadowVictoryLightOffsetY,
+      logoShadowVictoryDarkEnabled: form.logoShadowVictoryDarkEnabled,
+      logoShadowVictoryDarkColor: optionalColor(form.logoShadowVictoryDarkColor),
+      logoShadowVictoryDarkBlur: form.logoShadowVictoryDarkBlur,
+      logoShadowVictoryDarkOpacity: form.logoShadowVictoryDarkOpacity,
+      logoShadowVictoryDarkOffsetY: form.logoShadowVictoryDarkOffsetY,
       primaryColor: normalizeColor(form.primaryColor, defaultPrimary),
       bracketAccentColor: optionalColor(form.bracketAccentColor),
       bracketAccentColorLight: lightColorEnabled ? optionalColor(form.bracketAccentColorLight) : undefined,
@@ -353,6 +387,16 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
       logoShadowBlur: form.logoShadowBlur,
       logoShadowOpacity: form.logoShadowOpacity,
       logoShadowOffsetY: form.logoShadowOffsetY,
+      logoShadowVictoryLightEnabled: form.logoShadowVictoryLightEnabled,
+      logoShadowVictoryLightColor: optionalColor(form.logoShadowVictoryLightColor),
+      logoShadowVictoryLightBlur: form.logoShadowVictoryLightBlur,
+      logoShadowVictoryLightOpacity: form.logoShadowVictoryLightOpacity,
+      logoShadowVictoryLightOffsetY: form.logoShadowVictoryLightOffsetY,
+      logoShadowVictoryDarkEnabled: form.logoShadowVictoryDarkEnabled,
+      logoShadowVictoryDarkColor: optionalColor(form.logoShadowVictoryDarkColor),
+      logoShadowVictoryDarkBlur: form.logoShadowVictoryDarkBlur,
+      logoShadowVictoryDarkOpacity: form.logoShadowVictoryDarkOpacity,
+      logoShadowVictoryDarkOffsetY: form.logoShadowVictoryDarkOffsetY,
       primaryColor: optional(normalizeColor(form.primaryColor, defaultPrimary)),
       secondaryColor: undefined,
       bracketAccentColor: optionalColor(form.bracketAccentColor),
@@ -588,7 +632,9 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
                           victoryAccentColorLight: enabled ? current.victoryAccentColorLight : "",
                           victoryAccentColorDark: enabled ? current.victoryAccentColorDark : "",
                           victoryTextColorLight: enabled ? current.victoryTextColorLight : "",
-                          victoryTextColorDark: enabled ? current.victoryTextColorDark : ""
+                          victoryTextColorDark: enabled ? current.victoryTextColorDark : "",
+                          logoShadowVictoryLightEnabled: enabled ? current.logoShadowVictoryLightEnabled : false,
+                          logoShadowVictoryDarkEnabled: enabled ? current.logoShadowVictoryDarkEnabled : false
                         }));
                         if (!enabled) {
                           setVictoryLightColorEnabled(false);
@@ -678,12 +724,37 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
                         victoryAccentColorLight: enabled
                           ? current.victoryAccentColorLight || current.victoryAccentColor || current.bracketAccentColor || defaultPrimary
                           : "",
-                        victoryTextColorLight: enabled ? current.victoryTextColorLight || current.victoryTextColor || current.textColor : ""
+                        victoryTextColorLight: enabled ? current.victoryTextColorLight || current.victoryTextColor || current.textColor : "",
+                        logoShadowVictoryLightEnabled: enabled ? current.logoShadowVictoryLightEnabled : false
                       }));
                     }}
                     onPrimaryChange={(victoryColorLight) => setForm({ ...form, victoryColorLight })}
                     onAccentChange={(victoryAccentColorLight) => setForm({ ...form, victoryAccentColorLight })}
                     onTextChange={(victoryTextColorLight) => setForm({ ...form, victoryTextColorLight })}
+                    extraControls={
+                      <LogoShadowControls
+                        enabled={form.logoShadowVictoryLightEnabled}
+                        disabled={!victoryLightColorEnabled}
+                        color={form.logoShadowVictoryLightColor}
+                        blur={form.logoShadowVictoryLightBlur}
+                        opacity={form.logoShadowVictoryLightOpacity}
+                        offsetY={form.logoShadowVictoryLightOffsetY}
+                        onToggle={(logoShadowVictoryLightEnabled) =>
+                          setForm((current) => ({
+                            ...current,
+                            logoShadowVictoryLightEnabled,
+                            logoShadowVictoryLightColor: current.logoShadowVictoryLightColor || "#000000",
+                            logoShadowVictoryLightBlur: current.logoShadowVictoryLightBlur || 4,
+                            logoShadowVictoryLightOpacity: current.logoShadowVictoryLightOpacity || 0.68,
+                            logoShadowVictoryLightOffsetY: current.logoShadowVictoryLightOffsetY || 2
+                          }))
+                        }
+                        onColorChange={(logoShadowVictoryLightColor) => setForm({ ...form, logoShadowVictoryLightColor })}
+                        onBlurChange={(logoShadowVictoryLightBlur) => setForm({ ...form, logoShadowVictoryLightBlur })}
+                        onOpacityChange={(logoShadowVictoryLightOpacity) => setForm({ ...form, logoShadowVictoryLightOpacity })}
+                        onOffsetYChange={(logoShadowVictoryLightOffsetY) => setForm({ ...form, logoShadowVictoryLightOffsetY })}
+                      />
+                    }
                   />
                 ) : null}
               </div>
@@ -733,12 +804,37 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
                         victoryAccentColorDark: enabled
                           ? current.victoryAccentColorDark || current.victoryAccentColor || current.bracketAccentColor || defaultPrimary
                           : "",
-                        victoryTextColorDark: enabled ? current.victoryTextColorDark || current.victoryTextColor || current.textColor : ""
+                        victoryTextColorDark: enabled ? current.victoryTextColorDark || current.victoryTextColor || current.textColor : "",
+                        logoShadowVictoryDarkEnabled: enabled ? current.logoShadowVictoryDarkEnabled : false
                       }));
                     }}
                     onPrimaryChange={(victoryColorDark) => setForm({ ...form, victoryColorDark })}
                     onAccentChange={(victoryAccentColorDark) => setForm({ ...form, victoryAccentColorDark })}
                     onTextChange={(victoryTextColorDark) => setForm({ ...form, victoryTextColorDark })}
+                    extraControls={
+                      <LogoShadowControls
+                        enabled={form.logoShadowVictoryDarkEnabled}
+                        disabled={!victoryDarkColorEnabled}
+                        color={form.logoShadowVictoryDarkColor}
+                        blur={form.logoShadowVictoryDarkBlur}
+                        opacity={form.logoShadowVictoryDarkOpacity}
+                        offsetY={form.logoShadowVictoryDarkOffsetY}
+                        onToggle={(logoShadowVictoryDarkEnabled) =>
+                          setForm((current) => ({
+                            ...current,
+                            logoShadowVictoryDarkEnabled,
+                            logoShadowVictoryDarkColor: current.logoShadowVictoryDarkColor || "#000000",
+                            logoShadowVictoryDarkBlur: current.logoShadowVictoryDarkBlur || 4,
+                            logoShadowVictoryDarkOpacity: current.logoShadowVictoryDarkOpacity || 0.68,
+                            logoShadowVictoryDarkOffsetY: current.logoShadowVictoryDarkOffsetY || 2
+                          }))
+                        }
+                        onColorChange={(logoShadowVictoryDarkColor) => setForm({ ...form, logoShadowVictoryDarkColor })}
+                        onBlurChange={(logoShadowVictoryDarkBlur) => setForm({ ...form, logoShadowVictoryDarkBlur })}
+                        onOpacityChange={(logoShadowVictoryDarkOpacity) => setForm({ ...form, logoShadowVictoryDarkOpacity })}
+                        onOffsetYChange={(logoShadowVictoryDarkOffsetY) => setForm({ ...form, logoShadowVictoryDarkOffsetY })}
+                      />
+                    }
                   />
                 ) : null}
               </div>
@@ -789,7 +885,8 @@ function ThemeColorPanel({
   onToggle,
   onPrimaryChange,
   onAccentChange,
-  onTextChange
+  onTextChange,
+  extraControls
 }: {
   title: string;
   enableLabel: string;
@@ -807,6 +904,7 @@ function ThemeColorPanel({
   onPrimaryChange?: (value: string) => void;
   onAccentChange: (value: string) => void;
   onTextChange: (value: string) => void;
+  extraControls?: ReactNode;
 }) {
   const primary = normalizeColor(primaryValue, primaryFallback);
   const accent = normalizeColor(accentValue, accentFallback);
@@ -869,6 +967,89 @@ function ThemeColorPanel({
           optional
           disabled={!enabled}
           onChange={onTextChange}
+        />
+      </div>
+      {extraControls ? <div className="mt-3">{extraControls}</div> : null}
+    </div>
+  );
+}
+
+function LogoShadowControls({
+  enabled,
+  disabled,
+  color,
+  blur,
+  opacity,
+  offsetY,
+  onToggle,
+  onColorChange,
+  onBlurChange,
+  onOpacityChange,
+  onOffsetYChange
+}: {
+  enabled: boolean;
+  disabled?: boolean;
+  color: string;
+  blur: number;
+  opacity: number;
+  offsetY: number;
+  onToggle: (enabled: boolean) => void;
+  onColorChange: (value: string) => void;
+  onBlurChange: (value: number) => void;
+  onOpacityChange: (value: number) => void;
+  onOffsetYChange: (value: number) => void;
+}) {
+  const controlsDisabled = disabled || !enabled;
+
+  return (
+    <div className={clsx("rounded-md border border-line bg-panel/60 p-3", disabled && "opacity-70")}>
+      <div className="mb-3 flex min-h-7 flex-wrap items-center justify-between gap-2">
+        <span className="text-sm font-black text-ink">{ui.logoShadow}</span>
+        <label className="inline-flex items-center gap-2 rounded border border-line bg-field px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-muted">
+          <input
+            type="checkbox"
+            checked={enabled}
+            disabled={disabled}
+            onChange={(event) => onToggle(event.target.checked)}
+            className="h-4 w-4 accent-cyan"
+          />
+          {ui.enableLogoShadow}
+        </label>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <ColorField
+          label={ui.logoShadowColor}
+          value={color}
+          fallback="#000000"
+          disabled={controlsDisabled}
+          onChange={onColorChange}
+        />
+        <NumberSlider
+          label={ui.logoShadowThickness}
+          value={blur}
+          min={0}
+          max={14}
+          step={1}
+          disabled={controlsDisabled}
+          onChange={onBlurChange}
+        />
+        <NumberSlider
+          label={ui.logoShadowStrength}
+          value={opacity}
+          min={0}
+          max={1}
+          step={0.05}
+          disabled={controlsDisabled}
+          onChange={onOpacityChange}
+        />
+        <NumberSlider
+          label={ui.logoShadowDistance}
+          value={offsetY}
+          min={0}
+          max={8}
+          step={1}
+          disabled={controlsDisabled}
+          onChange={onOffsetYChange}
         />
       </div>
     </div>
