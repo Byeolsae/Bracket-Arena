@@ -186,6 +186,7 @@ export function calculateBattleRoyaleStandings(
   );
 
   stage.rounds.forEach((round) => {
+    if (!round.placements.length) return;
     getCompleteRoundPlacements(round.teamIds, round.placements).forEach((placement) => {
       const standing = table.get(placement.teamId);
       if (!standing) return;
