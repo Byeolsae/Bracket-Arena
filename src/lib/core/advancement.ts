@@ -117,10 +117,10 @@ export function getStageAdvancingTeams(
         wins: 0,
         draws: 0,
         losses: 0,
-        goalsFor: standing.totalPoints,
+        goalsFor: 0,
         goalsAgainst: 0,
-        goalDifference: standing.totalPoints,
-        points: standing.totalPoints,
+        goalDifference: 0,
+        points: 0,
         seed: standing.rank
       })),
       teams,

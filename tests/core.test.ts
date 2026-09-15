@@ -1141,7 +1141,6 @@ test("battle royale standings only count completed rounds", () => {
 
   const emptyStandings = calculateBattleRoyaleStandings(stage, roster);
   assert.equal(emptyStandings.every((standing) => standing.roundsPlayed === 0), true);
-  assert.equal(emptyStandings.every((standing) => standing.totalPoints === 0), true);
 
   const firstRound = stage.rounds[0];
   stage = applyBattleRoyaleResult(
@@ -1157,13 +1156,11 @@ test("battle royale standings only count completed rounds", () => {
   );
 
   const standings = calculateBattleRoyaleStandings(stage, roster);
-  assert.equal(standings[0].teamId, "team-16");
-  assert.equal(standings[0].totalPoints, 50);
   assert.equal(standings.find((standing) => standing.teamId === "team-1")?.roundsPlayed, 1);
   assert.equal(standings.find((standing) => standing.teamId === "team-17")?.roundsPlayed, 0);
 });
 
-test("battle royale group standings rerank inside each group", () => {
+test("battle royale group standings keep group order", () => {
   const roster = teams(24);
   let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
 
@@ -1197,11 +1194,11 @@ test("battle royale group standings rerank inside each group", () => {
   const bGroupStandings = calculateBattleRoyaleStandings(stage, roster.slice(8, 16));
   const cGroupStandings = calculateBattleRoyaleStandings(stage, roster.slice(16, 24));
 
-  assert.equal(overallStandings[0].teamId, "team-16");
-  assert.equal(overallStandings[1].teamId, "team-24");
-  assert.equal(bGroupStandings[0].teamId, "team-16");
+  assert.equal(overallStandings[0].teamId, "team-1");
+  assert.equal(overallStandings[1].teamId, "team-2");
+  assert.equal(bGroupStandings[0].teamId, "team-9");
   assert.equal(bGroupStandings[0].rank, 1);
-  assert.equal(cGroupStandings[0].teamId, "team-24");
+  assert.equal(cGroupStandings[0].teamId, "team-17");
   assert.equal(cGroupStandings[0].rank, 1);
 });
 
@@ -1229,7 +1226,5 @@ test("battle royale standings count entered legacy rounds without complete flags
   };
 
   const standings = calculateBattleRoyaleStandings(legacyStage, roster);
-  assert.equal(standings[0].teamId, "team-16");
-  assert.equal(standings[0].totalPoints, 50);
-  assert.equal(standings[0].roundsPlayed, 1);
+  assert.equal(standings.find((standing) => standing.teamId === "team-16")?.roundsPlayed, 1);
 });

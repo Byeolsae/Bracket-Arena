@@ -498,7 +498,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     teamCount: "16-40팀",
     qualifierFormats: ["battle_royale"],
     finalFormat: "battle_royale",
-    summary: "여러 라운드 누적 점수로 예선과 결승 리더보드를 나누는 방식.",
+    summary: "여러 라운드 기록으로 예선과 결승 리더보드를 나누는 방식.",
     notes: ["배틀로얄 예선 -> 배틀로얄 결승"],
     sourceLevel: "generic"
   },
@@ -537,7 +537,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     teamCount: "40팀 내외",
     qualifierFormats: ["battle_royale", "battle_royale"],
     finalFormat: "battle_royale",
-    summary: "그룹/브래킷 스테이지를 누적 점수로 진행하고 결승도 배틀로얄 리더보드로 운영.",
+    summary: "그룹/브래킷 스테이지를 라운드 기록으로 진행하고 결승도 배틀로얄 리더보드로 운영.",
     notes: ["배틀로얄 예선 -> 배틀로얄 준결승 -> 배틀로얄 결승"],
     sourceLevel: "generic"
   },
@@ -589,7 +589,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     teamCount: "32팀",
     qualifierFormats: ["battle_royale", "battle_royale"],
     finalFormat: "battle_royale",
-    summary: "그룹 스테이지와 세미 파이널을 누적 점수로 거쳐 그랜드 파이널 리더보드로 우승 결정.",
+    summary: "그룹 스테이지와 세미 파이널을 라운드 기록으로 거쳐 그랜드 파이널 리더보드로 우승 결정.",
     notes: ["그룹 -> 세미 파이널 -> 그랜드 파이널"],
     sourceLevel: "curated"
   },
@@ -641,7 +641,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     teamCount: "16-48팀",
     qualifierFormats: ["battle_royale", "battle_royale"],
     finalFormat: "battle_royale",
-    summary: "그룹/서바이벌/라스트 찬스 같은 누적 점수 단계를 거쳐 결승 리더보드로 연결.",
+    summary: "그룹/서바이벌/라스트 찬스 같은 라운드 기록 단계를 거쳐 결승 리더보드로 연결.",
     notes: ["배틀로얄 다단계 -> 결승 리더보드"],
     sourceLevel: "generic"
   },
@@ -654,8 +654,8 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     teamCount: "듀오/스쿼드 규모별",
     qualifierFormats: ["battle_royale"],
     finalFormat: "battle_royale",
-    summary: "여러 매치의 누적 점수로 최종 순위를 결정하는 배틀로얄 결승형.",
-    notes: ["누적 점수 -> 최종 리더보드"],
+    summary: "여러 매치 기록으로 최종 순위를 결정하는 배틀로얄 결승형.",
+    notes: ["라운드 기록 -> 최종 리더보드"],
     sourceLevel: "generic"
   },
   {
@@ -667,7 +667,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     teamCount: "솔로/듀오",
     qualifierFormats: [],
     finalFormat: "battle_royale",
-    summary: "온라인 예선 통과자들이 월드컵 결승에서 여러 매치 누적 점수로 우승자를 결정.",
+    summary: "온라인 예선 통과자들이 월드컵 결승에서 여러 매치 기록으로 우승자를 결정.",
     notes: ["단독 결승 리더보드"],
     sourceLevel: "curated"
   },
@@ -680,7 +680,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     teamCount: "듀오",
     qualifierFormats: [],
     finalFormat: "battle_royale",
-    summary: "초청 LAN 결승형. 여러 매치 누적 점수로 최종 순위 결정.",
+    summary: "초청 LAN 결승형. 여러 매치 기록으로 최종 순위 결정.",
     notes: ["단독 결승 리더보드"],
     sourceLevel: "curated"
   },
@@ -706,7 +706,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     teamCount: "50듀오 / 33트리오",
     qualifierFormats: [],
     finalFormat: "battle_royale",
-    summary: "글로벌 결승 리더보드 중심. 2024는 듀오, 2025는 트리오 누적 점수 결승.",
+    summary: "글로벌 결승 리더보드 중심. 2024는 듀오, 2025는 트리오 라운드 기록 결승.",
     notes: ["결승 리더보드"],
     sourceLevel: "verified"
   },
@@ -732,7 +732,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     teamCount: "12-18팀",
     qualifierFormats: ["battle_royale"],
     finalFormat: "battle_royale",
-    summary: "포인트 러시/결승 등 누적 점수 기반 스테이지를 쓰는 계열.",
+    summary: "포인트 러시/결승 등 라운드 기록 기반 스테이지를 쓰는 계열.",
     notes: ["배틀로얄 예선 -> 결승 리더보드"],
     sourceLevel: "generic"
   },
@@ -915,7 +915,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     qualifierFormats: ["battle_royale"],
     finalFormat: "battle_royale",
     summary: "라운드별 순위 점수 누적으로 결승 진출과 우승자를 가르는 방식.",
-    notes: ["누적 점수 -> 결승 리더보드"],
+    notes: ["라운드 기록 -> 결승 리더보드"],
     sourceLevel: "generic"
   },
   {

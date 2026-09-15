@@ -310,8 +310,6 @@ export type BattleRoyaleRound = {
 export type BattleRoyaleOptions = {
   roundCount: number;
   teamsPerRound: number;
-  placementPoints: Record<number, number>;
-  killPoint: number;
   advanceCount: number;
   stageMode?: "standard" | "qualifier" | "final";
   groupCount?: number;
@@ -323,11 +321,8 @@ export type BattleRoyaleStanding = {
   rank: number;
   teamId: string;
   roundsPlayed: number;
-  placementPoints: number;
-  killPoints: number;
   bonusPoints: number;
   penaltyPoints: number;
-  totalPoints: number;
 };
 
 export type BattleRoyaleStage = {

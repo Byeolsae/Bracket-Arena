@@ -136,7 +136,7 @@ const STAGE_LABELS: Record<StageFormat, { label: string; hint: string }> = {
   group_double_elimination: { label: "그룹 더블 엘리미네이션", hint: "조별 4팀 더블 엘리, 상위 2팀 진출" },
   group_triple_elimination: { label: "그룹 트리플 엘리미네이션", hint: "조별 8팀 상위/하위/라스트 찬스 방식" },
   swiss: { label: "스위스", hint: "같은 전적끼리 매칭" },
-  battle_royale: { label: "배틀로얄", hint: "라운드별 순위/킬 누적 점수" }
+  battle_royale: { label: "배틀로얄", hint: "라운드별 순위/킬 기록" }
 };
 
 const QUALIFIER_STAGE_OPTIONS: StageFormat[] = [

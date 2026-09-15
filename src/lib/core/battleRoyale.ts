@@ -7,22 +7,9 @@ import type {
   Team
 } from "./models";
 
-const defaultPlacementPoints: Record<number, number> = {
-  1: 10,
-  2: 6,
-  3: 5,
-  4: 4,
-  5: 3,
-  6: 2,
-  7: 1,
-  8: 1
-};
-
 const defaultBattleRoyaleOptions: BattleRoyaleOptions = {
   roundCount: 5,
   teamsPerRound: 16,
-  placementPoints: defaultPlacementPoints,
-  killPoint: 1,
   advanceCount: 16,
   stageMode: "standard"
 };
@@ -205,16 +192,13 @@ export function calculateBattleRoyaleStandings(
   teams: Team[]
 ): BattleRoyaleStanding[] {
   const table = new Map<string, BattleRoyaleStanding>();
-  teams.forEach((team) =>
+  teams.forEach((team, index) =>
     table.set(team.id, {
-      rank: 0,
+      rank: index + 1,
       teamId: team.id,
       roundsPlayed: 0,
-      placementPoints: 0,
-      killPoints: 0,
       bonusPoints: 0,
-      penaltyPoints: 0,
-      totalPoints: 0
+      penaltyPoints: 0
     })
   );
 
@@ -224,39 +208,22 @@ export function calculateBattleRoyaleStandings(
       const standing = table.get(placement.teamId);
       if (!standing) return;
       standing.roundsPlayed += 1;
-      standing.placementPoints += stage.options.placementPoints[placement.placement] ?? 0;
-      standing.killPoints += placement.kills * stage.options.killPoint;
       standing.bonusPoints += placement.bonusPoints ?? 0;
       standing.penaltyPoints += placement.penaltyPoints ?? 0;
     });
   });
 
-  return rankBattleRoyaleStandings(
-    [...table.values()].map((standing) => ({
-      ...standing,
-      totalPoints: getBattleRoyaleTotalPoints(standing.placementPoints, standing.killPoints)
-    }))
-  );
+  return rankBattleRoyaleStandings([...table.values()]);
 }
 
 export function rankBattleRoyaleStandings(standings: BattleRoyaleStanding[]) {
   return [...standings]
-    .sort(compareBattleRoyaleStandings)
+    .sort((left, right) => left.rank - right.rank || left.teamId.localeCompare(right.teamId))
     .map((standing, index) => ({ ...standing, rank: index + 1 }));
 }
 
 export function isBattleRoyaleRoundComplete(round: BattleRoyaleStage["rounds"][number]) {
   return round.isComplete === true || hasEnteredBattleRoyaleResult(round.teamIds, round.placements);
-}
-
-export function compareBattleRoyaleStandings(left: BattleRoyaleStanding, right: BattleRoyaleStanding) {
-  return (
-    right.totalPoints - left.totalPoints ||
-    right.killPoints - left.killPoints ||
-    right.placementPoints - left.placementPoints ||
-    left.roundsPlayed - right.roundsPlayed ||
-    left.teamId.localeCompare(right.teamId)
-  );
 }
 
 function mergeBattleRoyalePlacements(teamIds: string[], placements: BattleRoyalePlacement[]) {
@@ -284,10 +251,6 @@ function hasEnteredBattleRoyaleResult(teamIds: string[], placements: BattleRoyal
       Boolean(placement.penaltyPoints)
     );
   });
-}
-
-function getBattleRoyaleTotalPoints(placementPoints: number, killPoints: number) {
-  return placementPoints + killPoints;
 }
 
 export function getBattleRoyaleAdvancingTeams(
