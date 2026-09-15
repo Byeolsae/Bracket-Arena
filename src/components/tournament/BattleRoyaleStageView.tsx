@@ -280,12 +280,12 @@ function BattleRoyaleLobbyTables({
           </div>
 
           <div className="overflow-x-auto rounded-md border border-line bg-panel">
-            <table className="w-full min-w-[1440px] border-collapse text-sm">
+            <table className="w-full min-w-[1680px] border-collapse text-sm">
               <thead className="bg-arena text-xs uppercase text-slate-400">
                 <tr>
                   <th className="sticky left-0 z-10 min-w-[220px] bg-arena px-3 py-3 text-left font-black">팀</th>
                   {lobby.rounds.map((round, index) => (
-                    <th key={round.id} className="border-l border-line px-3 py-3 text-center font-black" colSpan={2}>
+                    <th key={round.id} className="border-l border-line px-3 py-3 text-center font-black" colSpan={3}>
                       {index + 1}경기
                     </th>
                   ))}
@@ -294,7 +294,8 @@ function BattleRoyaleLobbyTables({
                   <th className="sticky left-0 z-10 bg-arena px-3 py-2 text-left font-black text-slate-500">로비 참가팀</th>
                   {lobby.rounds.flatMap((round) => [
                     <th key={`${round.id}-placement`} className="border-l border-line px-2 py-2 text-center font-black">순위</th>,
-                    <th key={`${round.id}-kills`} className="px-2 py-2 text-center font-black">킬</th>
+                    <th key={`${round.id}-kills`} className="px-2 py-2 text-center font-black">킬</th>,
+                    <th key={`${round.id}-score`} className="px-2 py-2 text-center font-black">점수</th>
                   ])}
                 </tr>
               </thead>
@@ -335,13 +336,22 @@ function BattleRoyaleLobbyTables({
                           </td>,
                           <td
                             key={`${round.id}-${teamId}-kills`}
-                            className={clsx("px-2 py-2", isMatchWinner && "border-y border-r border-lime/70 text-lime")}
+                            className={clsx("px-2 py-2", isMatchWinner && "border-y border-lime/70 text-lime")}
                           >
                             <LobbyNumberCell
                               value={placement.kills}
                               min={0}
                               winner={isMatchWinner}
                               onChange={(kills) => onUpdatePlacement(round.id, teamId, { kills })}
+                            />
+                          </td>,
+                          <td
+                            key={`${round.id}-${teamId}-score`}
+                            className={clsx("px-2 py-2", isMatchWinner && "border-y border-r border-lime/70 text-lime")}
+                          >
+                            <LobbyScoreCell
+                              value={getBattleRoyalePlacementScore(placement)}
+                              winner={isMatchWinner}
                             />
                           </td>
                         ];
@@ -490,6 +500,19 @@ function LobbyNumberCell({
   );
 }
 
+function LobbyScoreCell({ value, winner }: { value: number; winner?: boolean }) {
+  return (
+    <div
+      className={clsx(
+        "flex h-8 w-16 items-center justify-center rounded-md border bg-field px-2 text-center text-xs font-black",
+        winner ? "border-line text-lime" : "border-line text-gold"
+      )}
+    >
+      {value}
+    </div>
+  );
+}
+
 function ChickenBadge({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
@@ -497,6 +520,10 @@ function ChickenBadge({ count }: { count: number }) {
       치킨 {count}
     </span>
   );
+}
+
+function getBattleRoyalePlacementScore(placement: BattleRoyalePlacement) {
+  return getPlacementPointLabel(placement.placement) + placement.kills;
 }
 
 function getPlacementPointLabel(placement: number) {
