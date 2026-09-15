@@ -358,7 +358,10 @@ function QualifierLobbyTables({
                               onChange={(nextPlacement) => onUpdatePlacement(round.id, teamId, { placement: nextPlacement })}
                             />
                           </td>,
-                          <td key={`${round.id}-${teamId}-kills`} className={clsx("px-2 py-2", isMatchWinner && "text-lime")}>
+                          <td
+                            key={`${round.id}-${teamId}-kills`}
+                            className={clsx("px-2 py-2", isMatchWinner && "text-lime")}
+                          >
                             <LobbyNumberCell
                               value={placement.kills}
                               min={0}

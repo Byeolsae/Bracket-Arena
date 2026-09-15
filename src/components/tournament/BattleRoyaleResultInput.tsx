@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import clsx from "clsx";
 import type { BattleRoyalePlacement, BattleRoyaleRound, Team } from "@/lib/core/models";
 import { TeamLogo } from "@/components/teams/TeamLogo";
@@ -18,30 +18,13 @@ export function BattleRoyaleResultInput({
   chickenCounts,
   onSave
 }: BattleRoyaleResultInputProps) {
-  const initial = useMemo(() => round.teamIds.map((teamId, index) => {
-    const existing = round.placements.find((placement) => placement.teamId === teamId);
-    return (
-      existing ?? {
-        teamId,
-        placement: index + 1,
-        kills: 0,
-        bonusPoints: 0,
-        penaltyPoints: 0
-      }
-    );
-  }), [round.placements, round.teamIds]);
-  const [placements, setPlacements] = useState<BattleRoyalePlacement[]>(initial);
-
-  useEffect(() => {
-    setPlacements(initial);
-  }, [initial]);
+  const placements = useMemo(() => getRoundPlacements(round), [round]);
 
   const update = (teamId: string, patch: Partial<BattleRoyalePlacement>) => {
     const nextPlacements =
       typeof patch.placement === "number"
         ? swapPlacement(placements, teamId, patch.placement)
         : placements.map((placement) => (placement.teamId === teamId ? { ...placement, ...patch } : placement));
-    setPlacements(nextPlacements);
     onSave(nextPlacements);
   };
 
@@ -70,7 +53,7 @@ export function BattleRoyaleResultInput({
                     <ChickenBadge count={chickenCounts?.get(placement.teamId) ?? 0} />
                   </div>
                 </td>
-                <td className="px-3 py-3">
+                <td className={clsx("px-3 py-3", isMatchWinner && "ring-1 ring-inset ring-lime/70")}>
                   <PlacementSelect
                     value={placement.placement}
                     max={round.teamIds.length}
@@ -78,7 +61,7 @@ export function BattleRoyaleResultInput({
                     onChange={(nextPlacement) => update(placement.teamId, { placement: nextPlacement })}
                   />
                 </td>
-                <td className="px-3 py-3">
+                <td className={clsx("px-3 py-3", isMatchWinner && "ring-1 ring-inset ring-lime/70")}>
                   <NumberCell value={placement.kills} winner={isMatchWinner} onChange={(kills) => update(placement.teamId, { kills })} />
                 </td>
               </tr>
@@ -97,6 +80,21 @@ export function BattleRoyaleResultInput({
 
 function isRoundComplete(round: BattleRoyaleRound) {
   return round.isComplete ?? round.placements.length > 0;
+}
+
+function getRoundPlacements(round: BattleRoyaleRound) {
+  return round.teamIds.map((teamId, index) => {
+    const existing = round.placements.find((placement) => placement.teamId === teamId);
+    return (
+      existing ?? {
+        teamId,
+        placement: index + 1,
+        kills: 0,
+        bonusPoints: 0,
+        penaltyPoints: 0
+      }
+    );
+  });
 }
 
 function PlacementSelect({ value, max, winner, onChange }: { value: number; max: number; winner?: boolean; onChange: (value: number) => void }) {
