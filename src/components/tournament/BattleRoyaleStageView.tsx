@@ -124,6 +124,7 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
         rounds={localStage.rounds}
         teamsById={teamsById}
         chickenCounts={chickenCounts}
+        killPoint={localStage.options.killPoint}
         stageMode={localStage.options.stageMode ?? "standard"}
         onAutoFillRound={autoFillRound}
         onUpdatePlacement={updateRoundPlacement}
@@ -216,6 +217,7 @@ type BattleRoyaleLobbyTablesProps = {
   rounds: BattleRoyaleStage["rounds"];
   teamsById: Map<string, Team>;
   chickenCounts: Map<string, number>;
+  killPoint: number;
   stageMode: BattleRoyaleStage["options"]["stageMode"];
   onAutoFillRound: (roundId: string) => void;
   onUpdatePlacement: (roundId: string, teamId: string, patch: Partial<BattleRoyalePlacement>) => void;
@@ -225,6 +227,7 @@ function BattleRoyaleLobbyTables({
   rounds,
   teamsById,
   chickenCounts,
+  killPoint,
   stageMode,
   onAutoFillRound,
   onUpdatePlacement
@@ -350,7 +353,7 @@ function BattleRoyaleLobbyTables({
                             className={clsx("px-2 py-2", isMatchWinner && "border-y border-r border-lime/70 text-lime")}
                           >
                             <LobbyScoreCell
-                              value={getBattleRoyalePlacementScore(placement)}
+                              value={getBattleRoyalePlacementScore(placement, killPoint)}
                               winner={isMatchWinner}
                             />
                           </td>
@@ -522,8 +525,8 @@ function ChickenBadge({ count }: { count: number }) {
   );
 }
 
-function getBattleRoyalePlacementScore(placement: BattleRoyalePlacement) {
-  return getPlacementPointLabel(placement.placement) + placement.kills;
+function getBattleRoyalePlacementScore(placement: BattleRoyalePlacement, killPoint: number) {
+  return getPlacementPointLabel(placement.placement) + placement.kills * killPoint;
 }
 
 function getPlacementPointLabel(placement: number) {
