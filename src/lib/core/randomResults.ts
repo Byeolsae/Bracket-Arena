@@ -16,21 +16,7 @@ export function createRandomHeadToHeadScore(options: { allowDraw?: boolean; maxS
 
 export function createRandomBattleRoyalePlacements(teamIds: string[]): BattleRoyalePlacement[] {
   const orderedTeamIds = shuffle(teamIds);
-  const killsByTeamId = new Map(orderedTeamIds.map((teamId) => [teamId, 0]));
-
-  orderedTeamIds.forEach((eliminatedTeamId, eliminatedIndex) => {
-    if (eliminatedIndex === orderedTeamIds.length - 1) return;
-    if (Math.random() < 0.08) return;
-
-    const killerCandidates = orderedTeamIds.slice(eliminatedIndex + 1);
-    const killerTeamId = weightedPick(killerCandidates, (teamId) => {
-      const placement = orderedTeamIds.indexOf(teamId) + 1;
-      const survivalWeight = Math.max(1, orderedTeamIds.length + 1 - placement);
-      const volatility = 0.65 + Math.random() * 1.35;
-      return Math.pow(survivalWeight, 1.15) * volatility;
-    });
-    killsByTeamId.set(killerTeamId, (killsByTeamId.get(killerTeamId) ?? 0) + 1);
-  });
+  const killsByTeamId = createBattleRoyaleKillDistribution(orderedTeamIds);
 
   return orderedTeamIds.map((teamId, index) => ({
     teamId,
@@ -39,6 +25,30 @@ export function createRandomBattleRoyalePlacements(teamIds: string[]): BattleRoy
     bonusPoints: 0,
     penaltyPoints: 0
   }));
+}
+
+function createBattleRoyaleKillDistribution(teamIdsByPlacement: string[]) {
+  const maxKills = Math.min(63, teamIdsByPlacement.length * 4);
+  const totalKills = Math.min(maxKills, Math.max(18, Math.round(randomNormal(45, 8))));
+  const killsByTeamId = new Map(teamIdsByPlacement.map((teamId) => [teamId, 0]));
+
+  const weights = teamIdsByPlacement.map((teamId, index) => {
+    const placement = index + 1;
+    const survivalRatio = (teamIdsByPlacement.length + 1 - placement) / teamIdsByPlacement.length;
+    const placementBias = 0.75 + Math.pow(survivalRatio, 1.35) * 2.25;
+    const volatility = 0.45 + Math.random() * 1.75;
+    return {
+      teamId,
+      weight: placementBias * volatility
+    };
+  });
+
+  Array.from({ length: totalKills }).forEach(() => {
+    const pickedTeamId = weightedPick(weights, (entry) => entry.weight).teamId;
+    killsByTeamId.set(pickedTeamId, (killsByTeamId.get(pickedTeamId) ?? 0) + 1);
+  });
+
+  return killsByTeamId;
 }
 
 function randomInt(min: number, max: number) {
@@ -67,4 +77,11 @@ function weightedPick<T>(items: T[], getWeight: (item: T) => number): T {
   }
 
   return items.at(-1) ?? items[0];
+}
+
+function randomNormal(mean: number, standardDeviation: number) {
+  const first = Math.random() || 0.001;
+  const second = Math.random() || 0.001;
+  const standardNormal = Math.sqrt(-2 * Math.log(first)) * Math.cos(2 * Math.PI * second);
+  return mean + standardNormal * standardDeviation;
 }

@@ -802,8 +802,12 @@ export default function MakerPage() {
       );
     }
 
+    const battleRoyaleTeams =
+      role === "qualifier"
+        ? orderBattleRoyaleQualifierTeams(stageTeams, teamGroupAssignments)
+        : stageTeams;
     return setBattleRoyaleStage(
-      generateBattleRoyaleRounds(stageTeams, {
+      generateBattleRoyaleRounds(battleRoyaleTeams, {
         stageMode: role === "qualifier" ? "qualifier" : "final",
         roundCount: normalizeBattleRoyaleMatchCount(battleRoundCount),
         teamsPerRound: role === "qualifier" ? 16 : BATTLE_ROYALE_FINAL_TEAM_COUNT,
@@ -871,6 +875,18 @@ export default function MakerPage() {
       />
     </main>
   );
+}
+
+function orderBattleRoyaleQualifierTeams(teams: Team[], assignments: Record<string, number>) {
+  const hasAssignments = teams.some((team) => typeof assignments[team.id] === "number");
+  if (!hasAssignments) return teams;
+
+  return [...teams].sort((left, right) => {
+    const leftGroup = assignments[left.id] ?? 0;
+    const rightGroup = assignments[right.id] ?? 0;
+    if (leftGroup !== rightGroup) return leftGroup - rightGroup;
+    return teams.indexOf(left) - teams.indexOf(right);
+  });
 }
 
 function TournamentSetup({

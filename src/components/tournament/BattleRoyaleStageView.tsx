@@ -35,10 +35,9 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
       ? localStage.options.groupNames
       : BATTLE_ROYALE_GROUP_NAMES;
 
+    const qualifierGroupTeamIds = getQualifierGroupTeamIds(localStage);
     return groupNames.map((groupName, groupIndex) => {
-      const groupTeamIds = teams
-        .slice(groupIndex * BATTLE_ROYALE_GROUP_SIZE, (groupIndex + 1) * BATTLE_ROYALE_GROUP_SIZE)
-        .map((team) => team.id);
+      const groupTeamIds = qualifierGroupTeamIds[groupIndex] ?? [];
       const groupStandings = groupTeamIds
         .map((teamId) => standingsByTeamId.get(teamId))
         .filter((standing): standing is BattleRoyaleStanding => Boolean(standing))
@@ -50,7 +49,7 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
         standings: groupStandings
       };
     });
-  }, [isQualifier, localStage.options.groupNames, standings, teams]);
+  }, [isQualifier, localStage, standings]);
 
   useEffect(() => {
     setLocalStage(stage);
@@ -364,6 +363,22 @@ function QualifierLobbyTables({
 function getLobbyName(groupName?: string) {
   const lobbyName = groupName?.split("·").at(1)?.trim() || groupName || "로비";
   return lobbyName.replace(/\s+vs\s+/i, "/").replace(/조\/(.+?)조$/, "조/$1조 로비");
+}
+
+function getQualifierGroupTeamIds(stage: BattleRoyaleStage) {
+  const [firstPair, secondPair, thirdPair] = stage.rounds;
+  if (!firstPair || !secondPair || !thirdPair) return [];
+
+  return [
+    intersectTeamIds(firstPair.teamIds, secondPair.teamIds),
+    intersectTeamIds(firstPair.teamIds, thirdPair.teamIds),
+    intersectTeamIds(secondPair.teamIds, thirdPair.teamIds)
+  ];
+}
+
+function intersectTeamIds(left: string[], right: string[]) {
+  const rightSet = new Set(right);
+  return left.filter((teamId) => rightSet.has(teamId)).slice(0, BATTLE_ROYALE_GROUP_SIZE);
 }
 
 function getRoundPlacements(round: BattleRoyaleStage["rounds"][number]) {
