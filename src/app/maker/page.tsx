@@ -8,7 +8,13 @@ import { PlacementSummary, type PlacementSummaryEntry } from "@/components/tourn
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import { nextPowerOfTwo } from "@/lib/core/bye";
 import { useUiStore, type AppLanguage } from "@/store/uiStore";
-import { calculateBattleRoyaleStandings, generateBattleRoyaleRounds } from "@/lib/core/battleRoyale";
+import {
+  BATTLE_ROYALE_FINAL_TEAM_COUNT,
+  BATTLE_ROYALE_QUALIFIER_TEAM_COUNT,
+  generateBattleRoyaleRounds,
+  normalizeBattleRoyaleMatchCount,
+  calculateBattleRoyaleStandings
+} from "@/lib/core/battleRoyale";
 import { createGroupStage, calculateGroupStandings } from "@/lib/core/group";
 import {
   createGroupTripleEliminationStage,
@@ -105,6 +111,7 @@ type DrawImportSetup = {
   qualifierFormat?: StageFormat;
   finalFormat?: StageFormat;
   groupCount?: number;
+  battleRoundCount?: number;
 };
 type DrawImportPayload =
   | { type: "seed"; teamIds: string[]; setup?: DrawImportSetup }
@@ -213,7 +220,7 @@ function getStageLimitLabel(format: StageFormat) {
   if (format === "group") return "조별 자유";
   if (format === "swiss") return "자유";
   if (format === "league") return "자유";
-  if (format === "battle_royale") return "자유";
+  if (format === "battle_royale") return "예선 24팀 / 본선 16팀";
 
   return "자유";
 }
@@ -244,9 +251,7 @@ function getProjectedAdvancingCount(
     return Math.min(selectedTeamCount, Math.max(0, leagueAdvanceCount));
   }
 
-  if (qualifierFormat === "battle_royale") {
-    return Math.min(selectedTeamCount, Math.max(0, battleAdvanceCount));
-  }
+  if (qualifierFormat === "battle_royale") return Math.min(selectedTeamCount, BATTLE_ROYALE_FINAL_TEAM_COUNT);
 
   if (isGroupFormat(qualifierFormat)) {
     const fixedConfig = getFixedGroupConfig(qualifierFormat);
@@ -441,9 +446,9 @@ export default function MakerPage() {
   const [groupCount, setGroupCount] = useState(2);
   const [teamGroupAssignments, setTeamGroupAssignments] = useState<Record<string, number>>({});
   const [groupAdvanceCount, setGroupAdvanceCount] = useState(2);
-  const [battleRoundCount, setBattleRoundCount] = useState(4);
+  const [battleRoundCount, setBattleRoundCount] = useState(5);
   const [battleTeamsPerRound, setBattleTeamsPerRound] = useState(16);
-  const [battleAdvanceCount, setBattleAdvanceCount] = useState(8);
+  const [battleAdvanceCount, setBattleAdvanceCount] = useState(16);
   const [leagueStage, setLeagueStage] = useState<LeagueStage>();
   const [groupStage, setGroupStage] = useState<GroupStage>();
   const [groupDoubleStage, setGroupDoubleStage] = useState<GroupDoubleEliminationStage>();
@@ -474,6 +479,7 @@ export default function MakerPage() {
       if (isStageFormat(payload.setup?.qualifierFormat)) setQualifierFormat(payload.setup.qualifierFormat);
       if (isStageFormat(payload.setup?.finalFormat)) setFinalFormat(payload.setup.finalFormat);
       if (payload.setup?.groupCount) setGroupCount(Math.max(1, payload.setup.groupCount));
+      if (payload.setup?.battleRoundCount) setBattleRoundCount(normalizeBattleRoyaleMatchCount(payload.setup.battleRoundCount));
 
       setSelectedTeamIds(teamIds);
       if (payload.type === "group") {
@@ -551,12 +557,13 @@ export default function MakerPage() {
   const bracketSize = nextPowerOfTwo(Math.max(selectedTeams.length, 2));
   const byeCount = Math.max(0, bracketSize - selectedTeams.length);
   const canCreate = selectedTeams.length >= 2;
-  const qualifierLimitMessage = mode === "two-stage" ? getStageLimitMessage(qualifierFormat, selectedTeams) : undefined;
+  const qualifierLimitMessage = mode === "two-stage" ? getStageLimitMessage(qualifierFormat, selectedTeams, "qualifier") : undefined;
   const finalLimitMessage = getStageLimitMessage(
     finalFormat,
     mode === "two-stage"
       ? Array.from({ length: projectedFinalTeamCount }, (_, index) => ({ id: `projected-${index + 1}`, name: `Projected ${index + 1}` }) as Team)
-      : selectedTeams
+      : selectedTeams,
+    "final"
   );
 
   function setQualifierWithCompatibility(format: StageFormat) {
@@ -601,7 +608,15 @@ export default function MakerPage() {
     );
   }
 
-  function getStageLimitMessage(format: StageFormat, stageTeams: Team[]) {
+  function getStageLimitMessage(format: StageFormat, stageTeams: Team[], role: ActiveStage["role"]) {
+    if (format === "battle_royale") {
+      const expectedCount = role === "qualifier" ? BATTLE_ROYALE_QUALIFIER_TEAM_COUNT : BATTLE_ROYALE_FINAL_TEAM_COUNT;
+      if (stageTeams.length !== expectedCount) {
+        return `${STAGE_LABELS[format].label}은 ${expectedCount}팀 고정입니다. 현재 ${stageTeams.length}팀입니다.`;
+      }
+      return undefined;
+    }
+
     const maxTeams = ELIMINATION_TEAM_LIMITS[format];
     if (!maxTeams) return undefined;
 
@@ -646,10 +661,14 @@ export default function MakerPage() {
   }
 
   function getCurrentAdvancingTeams(): Team[] {
+    const advanceCount =
+      activeStage?.format === "battle_royale"
+        ? BATTLE_ROYALE_FINAL_TEAM_COUNT
+        : leagueAdvanceCount;
     const rule = {
       id: "maker-auto-advance",
       mode: "overall_top_n" as const,
-      count: Math.max(1, Math.min(leagueAdvanceCount, selectedTeams.length))
+      count: Math.max(1, Math.min(advanceCount, selectedTeams.length))
     };
 
     if (activeStage?.format === "league" && leagueStage) return getStageAdvancingTeams(leagueStage, selectedTeams, rule);
@@ -696,7 +715,7 @@ export default function MakerPage() {
       }
       stageTeams = fixedPlayoff.teams;
     }
-    const limitMessage = getStageLimitMessage(format, stageTeams);
+    const limitMessage = getStageLimitMessage(format, stageTeams, role);
     if (stageTeams.length < 2) {
       setCreationNotice(role === "final" && mode === "two-stage" ? "본선 진출팀이 2팀 이상 확정된 뒤 본선을 생성할 수 있습니다." : "최소 2팀을 선택해야 합니다.");
       return;
@@ -783,9 +802,10 @@ export default function MakerPage() {
 
     return setBattleRoyaleStage(
       generateBattleRoyaleRounds(stageTeams, {
-        roundCount: battleRoundCount,
-        teamsPerRound: Math.max(2, battleTeamsPerRound),
-        advanceCount: Math.min(battleAdvanceCount, stageTeams.length)
+        stageMode: role === "qualifier" ? "qualifier" : "final",
+        roundCount: normalizeBattleRoyaleMatchCount(battleRoundCount),
+        teamsPerRound: role === "qualifier" ? 16 : BATTLE_ROYALE_FINAL_TEAM_COUNT,
+        advanceCount: role === "qualifier" ? BATTLE_ROYALE_FINAL_TEAM_COUNT : 0
       })
     );
   }
@@ -1181,11 +1201,20 @@ function FilteredStageOptionsPanel({
         {needsBattleRoyale ? (
           <section className="space-y-3">
             <h3 className="text-sm font-black uppercase tracking-wide text-ink">배틀로얄 설정</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <NumberField label="라운드 수" value={battleRoundCount} onChange={setBattleRoundCount} min={1} />
-              <NumberField label="라운드 참가팀" value={battleTeamsPerRound} onChange={setBattleTeamsPerRound} min={2} />
-              <NumberField label="진출팀 수" value={battleAdvanceCount} onChange={setBattleAdvanceCount} min={1} />
+            <div className="rounded-md border border-line bg-field px-3 py-2 text-xs font-semibold leading-5 text-muted">
+              예선은 24팀 고정, A/B/C 3개 조, 조당 8팀으로 진행합니다. A조 vs B조, A조 vs C조, B조 vs C조 로비가 같은 횟수로 생성되고 통합 순위 1-16위가 배틀로얄 본선에 진출합니다. 본선은 16팀 단일 로비입니다.
             </div>
+            <label className="block space-y-1.5">
+              <span className="text-sm font-bold text-ink">경기 수</span>
+              <select
+                className="input"
+                value={normalizeBattleRoyaleMatchCount(battleRoundCount)}
+                onChange={(event) => setBattleRoundCount(normalizeBattleRoyaleMatchCount(Number(event.target.value)))}
+              >
+                <option value={5}>5경기</option>
+                <option value={6}>6경기</option>
+              </select>
+            </label>
           </section>
         ) : null}
 

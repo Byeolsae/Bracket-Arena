@@ -48,6 +48,14 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
 
   return (
     <section className="space-y-6">
+      <div className="rounded-md border border-line bg-field px-4 py-3 text-sm font-semibold leading-6 text-muted">
+        {localStage.options.stageMode === "qualifier"
+          ? `배틀로얄 예선: 24팀, A/B/C 3개 조, 조별 8팀. 각 조는 다른 두 조와 ${localStage.options.matchesPerPair ?? localStage.options.roundCount}경기씩 만나고, 통합 순위 1-16위가 본선에 진출합니다.`
+          : localStage.options.stageMode === "final"
+            ? `배틀로얄 본선: 16팀 단일 로비, ${localStage.options.roundCount}경기 누적 점수로 최종 순위를 결정합니다.`
+            : "배틀로얄 누적 점수로 순위를 결정합니다."}
+      </div>
+
       {localStage.warnings.length ? (
         <div className="rounded-md border border-gold/40 bg-gold/10 px-4 py-3 text-sm font-semibold text-ink">
           {localStage.warnings.join(" ")}
@@ -70,11 +78,11 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
           <section key={round.id} className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-black uppercase text-ink">
-                Round {round.round} {round.groupName ? `/ ${round.groupName}` : ""}
+                {round.groupName ?? `${round.round}라운드`}
               </h3>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-black uppercase text-slate-500">
-                  {round.teamIds.length} teams
+                  {round.teamIds.length}팀
                 </span>
                 <button
                   type="button"

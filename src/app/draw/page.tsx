@@ -4,6 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, ChevronDown, ChevronRight, Folder, Layers3, Play, RotateCcw, Shuffle, Trophy, Users } from "lucide-react";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import type { Team, TeamFolder } from "@/lib/core/models";
+import {
+  BATTLE_ROYALE_FINAL_TEAM_COUNT,
+  BATTLE_ROYALE_QUALIFIER_TEAM_COUNT,
+  normalizeBattleRoyaleMatchCount
+} from "@/lib/core/battleRoyale";
 import { useTeamStore } from "@/store/teamStore";
 
 type DrawType = "seed" | "group";
@@ -43,6 +48,9 @@ const qualifierStageOptions: StageFormat[] = [
   "battle_royale"
 ];
 const finalStageOptions: StageFormat[] = ["single", "double", "triple", "stepladder", "battle_royale"];
+const qualifierFinalOptions: Partial<Record<StageFormat, StageFormat[]>> = {
+  battle_royale: ["battle_royale"]
+};
 const doubleEliminationCounts = [4, 8, 16];
 const tripleEliminationCount = 8;
 
@@ -50,6 +58,7 @@ function getStageLimitLabel(format: StageFormat) {
   if (format === "triple") return "8팀";
   if (format === "group_double_elimination") return "조당 4팀";
   if (format === "group_triple_elimination") return "조당 8팀";
+  if (format === "battle_royale") return "예선 24팀 / 본선 16팀";
   if (format === "single") return "0-32팀";
   if (format === "double") return "4/8/16팀";
   if (format === "group") return "조별 자유";
@@ -111,6 +120,12 @@ function getFixedFormatError(format: StageFormat, teamCount: number, label: stri
   }
   if (format === "group_triple_elimination" && teamCount % 8 !== 0) {
     return `예선 그룹 트리플 엘리미네이션은 조당 8팀 고정입니다. 현재 ${teamCount}팀이라 8의 배수가 아닙니다.`;
+  }
+  if (format === "battle_royale") {
+    const expectedCount = label.includes("예선") ? BATTLE_ROYALE_QUALIFIER_TEAM_COUNT : BATTLE_ROYALE_FINAL_TEAM_COUNT;
+    if (teamCount !== expectedCount) {
+      return `${label} 배틀로얄은 ${expectedCount}팀 고정입니다. 현재 ${teamCount}팀입니다.`;
+    }
   }
   return undefined;
 }
@@ -223,6 +238,7 @@ export default function DrawPage() {
   const [randomPickCount, setRandomPickCount] = useState(8);
   const [potCount, setPotCount] = useState(4);
   const [groupCount, setGroupCount] = useState(4);
+  const [battleRoundCount, setBattleRoundCount] = useState(5);
   const [drawType, setDrawType] = useState<DrawType>("group");
   const [assignmentMode, setAssignmentMode] = useState<AssignmentMode>("draw");
   const [manualSeedAssignments, setManualSeedAssignments] = useState<Record<string, number>>({});
@@ -266,15 +282,25 @@ export default function DrawPage() {
       .sort((a, b) => (a.slotIndex ?? 0) - (b.slotIndex ?? 0))
   }));
   const seedResults = [...revealedResults].sort((a, b) => (a.seed ?? 0) - (b.seed ?? 0));
+  const availableFinalStageOptions =
+    tournamentMode === "two-stage"
+      ? qualifierFinalOptions[qualifierFormat] ?? finalStageOptions
+      : finalStageOptions;
   const projectedFinalTeamCount =
     tournamentMode === "final-only"
       ? selectedTeams.length
-      : qualifierFormat === "group_double_elimination"
+      : qualifierFormat === "battle_royale"
+        ? Math.min(selectedTeams.length, BATTLE_ROYALE_FINAL_TEAM_COUNT)
+        : qualifierFormat === "group_double_elimination"
         ? safeGroupCount * 2
         : qualifierFormat === "group_triple_elimination"
           ? safeGroupCount * 4
           : undefined;
   const importBlockReason = getImportBlockReason();
+  const usesBattleRoyaleSetup =
+    tournamentMode === "final-only"
+      ? finalFormat === "battle_royale"
+      : qualifierFormat === "battle_royale" || finalFormat === "battle_royale";
 
   useEffect(() => {
     setSelectedTeamIds((current) => current.filter((teamId) => teams.some((team) => team.id === teamId)));
@@ -285,6 +311,15 @@ export default function DrawPage() {
     resetDraw();
     setDrawType("seed");
   }, [canUseGroupDraw, drawType]);
+
+  useEffect(() => {
+    if (tournamentMode !== "two-stage") return;
+    const allowedFinals = qualifierFinalOptions[qualifierFormat] ?? finalStageOptions;
+    if (!allowedFinals.includes(finalFormat)) {
+      setFinalFormat(allowedFinals[0]);
+      resetDraw();
+    }
+  }, [finalFormat, qualifierFormat, tournamentMode]);
 
   useEffect(() => {
     if (drawType !== "group" || !canUseGroupDraw) return;
@@ -488,7 +523,8 @@ export default function DrawPage() {
               mode: tournamentMode,
               qualifierFormat,
               finalFormat,
-              groupCount: safeGroupCount
+              groupCount: safeGroupCount,
+              battleRoundCount: normalizeBattleRoyaleMatchCount(battleRoundCount)
             }
           }
         : {
@@ -500,7 +536,8 @@ export default function DrawPage() {
               mode: tournamentMode,
               qualifierFormat,
               finalFormat,
-              groupCount: safeGroupCount
+              groupCount: safeGroupCount,
+              battleRoundCount: normalizeBattleRoyaleMatchCount(battleRoundCount)
             },
             assignments: Object.fromEntries(
               orderedResults.map((result) => [result.team.id, result.groupIndex ?? 0])
@@ -683,7 +720,25 @@ export default function DrawPage() {
               {tournamentMode === "two-stage" ? (
                 <DrawStageSelect label="예선 방식" value={qualifierFormat} options={qualifierStageOptions} onChange={setQualifierFormat} />
               ) : null}
-              <DrawStageSelect label="본선 방식" value={finalFormat} options={finalStageOptions} onChange={setFinalFormat} />
+              <DrawStageSelect label="본선 방식" value={finalFormat} options={availableFinalStageOptions} onChange={setFinalFormat} />
+              {usesBattleRoyaleSetup ? (
+                <div className="space-y-3 rounded-md border border-line bg-field px-3 py-3">
+                  <p className="text-xs font-semibold leading-5 text-muted">
+                    배틀로얄 예선은 24팀 고정, A/B/C 3개 조, 조당 8팀입니다. A조 vs B조, A조 vs C조, B조 vs C조 로비가 같은 횟수로 생성되고, 통합 순위 1-16위가 배틀로얄 본선에 진출합니다.
+                  </p>
+                  <label className="block space-y-1.5">
+                    <span className="text-sm font-bold text-ink">경기 수</span>
+                    <select
+                      className="input"
+                      value={normalizeBattleRoyaleMatchCount(battleRoundCount)}
+                      onChange={(event) => setBattleRoundCount(normalizeBattleRoyaleMatchCount(Number(event.target.value)))}
+                    >
+                      <option value={5}>5경기</option>
+                      <option value={6}>6경기</option>
+                    </select>
+                  </label>
+                </div>
+              ) : null}
               {importBlockReason ? (
                 <div className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-bold leading-5 text-danger">
                   {importBlockReason}

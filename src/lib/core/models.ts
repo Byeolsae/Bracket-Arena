@@ -312,6 +312,10 @@ export type BattleRoyaleOptions = {
   placementPoints: Record<number, number>;
   killPoint: number;
   advanceCount: number;
+  stageMode?: "standard" | "qualifier" | "final";
+  groupCount?: number;
+  groupNames?: string[];
+  matchesPerPair?: number;
 };
 
 export type BattleRoyaleStanding = {

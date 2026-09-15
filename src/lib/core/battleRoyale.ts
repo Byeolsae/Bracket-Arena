@@ -19,18 +19,37 @@ const defaultPlacementPoints: Record<number, number> = {
 };
 
 const defaultBattleRoyaleOptions: BattleRoyaleOptions = {
-  roundCount: 4,
+  roundCount: 5,
   teamsPerRound: 16,
   placementPoints: defaultPlacementPoints,
   killPoint: 1,
-  advanceCount: 8
+  advanceCount: 16,
+  stageMode: "standard"
 };
+
+export const BATTLE_ROYALE_QUALIFIER_TEAM_COUNT = 24;
+export const BATTLE_ROYALE_FINAL_TEAM_COUNT = 16;
+export const BATTLE_ROYALE_GROUP_COUNT = 3;
+export const BATTLE_ROYALE_GROUP_SIZE = 8;
+export const BATTLE_ROYALE_GROUP_NAMES = ["A조", "B조", "C조"];
+export const BATTLE_ROYALE_ALLOWED_MATCH_COUNTS = [5, 6] as const;
 
 export function generateBattleRoyaleRounds(
   teams: Team[],
   options: Partial<BattleRoyaleOptions> = {}
 ): BattleRoyaleStage {
   const merged = { ...defaultBattleRoyaleOptions, ...options };
+  const matchCount = normalizeBattleRoyaleMatchCount(merged.roundCount);
+  const stageMode = merged.stageMode ?? "standard";
+
+  if (stageMode === "qualifier") {
+    return generateBattleRoyaleQualifier(teams, { ...merged, roundCount: matchCount, matchesPerPair: matchCount });
+  }
+
+  if (stageMode === "final") {
+    return generateBattleRoyaleFinal(teams, { ...merged, roundCount: matchCount });
+  }
+
   const groupsPerRound = Math.ceil(teams.length / merged.teamsPerRound);
   const rounds = Array.from({ length: merged.roundCount }).flatMap((_, roundIndex) =>
     Array.from({ length: groupsPerRound }).map((__, groupIndex) => {
@@ -50,12 +69,88 @@ export function generateBattleRoyaleRounds(
     id: `battle-royale-${Date.now()}`,
     type: "battle_royale",
     rounds,
-    options: merged,
+    options: { ...merged, roundCount: matchCount },
     warnings:
       teams.length > merged.teamsPerRound
         ? [`한 라운드 참가 수를 초과해 ${groupsPerRound}개 그룹으로 나눴습니다.`]
         : []
   };
+}
+
+function generateBattleRoyaleQualifier(teams: Team[], options: BattleRoyaleOptions): BattleRoyaleStage {
+  const groups = Array.from({ length: BATTLE_ROYALE_GROUP_COUNT }, (_, groupIndex) => {
+    const start = groupIndex * BATTLE_ROYALE_GROUP_SIZE;
+    return {
+      name: BATTLE_ROYALE_GROUP_NAMES[groupIndex],
+      teamIds: teams.slice(start, start + BATTLE_ROYALE_GROUP_SIZE).map((team) => team.id)
+    };
+  });
+  const pairings = [
+    [0, 1],
+    [0, 2],
+    [1, 2]
+  ] as const;
+  const rounds = Array.from({ length: options.matchesPerPair ?? options.roundCount }).flatMap((_, matchIndex) =>
+    pairings.map(([leftIndex, rightIndex], pairingIndex) => {
+      const leftGroup = groups[leftIndex];
+      const rightGroup = groups[rightIndex];
+      return {
+        id: `br-qualifier-m${matchIndex + 1}-p${pairingIndex + 1}`,
+        round: matchIndex * pairings.length + pairingIndex + 1,
+        groupName: `${matchIndex + 1}경기 · ${leftGroup.name} vs ${rightGroup.name}`,
+        teamIds: [...leftGroup.teamIds, ...rightGroup.teamIds],
+        placements: []
+      };
+    })
+  );
+
+  return {
+    id: `battle-royale-${Date.now()}`,
+    type: "battle_royale",
+    rounds,
+    options: {
+      ...options,
+      stageMode: "qualifier",
+      groupCount: BATTLE_ROYALE_GROUP_COUNT,
+      groupNames: BATTLE_ROYALE_GROUP_NAMES,
+      teamsPerRound: 16,
+      advanceCount: BATTLE_ROYALE_FINAL_TEAM_COUNT
+    },
+    warnings:
+      teams.length === BATTLE_ROYALE_QUALIFIER_TEAM_COUNT
+        ? []
+        : [`배틀로얄 예선은 ${BATTLE_ROYALE_QUALIFIER_TEAM_COUNT}팀 고정입니다. 현재 ${teams.length}팀입니다.`]
+  };
+}
+
+function generateBattleRoyaleFinal(teams: Team[], options: BattleRoyaleOptions): BattleRoyaleStage {
+  const rounds = Array.from({ length: options.roundCount }).map((_, roundIndex) => ({
+    id: `br-final-r${roundIndex + 1}`,
+    round: roundIndex + 1,
+    groupName: "결승 로비",
+    teamIds: teams.map((team) => team.id),
+    placements: []
+  }));
+
+  return {
+    id: `battle-royale-${Date.now()}`,
+    type: "battle_royale",
+    rounds,
+    options: {
+      ...options,
+      stageMode: "final",
+      teamsPerRound: BATTLE_ROYALE_FINAL_TEAM_COUNT,
+      advanceCount: 0
+    },
+    warnings:
+      teams.length === BATTLE_ROYALE_FINAL_TEAM_COUNT
+        ? []
+        : [`배틀로얄 본선은 ${BATTLE_ROYALE_FINAL_TEAM_COUNT}팀 고정입니다. 현재 ${teams.length}팀입니다.`]
+  };
+}
+
+export function normalizeBattleRoyaleMatchCount(value: number | undefined) {
+  return value === 6 ? 6 : 5;
 }
 
 export function applyBattleRoyaleResult(
