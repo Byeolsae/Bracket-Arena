@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Dices } from "lucide-react";
-import type { BattleRoyalePlacement, BattleRoyaleStage, Team } from "@/lib/core/models";
+import type { BattleRoyalePlacement, BattleRoyaleStage, BattleRoyaleStanding, Team } from "@/lib/core/models";
 import {
   applyBattleRoyaleResult,
+  BATTLE_ROYALE_GROUP_NAMES,
+  BATTLE_ROYALE_GROUP_SIZE,
   calculateBattleRoyaleStandings
 } from "@/lib/core/battleRoyale";
 import { createRandomBattleRoyalePlacements } from "@/lib/core/randomResults";
@@ -24,6 +26,30 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
     () => calculateBattleRoyaleStandings(localStage, teams),
     [localStage, teams]
   );
+  const isQualifier = localStage.options.stageMode === "qualifier";
+  const qualifierGroupTables = useMemo(() => {
+    if (!isQualifier) return [];
+    const standingsByTeamId = new Map(standings.map((standing) => [standing.teamId, standing]));
+    const groupNames = localStage.options.groupNames?.length
+      ? localStage.options.groupNames
+      : BATTLE_ROYALE_GROUP_NAMES;
+
+    return groupNames.map((groupName, groupIndex) => {
+      const groupTeamIds = teams
+        .slice(groupIndex * BATTLE_ROYALE_GROUP_SIZE, (groupIndex + 1) * BATTLE_ROYALE_GROUP_SIZE)
+        .map((team) => team.id);
+      const groupStandings = groupTeamIds
+        .map((teamId) => standingsByTeamId.get(teamId))
+        .filter((standing): standing is BattleRoyaleStanding => Boolean(standing))
+        .sort((a, b) => b.totalPoints - a.totalPoints || b.killPoints - a.killPoints)
+        .map((standing, index) => ({ ...standing, rank: index + 1 }));
+
+      return {
+        groupName,
+        standings: groupStandings
+      };
+    });
+  }, [isQualifier, localStage.options.groupNames, standings, teams]);
 
   useEffect(() => {
     setLocalStage(stage);
@@ -66,8 +92,8 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
   return (
     <section className="space-y-6">
       <div className="rounded-md border border-line bg-field px-4 py-3 text-sm font-semibold leading-6 text-muted">
-        {localStage.options.stageMode === "qualifier"
-          ? `배틀로얄 예선: 24팀, A/B/C 3개 조, 조별 8팀. 각 조는 다른 두 조와 ${localStage.options.matchesPerPair ?? localStage.options.roundCount}경기씩 만나고, 통합 순위 1-16위가 본선에 진출합니다.`
+        {isQualifier
+          ? `배틀로얄 예선: 24팀, A/B/C 3개 조, 조별 8팀. 각 조는 다른 두 조와 ${localStage.options.matchesPerPair ?? localStage.options.roundCount}경기씩 만납니다.`
           : localStage.options.stageMode === "final"
             ? `배틀로얄 본선: 16팀 단일 로비, ${localStage.options.roundCount}경기 누적 점수로 최종 순위를 결정합니다.`
             : "배틀로얄 누적 점수로 순위를 결정합니다."}
@@ -143,11 +169,43 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
         ))}
       </div>
 
-      <BattleRoyaleStandingsTable
-        standings={standings}
-        teamsById={teamsById}
-        advanceCount={localStage.options.advanceCount}
-      />
+      {isQualifier ? (
+        <section className="space-y-4">
+          <div>
+            <p className="section-kicker">그룹 점수</p>
+            <h2 className="text-xl font-black uppercase tracking-wide text-ink">A/B/C 그룹별 점수 테이블</h2>
+          </div>
+          <div className="grid gap-4 xl:grid-cols-3">
+            {qualifierGroupTables.map((group) => (
+              <section key={group.groupName} className="space-y-2">
+                <h3 className="text-lg font-black uppercase text-ink">{group.groupName} 점수 테이블</h3>
+                <BattleRoyaleStandingsTable
+                  standings={group.standings}
+                  teamsById={teamsById}
+                  compact
+                />
+              </section>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="space-y-3">
+        <div>
+          <p className="section-kicker">{isQualifier ? "통합 점수" : "최종 점수"}</p>
+          <h2 className="text-xl font-black uppercase tracking-wide text-ink">
+            {isQualifier ? "통합 점수 테이블" : "최종 점수 테이블"}
+          </h2>
+          {isQualifier ? (
+            <p className="mt-1 text-sm font-semibold text-muted">통합 점수 테이블 1-16위가 본선으로 올라갑니다.</p>
+          ) : null}
+        </div>
+        <BattleRoyaleStandingsTable
+          standings={standings}
+          teamsById={teamsById}
+          advanceCount={localStage.options.advanceCount}
+        />
+      </section>
     </section>
   );
 }

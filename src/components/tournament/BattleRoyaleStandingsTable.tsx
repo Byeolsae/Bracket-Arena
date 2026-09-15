@@ -8,16 +8,18 @@ type BattleRoyaleStandingsTableProps = {
   standings: BattleRoyaleStanding[];
   teamsById: Map<string, Team>;
   advanceCount?: number;
+  compact?: boolean;
 };
 
 export function BattleRoyaleStandingsTable({
   standings,
   teamsById,
-  advanceCount = 0
+  advanceCount = 0,
+  compact = false
 }: BattleRoyaleStandingsTableProps) {
   return (
     <div className="overflow-x-auto rounded-md border border-line bg-panel">
-      <table className="w-full min-w-[820px] border-collapse text-sm">
+      <table className={clsx("w-full border-collapse text-sm", compact ? "min-w-[560px]" : "min-w-[820px]")}>
         <thead className="bg-arena text-xs uppercase text-slate-400">
           <tr>
             {["순위", "팀", "라운드", "순위점수", "킬점수", "총점"].map((label) => (

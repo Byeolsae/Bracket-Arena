@@ -1023,7 +1023,7 @@ function BracketLaunchPanel({
               <span className="text-muted">참가팀</span>
               <span>{teams.length}팀</span>
             </div>
-            {mode === "two-stage" ? (
+            {mode === "two-stage" && qualifierFormat !== "battle_royale" ? (
               <div className="flex justify-between gap-3">
                 <span className="text-muted">예상 본선 진출</span>
                 <span>{projectedFinalTeamCount}팀</span>
