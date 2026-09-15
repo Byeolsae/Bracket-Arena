@@ -13,7 +13,8 @@ import { buildSeedOrder } from "../src/lib/core/bye";
 import {
   applyBattleRoyaleResult,
   calculateBattleRoyaleStandings,
-  generateBattleRoyaleRounds
+  generateBattleRoyaleRounds,
+  getBattleRoyaleMatchScore
 } from "../src/lib/core/battleRoyale";
 import {
   getDoubleLosersMatchCountByRound,
@@ -1161,6 +1162,34 @@ test("battle royale standings only count completed rounds", () => {
   assert.equal(standings[0].totalPoints, 50);
   assert.equal(standings.find((standing) => standing.teamId === "team-1")?.roundsPlayed, 1);
   assert.equal(standings.find((standing) => standing.teamId === "team-17")?.roundsPlayed, 0);
+});
+
+test("battle royale match and standing points use placement plus kills", () => {
+  const roster = teams(24);
+  let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
+  const firstRound = stage.rounds[0];
+  const placements = firstRound.teamIds.map((teamId, index) => ({
+    teamId,
+    placement: index + 1,
+    kills: 0,
+    bonusPoints: 0,
+    penaltyPoints: 0
+  }));
+  placements[0] = { ...placements[0], placement: 1, kills: 2 };
+  placements[1] = { ...placements[1], placement: 2, kills: 8 };
+
+  assert.equal(getBattleRoyaleMatchScore(stage.options, placements[0]), 12);
+  assert.equal(getBattleRoyaleMatchScore(stage.options, placements[1]), 14);
+
+  stage = applyBattleRoyaleResult(stage, firstRound.id, placements);
+
+  const standings = calculateBattleRoyaleStandings(stage, roster);
+  assert.equal(standings[0].teamId, placements[1].teamId);
+  assert.equal(standings[0].placementPoints, 6);
+  assert.equal(standings[0].killPoints, 8);
+  assert.equal(standings[0].totalPoints, 14);
+  assert.equal(standings[1].teamId, placements[0].teamId);
+  assert.equal(standings[1].totalPoints, 12);
 });
 
 test("battle royale group standings rerank inside each group", () => {

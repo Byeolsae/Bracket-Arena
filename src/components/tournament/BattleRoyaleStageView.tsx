@@ -9,6 +9,8 @@ import {
   BATTLE_ROYALE_GROUP_SIZE,
   applyBattleRoyaleResult,
   calculateBattleRoyaleStandings,
+  getBattleRoyaleMatchScore,
+  getBattleRoyalePlacementPoints,
   hydrateBattleRoyaleStage,
   isBattleRoyaleRoundComplete
 } from "@/lib/core/battleRoyale";
@@ -124,8 +126,7 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
         rounds={localStage.rounds}
         teamsById={teamsById}
         chickenCounts={chickenCounts}
-        placementPoints={localStage.options.placementPoints}
-        killPoint={localStage.options.killPoint}
+        options={localStage.options}
         stageMode={localStage.options.stageMode ?? "standard"}
         onAutoFillRound={autoFillRound}
         onUpdatePlacement={updateRoundPlacement}
@@ -218,8 +219,7 @@ type BattleRoyaleLobbyTablesProps = {
   rounds: BattleRoyaleStage["rounds"];
   teamsById: Map<string, Team>;
   chickenCounts: Map<string, number>;
-  placementPoints: Record<number, number>;
-  killPoint: number;
+  options: BattleRoyaleStage["options"];
   stageMode: BattleRoyaleStage["options"]["stageMode"];
   onAutoFillRound: (roundId: string) => void;
   onUpdatePlacement: (roundId: string, teamId: string, patch: Partial<BattleRoyalePlacement>) => void;
@@ -229,8 +229,7 @@ function BattleRoyaleLobbyTables({
   rounds,
   teamsById,
   chickenCounts,
-  placementPoints,
-  killPoint,
+  options,
   stageMode,
   onAutoFillRound,
   onUpdatePlacement
@@ -336,7 +335,7 @@ function BattleRoyaleLobbyTables({
                             <PlacementSelect
                               value={placement.placement}
                               max={round.teamIds.length}
-                              placementPoints={placementPoints}
+                              options={options}
                               winner={isMatchWinner}
                               onChange={(nextPlacement) => onUpdatePlacement(round.id, teamId, { placement: nextPlacement })}
                             />
@@ -357,7 +356,7 @@ function BattleRoyaleLobbyTables({
                             className={clsx("px-2 py-2", isMatchWinner && "border-y border-r border-lime/70 text-lime")}
                           >
                             <LobbyScoreCell
-                              value={getBattleRoyalePlacementScore(placement, placementPoints, killPoint)}
+                              value={getBattleRoyaleMatchScore(options, placement)}
                               winner={isMatchWinner}
                             />
                           </td>
@@ -450,13 +449,13 @@ function swapPlacement(
 function PlacementSelect({
   value,
   max,
-  placementPoints,
+  options,
   winner,
   onChange
 }: {
   value: number;
   max: number;
-  placementPoints: Record<number, number>;
+  options: BattleRoyaleStage["options"];
   winner?: boolean;
   onChange: (value: number) => void;
 }) {
@@ -471,7 +470,7 @@ function PlacementSelect({
     >
       {Array.from({ length: max }, (_, index) => index + 1).map((placement) => (
         <option key={placement} value={placement}>
-          {placement}등 ({getPlacementPoint(placement, placementPoints)}점)
+          {placement}등 ({getBattleRoyalePlacementPoints(options, placement)}점)
         </option>
       ))}
     </select>
@@ -529,16 +528,4 @@ function ChickenBadge({ count }: { count: number }) {
       치킨 {count}
     </span>
   );
-}
-
-function getBattleRoyalePlacementScore(
-  placement: BattleRoyalePlacement,
-  placementPoints: Record<number, number>,
-  killPoint: number
-) {
-  return getPlacementPoint(placement.placement, placementPoints) + placement.kills * killPoint;
-}
-
-function getPlacementPoint(placement: number, placementPoints: Record<number, number>) {
-  return placementPoints[placement] ?? 0;
 }
