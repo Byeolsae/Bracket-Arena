@@ -3,14 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import { Dices } from "lucide-react";
-import type { BattleRoyalePlacement, BattleRoyaleStage, BattleRoyaleStanding, Team } from "@/lib/core/models";
+import type { BattleRoyalePlacement, BattleRoyaleStage, Team } from "@/lib/core/models";
 import {
-  BATTLE_ROYALE_GROUP_NAMES,
-  BATTLE_ROYALE_GROUP_SIZE,
   applyBattleRoyaleResult,
-  calculateBattleRoyaleStandings,
-  getBattleRoyaleMatchScore,
-  getBattleRoyalePlacementPoints,
   hydrateBattleRoyaleStage,
   isBattleRoyaleRoundComplete
 } from "@/lib/core/battleRoyale";
@@ -29,21 +24,6 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
   const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
   const chickenCounts = useMemo(() => getChickenCounts(localStage), [localStage]);
   const isQualifier = localStage.options.stageMode === "qualifier";
-  const qualifierGroupTables = useMemo(() => {
-    if (!isQualifier) return [];
-    const groupNames = localStage.options.groupNames?.length ? localStage.options.groupNames : BATTLE_ROYALE_GROUP_NAMES;
-    const groupTeamIds = getQualifierGroupTeamIds(localStage);
-
-    return groupNames.map((groupName, groupIndex) => {
-      const groupTeams = (groupTeamIds[groupIndex] ?? [])
-        .map((teamId) => teamsById.get(teamId))
-        .filter((team): team is Team => Boolean(team));
-      return {
-        groupName,
-        standings: calculateBattleRoyaleStandings(localStage, groupTeams)
-      };
-    });
-  }, [isQualifier, localStage, teamsById]);
 
   useEffect(() => {
     const hydratedStage = hydrateBattleRoyaleStage(stage);
@@ -101,8 +81,8 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
         {isQualifier
           ? `배틀로얄 예선: 24팀, A/B/C 3개 조, 조별 8팀. 각 조는 다른 두 조와 ${localStage.options.matchesPerPair ?? localStage.options.roundCount}경기씩 만납니다.`
           : localStage.options.stageMode === "final"
-            ? `배틀로얄 본선: 16팀 단일 로비, ${localStage.options.roundCount}경기 누적 점수로 최종 순위를 결정합니다.`
-            : "배틀로얄 누적 점수로 순위를 결정합니다."}
+            ? `배틀로얄 본선: 16팀 단일 로비, ${localStage.options.roundCount}경기를 기록합니다.`
+            : "배틀로얄 경기 결과를 기록합니다."}
       </div>
 
       {localStage.warnings.length ? (
@@ -126,91 +106,10 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
         rounds={localStage.rounds}
         teamsById={teamsById}
         chickenCounts={chickenCounts}
-        options={localStage.options}
         stageMode={localStage.options.stageMode ?? "standard"}
         onAutoFillRound={autoFillRound}
         onUpdatePlacement={updateRoundPlacement}
       />
-
-      {isQualifier ? (
-        <BattleRoyaleGroupSummaryTables
-          groups={qualifierGroupTables}
-          teamsById={teamsById}
-          chickenCounts={chickenCounts}
-        />
-      ) : null}
-    </section>
-  );
-}
-
-type BattleRoyaleGroupSummary = {
-  groupName: string;
-  standings: BattleRoyaleStanding[];
-};
-
-type BattleRoyaleGroupSummaryTablesProps = {
-  groups: BattleRoyaleGroupSummary[];
-  teamsById: Map<string, Team>;
-  chickenCounts: Map<string, number>;
-};
-
-function BattleRoyaleGroupSummaryTables({
-  groups,
-  teamsById,
-  chickenCounts
-}: BattleRoyaleGroupSummaryTablesProps) {
-  return (
-    <section className="space-y-4">
-      <div>
-        <p className="section-kicker">그룹 합산</p>
-        <h2 className="text-xl font-black uppercase tracking-wide text-ink">A/B/C 그룹 합산 테이블</h2>
-        <p className="mt-1 text-sm font-semibold text-muted">
-          AB, AC, BC 로비에 입력한 점수를 조별로 합산합니다. 총점이 높은 팀이 높은 순위로 표시됩니다.
-        </p>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-3">
-        {groups.map((group) => (
-          <section key={group.groupName} className="space-y-2">
-            <h3 className="text-lg font-black uppercase text-ink">{group.groupName} 합산 테이블</h3>
-            <div className="overflow-x-auto rounded-md border border-line bg-panel">
-              <table className="w-full min-w-[620px] border-collapse text-sm">
-                <thead className="bg-arena text-xs uppercase text-slate-400">
-                  <tr>
-                    <th className="px-3 py-3 text-left font-black">순위</th>
-                    <th className="px-3 py-3 text-left font-black">팀</th>
-                    <th className="px-3 py-3 text-center font-black">라운드</th>
-                    <th className="px-3 py-3 text-center font-black">순위점수</th>
-                    <th className="px-3 py-3 text-center font-black">킬점수</th>
-                    <th className="px-3 py-3 text-center font-black">총점</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {group.standings.map((standing) => {
-                    const team = teamsById.get(standing.teamId);
-                    return (
-                      <tr key={standing.teamId} className="border-t border-line text-ink">
-                        <td className="px-3 py-3 font-black text-cyan">#{standing.rank}</td>
-                        <td className="px-3 py-3">
-                          <div className="flex items-center gap-3">
-                            <TeamLogo team={team} size="sm" highlighted={(chickenCounts.get(standing.teamId) ?? 0) > 0} />
-                            <span className="font-black uppercase">{team?.shortName || team?.name || "미정"}</span>
-                            <ChickenBadge count={chickenCounts.get(standing.teamId) ?? 0} />
-                          </div>
-                        </td>
-                        <td className="px-3 py-3 text-center font-bold">{standing.roundsPlayed}</td>
-                        <td className="px-3 py-3 text-center font-bold">{standing.placementPoints}</td>
-                        <td className="px-3 py-3 text-center font-bold">{standing.killPoints}</td>
-                        <td className="px-3 py-3 text-center font-black text-gold">{standing.totalPoints}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        ))}
-      </div>
     </section>
   );
 }
@@ -219,7 +118,6 @@ type BattleRoyaleLobbyTablesProps = {
   rounds: BattleRoyaleStage["rounds"];
   teamsById: Map<string, Team>;
   chickenCounts: Map<string, number>;
-  options: BattleRoyaleStage["options"];
   stageMode: BattleRoyaleStage["options"]["stageMode"];
   onAutoFillRound: (roundId: string) => void;
   onUpdatePlacement: (roundId: string, teamId: string, patch: Partial<BattleRoyalePlacement>) => void;
@@ -229,7 +127,6 @@ function BattleRoyaleLobbyTables({
   rounds,
   teamsById,
   chickenCounts,
-  options,
   stageMode,
   onAutoFillRound,
   onUpdatePlacement
@@ -254,7 +151,7 @@ function BattleRoyaleLobbyTables({
       <div>
         <p className="section-kicker">{isQualifier ? "예선 로비 입력" : "본선 로비 입력"}</p>
         <h2 className="text-xl font-black uppercase tracking-wide text-ink">
-          {isQualifier ? "AB / AC / BC 점수 입력 테이블" : "결승 로비 점수 입력 테이블"}
+          {isQualifier ? "AB / AC / BC 순위/킬 입력 테이블" : "결승 로비 순위/킬 입력 테이블"}
         </h2>
         <p className="mt-1 text-sm font-semibold text-muted">
           각 로비는 16팀이 동시에 경기합니다. 팀별로 경기마다 순위와 킬을 입력하세요.
@@ -285,12 +182,12 @@ function BattleRoyaleLobbyTables({
           </div>
 
           <div className="overflow-x-auto rounded-md border border-line bg-panel">
-            <table className="w-full min-w-[1680px] border-collapse text-sm">
+            <table className="w-full min-w-[1440px] border-collapse text-sm">
               <thead className="bg-arena text-xs uppercase text-slate-400">
                 <tr>
                   <th className="sticky left-0 z-10 min-w-[220px] bg-arena px-3 py-3 text-left font-black">팀</th>
                   {lobby.rounds.map((round, index) => (
-                    <th key={round.id} className="border-l border-line px-3 py-3 text-center font-black" colSpan={3}>
+                    <th key={round.id} className="border-l border-line px-3 py-3 text-center font-black" colSpan={2}>
                       {index + 1}경기
                     </th>
                   ))}
@@ -299,8 +196,7 @@ function BattleRoyaleLobbyTables({
                   <th className="sticky left-0 z-10 bg-arena px-3 py-2 text-left font-black text-slate-500">로비 참가팀</th>
                   {lobby.rounds.flatMap((round) => [
                     <th key={`${round.id}-placement`} className="border-l border-line px-2 py-2 text-center font-black">순위</th>,
-                    <th key={`${round.id}-kills`} className="px-2 py-2 text-center font-black">킬</th>,
-                    <th key={`${round.id}-score`} className="px-2 py-2 text-center font-black">점수</th>
+                    <th key={`${round.id}-kills`} className="px-2 py-2 text-center font-black">킬</th>
                   ])}
                 </tr>
               </thead>
@@ -335,29 +231,19 @@ function BattleRoyaleLobbyTables({
                             <PlacementSelect
                               value={placement.placement}
                               max={round.teamIds.length}
-                              options={options}
                               winner={isMatchWinner}
                               onChange={(nextPlacement) => onUpdatePlacement(round.id, teamId, { placement: nextPlacement })}
                             />
                           </td>,
                           <td
                             key={`${round.id}-${teamId}-kills`}
-                            className={clsx("px-2 py-2", isMatchWinner && "border-y border-lime/70 text-lime")}
+                            className={clsx("px-2 py-2", isMatchWinner && "border-y border-r border-lime/70 text-lime")}
                           >
                             <LobbyNumberCell
                               value={placement.kills}
                               min={0}
                               winner={isMatchWinner}
                               onChange={(kills) => onUpdatePlacement(round.id, teamId, { kills })}
-                            />
-                          </td>,
-                          <td
-                            key={`${round.id}-${teamId}-score`}
-                            className={clsx("px-2 py-2", isMatchWinner && "border-y border-r border-lime/70 text-lime")}
-                          >
-                            <LobbyScoreCell
-                              value={getBattleRoyaleMatchScore(options, placement)}
-                              winner={isMatchWinner}
                             />
                           </td>
                         ];
@@ -389,30 +275,6 @@ function getChickenCounts(stage: BattleRoyaleStage) {
     });
   });
   return counts;
-}
-
-function getQualifierGroupTeamIds(stage: BattleRoyaleStage) {
-  const sourceTeamIds = stage.rounds.flatMap((round) => round.teamIds);
-  const uniqueTeamIds = [...new Set(sourceTeamIds)];
-  const seededGroups = Array.from({ length: BATTLE_ROYALE_GROUP_NAMES.length }, (_, groupIndex) => {
-    const start = groupIndex * BATTLE_ROYALE_GROUP_SIZE;
-    return uniqueTeamIds.slice(start, start + BATTLE_ROYALE_GROUP_SIZE);
-  });
-
-  const pairRounds = stage.rounds.slice(0, 3);
-  if (pairRounds.length < 3) return seededGroups;
-
-  const groupA = intersectTeamIds(pairRounds[0].teamIds, pairRounds[1].teamIds);
-  const groupB = intersectTeamIds(pairRounds[0].teamIds, pairRounds[2].teamIds);
-  const groupC = intersectTeamIds(pairRounds[1].teamIds, pairRounds[2].teamIds);
-  const inferredGroups = [groupA, groupB, groupC];
-
-  return inferredGroups.every((group) => group.length > 0) ? inferredGroups : seededGroups;
-}
-
-function intersectTeamIds(left: string[], right: string[]) {
-  const rightTeamIds = new Set(right);
-  return left.filter((teamId) => rightTeamIds.has(teamId));
 }
 
 function getRoundPlacements(round: BattleRoyaleStage["rounds"][number]) {
@@ -449,13 +311,11 @@ function swapPlacement(
 function PlacementSelect({
   value,
   max,
-  options,
   winner,
   onChange
 }: {
   value: number;
   max: number;
-  options: BattleRoyaleStage["options"];
   winner?: boolean;
   onChange: (value: number) => void;
 }) {
@@ -470,7 +330,7 @@ function PlacementSelect({
     >
       {Array.from({ length: max }, (_, index) => index + 1).map((placement) => (
         <option key={placement} value={placement}>
-          {placement}등 ({getBattleRoyalePlacementPoints(options, placement)}점)
+          {placement}등
         </option>
       ))}
     </select>
@@ -505,19 +365,6 @@ function LobbyNumberCell({
         winner ? "border-line bg-field text-lime" : "border-line bg-field text-ink"
       )}
     />
-  );
-}
-
-function LobbyScoreCell({ value, winner }: { value: number; winner?: boolean }) {
-  return (
-    <div
-      className={clsx(
-        "flex h-8 w-16 items-center justify-center rounded-md border bg-field px-2 text-center text-xs font-black",
-        winner ? "border-line text-lime" : "border-line text-gold"
-      )}
-    >
-      {value}
-    </div>
   );
 }
 

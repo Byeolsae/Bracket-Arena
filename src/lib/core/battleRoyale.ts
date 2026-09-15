@@ -156,31 +156,6 @@ export function normalizeBattleRoyaleMatchCount(value: number | undefined) {
   return value === 6 ? 6 : 5;
 }
 
-export function getBattleRoyalePlacementPoints(options: BattleRoyaleOptions, placement: number) {
-  return getBattleRoyalePlacementPointTable(options)[placement] ?? 0;
-}
-
-export function getBattleRoyaleKillPoints(options: BattleRoyaleOptions, kills: number) {
-  return Math.max(0, Math.floor(kills || 0)) * getBattleRoyaleKillPointValue(options);
-}
-
-export function getBattleRoyaleMatchScore(options: BattleRoyaleOptions, placement: BattleRoyalePlacement) {
-  return (
-    getBattleRoyalePlacementPoints(options, placement.placement) +
-    getBattleRoyaleKillPoints(options, placement.kills)
-  );
-}
-
-export function getBattleRoyaleMatchBreakdown(options: BattleRoyaleOptions, placement: BattleRoyalePlacement) {
-  const placementPoints = getBattleRoyalePlacementPoints(options, placement.placement);
-  const killPoints = getBattleRoyaleKillPoints(options, placement.kills);
-  return {
-    placementPoints,
-    killPoints,
-    totalPoints: placementPoints + killPoints
-  };
-}
-
 export function createInitialBattleRoyalePlacements(teamIds: string[]): BattleRoyalePlacement[] {
   return teamIds.map((teamId, index) => ({
     teamId,
@@ -248,10 +223,9 @@ export function calculateBattleRoyaleStandings(
     round.placements.forEach((placement) => {
       const standing = table.get(placement.teamId);
       if (!standing) return;
-      const score = getBattleRoyaleMatchBreakdown(stage.options, placement);
       standing.roundsPlayed += 1;
-      standing.placementPoints += score.placementPoints;
-      standing.killPoints += score.killPoints;
+      standing.placementPoints += stage.options.placementPoints[placement.placement] ?? 0;
+      standing.killPoints += placement.kills * stage.options.killPoint;
       standing.bonusPoints += placement.bonusPoints ?? 0;
       standing.penaltyPoints += placement.penaltyPoints ?? 0;
     });
@@ -314,16 +288,6 @@ function hasEnteredBattleRoyaleResult(teamIds: string[], placements: BattleRoyal
 
 function getBattleRoyaleTotalPoints(placementPoints: number, killPoints: number) {
   return placementPoints + killPoints;
-}
-
-function getBattleRoyalePlacementPointTable(options: BattleRoyaleOptions) {
-  return options.placementPoints ?? defaultPlacementPoints;
-}
-
-function getBattleRoyaleKillPointValue(options: BattleRoyaleOptions) {
-  return typeof options.killPoint === "number" && Number.isFinite(options.killPoint)
-    ? options.killPoint
-    : defaultBattleRoyaleOptions.killPoint;
 }
 
 export function getBattleRoyaleAdvancingTeams(
