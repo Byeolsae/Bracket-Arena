@@ -6,6 +6,7 @@ import { TeamLogo } from "@/components/teams/TeamLogo";
 import type { Team, TeamFolder } from "@/lib/core/models";
 import {
   BATTLE_ROYALE_FINAL_TEAM_COUNT,
+  BATTLE_ROYALE_GROUP_COUNT,
   BATTLE_ROYALE_GROUP_SIZE,
   BATTLE_ROYALE_QUALIFIER_TEAM_COUNT,
   normalizeBattleRoyaleMatchCount
@@ -102,6 +103,17 @@ function getGroupShape(teamCount: number, teamsPerGroup: number) {
     potCount: Math.min(safeTeamsPerGroup, safeTeamCount),
     groupCount: Math.max(1, Math.ceil(safeTeamCount / safeTeamsPerGroup))
   };
+}
+
+function getFixedQualifierGroupShape(format: StageFormat, teamCount: number, teamsPerGroup: number) {
+  if (format === "battle_royale") {
+    return {
+      potCount: BATTLE_ROYALE_GROUP_SIZE,
+      groupCount: BATTLE_ROYALE_GROUP_COUNT
+    };
+  }
+
+  return getGroupShape(teamCount, teamsPerGroup);
 }
 
 function getFixedQualifierTeamsPerGroup(format: StageFormat) {
@@ -270,8 +282,13 @@ export default function DrawPage() {
   const fixedQualifierTeamsPerGroup = canUseGroupDraw ? getFixedQualifierTeamsPerGroup(qualifierFormat) : undefined;
   const usesFixedQualifierGroups = drawType === "group" && canUseGroupDraw && Boolean(fixedQualifierTeamsPerGroup);
   const usesRegularGroupCount = drawType === "group" && canUseGroupDraw && !fixedQualifierTeamsPerGroup;
-  const safePotCount = Math.max(1, Math.min(potCount, Math.max(1, selectedTeams.length || 1)));
-  const safeGroupCount = Math.max(1, Math.min(groupCount, Math.max(1, selectedTeams.length || 1)));
+  const usesBattleRoyaleGroupDraw = drawType === "group" && tournamentMode === "two-stage" && qualifierFormat === "battle_royale";
+  const safePotCount = usesBattleRoyaleGroupDraw
+    ? BATTLE_ROYALE_GROUP_SIZE
+    : Math.max(1, Math.min(potCount, Math.max(1, selectedTeams.length || 1)));
+  const safeGroupCount = usesBattleRoyaleGroupDraw
+    ? BATTLE_ROYALE_GROUP_COUNT
+    : Math.max(1, Math.min(groupCount, Math.max(1, selectedTeams.length || 1)));
   const estimatedTeamsPerGroup = Math.max(1, Math.ceil(Math.max(1, selectedTeams.length || teams.length || 1) / safeGroupCount));
   const safeTeamsPerGroup = Math.max(
     1,
@@ -338,18 +355,19 @@ export default function DrawPage() {
       resetDraw();
       setDrawType("group");
     }
-    setGroupCount(3);
+    setGroupCount(BATTLE_ROYALE_GROUP_COUNT);
+    setPotCount(BATTLE_ROYALE_GROUP_SIZE);
   }, [drawType, qualifierFormat, tournamentMode]);
 
   useEffect(() => {
     if (drawType !== "group" || !canUseGroupDraw) return;
     const shape = fixedQualifierTeamsPerGroup
-      ? getGroupShape(selectedTeams.length, fixedQualifierTeamsPerGroup)
+      ? getFixedQualifierGroupShape(qualifierFormat, selectedTeams.length, fixedQualifierTeamsPerGroup)
       : getGroupShapeFromGroupCount(selectedTeams.length, groupCount);
     setPotCount(shape.potCount);
     setGroupCount(shape.groupCount);
     setPotAssignments(makePotAssignments(selectedTeams, shape.potCount));
-  }, [canUseGroupDraw, drawType, fixedQualifierTeamsPerGroup, groupCount, selectedTeams]);
+  }, [canUseGroupDraw, drawType, fixedQualifierTeamsPerGroup, groupCount, qualifierFormat, selectedTeams]);
 
   useEffect(() => {
     setManualSeedAssignments((current) => makeSeedAssignments(selectedTeamIds, current));
