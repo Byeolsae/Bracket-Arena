@@ -56,24 +56,26 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
     setLocalStage(stage);
   }, [stage]);
 
-  const updateStage = (nextStage: BattleRoyaleStage) => {
-    setLocalStage(nextStage);
-    onChange?.(nextStage);
-  };
-
-  const updateScoringMode = (scoringMode: NonNullable<BattleRoyaleStage["options"]["scoringMode"]>) => {
-    updateStage({
-      ...localStage,
-      options: {
-        ...localStage.options,
-        scoringMode
-      }
+  const updateStage = (updater: BattleRoyaleStage | ((current: BattleRoyaleStage) => BattleRoyaleStage)) => {
+    setLocalStage((current) => {
+      const nextStage = typeof updater === "function" ? updater(current) : updater;
+      onChange?.(nextStage);
+      return nextStage;
     });
   };
 
+  const updateScoringMode = (scoringMode: NonNullable<BattleRoyaleStage["options"]["scoringMode"]>) => {
+    updateStage((current) => ({
+      ...current,
+      options: {
+        ...current.options,
+        scoringMode
+      }
+    }));
+  };
+
   const saveRound = (roundId: string, placements: BattleRoyalePlacement[]) => {
-    const nextStage = applyBattleRoyaleResult(localStage, roundId, placements);
-    updateStage(nextStage);
+    updateStage((current) => applyBattleRoyaleResult(current, roundId, placements));
   };
 
   const updateRoundPlacement = (
@@ -81,12 +83,14 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
     teamId: string,
     patch: Partial<BattleRoyalePlacement>
   ) => {
-    const round = localStage.rounds.find((item) => item.id === roundId);
-    if (!round) return;
-    const placements = getRoundPlacements(round).map((placement) =>
-      placement.teamId === teamId ? { ...placement, ...patch } : placement
-    );
-    saveRound(roundId, placements);
+    updateStage((current) => {
+      const round = current.rounds.find((item) => item.id === roundId);
+      if (!round) return current;
+      const placements = getRoundPlacements(round).map((placement) =>
+        placement.teamId === teamId ? { ...placement, ...patch } : placement
+      );
+      return applyBattleRoyaleResult(current, roundId, placements);
+    });
   };
 
   const autoFillRound = (roundId: string) => {
@@ -96,11 +100,10 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
   };
 
   const autoFillAll = () => {
-    const nextStage = localStage.rounds.reduce(
+    updateStage((current) => current.rounds.reduce(
       (stage, round) => applyBattleRoyaleResult(stage, round.id, createRandomBattleRoyalePlacements(round.teamIds)),
-      localStage
-    );
-    updateStage(nextStage);
+      current
+    ));
   };
 
   return (

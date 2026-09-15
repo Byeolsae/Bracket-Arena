@@ -15,10 +15,27 @@ export function createRandomHeadToHeadScore(options: { allowDraw?: boolean; maxS
 }
 
 export function createRandomBattleRoyalePlacements(teamIds: string[]): BattleRoyalePlacement[] {
-  return shuffle(teamIds).map((teamId, index) => ({
+  const orderedTeamIds = shuffle(teamIds);
+  const killsByTeamId = new Map(orderedTeamIds.map((teamId) => [teamId, 0]));
+
+  orderedTeamIds.forEach((eliminatedTeamId, eliminatedIndex) => {
+    if (eliminatedIndex === orderedTeamIds.length - 1) return;
+    if (Math.random() < 0.08) return;
+
+    const killerCandidates = orderedTeamIds.slice(eliminatedIndex + 1);
+    const killerTeamId = weightedPick(killerCandidates, (teamId) => {
+      const placement = orderedTeamIds.indexOf(teamId) + 1;
+      const survivalWeight = Math.max(1, orderedTeamIds.length + 1 - placement);
+      const volatility = 0.65 + Math.random() * 1.35;
+      return Math.pow(survivalWeight, 1.15) * volatility;
+    });
+    killsByTeamId.set(killerTeamId, (killsByTeamId.get(killerTeamId) ?? 0) + 1);
+  });
+
+  return orderedTeamIds.map((teamId, index) => ({
     teamId,
     placement: index + 1,
-    kills: randomInt(0, 12),
+    kills: killsByTeamId.get(teamId) ?? 0,
     bonusPoints: 0,
     penaltyPoints: 0
   }));
@@ -37,4 +54,17 @@ function shuffle<T>(items: T[]): T[] {
   }
 
   return next;
+}
+
+function weightedPick<T>(items: T[], getWeight: (item: T) => number): T {
+  const weights = items.map((item) => Math.max(0.01, getWeight(item)));
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+  let cursor = Math.random() * totalWeight;
+
+  for (let index = 0; index < items.length; index += 1) {
+    cursor -= weights[index];
+    if (cursor <= 0) return items[index];
+  }
+
+  return items.at(-1) ?? items[0];
 }
