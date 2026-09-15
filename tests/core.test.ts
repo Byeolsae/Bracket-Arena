@@ -1204,3 +1204,32 @@ test("battle royale group standings rerank inside each group", () => {
   assert.equal(cGroupStandings[0].teamId, "team-24");
   assert.equal(cGroupStandings[0].rank, 1);
 });
+
+test("battle royale standings count entered legacy rounds without complete flags", () => {
+  const roster = teams(24);
+  const stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
+  const firstRound = stage.rounds[0];
+  const legacyStage = {
+    ...stage,
+    rounds: stage.rounds.map((round) =>
+      round.id === firstRound.id
+        ? {
+            ...round,
+            isComplete: false,
+            placements: round.teamIds.map((teamId, index) => ({
+              teamId,
+              placement: index + 1,
+              kills: teamId === "team-16" ? 50 : 0,
+              bonusPoints: 0,
+              penaltyPoints: 0
+            }))
+          }
+        : round
+    )
+  };
+
+  const standings = calculateBattleRoyaleStandings(legacyStage, roster);
+  assert.equal(standings[0].teamId, "team-16");
+  assert.equal(standings[0].totalPoints, 50);
+  assert.equal(standings[0].roundsPlayed, 1);
+});

@@ -9,7 +9,8 @@ import {
   BATTLE_ROYALE_GROUP_NAMES,
   BATTLE_ROYALE_GROUP_SIZE,
   calculateBattleRoyaleStandings,
-  hydrateBattleRoyaleStage
+  hydrateBattleRoyaleStage,
+  isBattleRoyaleRoundComplete
 } from "@/lib/core/battleRoyale";
 import { createRandomBattleRoyalePlacements } from "@/lib/core/randomResults";
 import { TeamLogo } from "@/components/teams/TeamLogo";
@@ -332,7 +333,7 @@ function QualifierLobbyTables({
                 {lobby.teamIds.map((teamId) => {
                   const team = teamsById.get(teamId);
                   const hasLobbyWin = lobby.rounds.some(
-                    (round) => isRoundComplete(round) && getRoundPlacement(round, teamId).placement === 1
+                    (round) => isBattleRoyaleRoundComplete(round) && getRoundPlacement(round, teamId).placement === 1
                   );
                   return (
                     <tr key={teamId} className="border-t border-line text-ink">
@@ -345,11 +346,16 @@ function QualifierLobbyTables({
                       </td>
                       {lobby.rounds.flatMap((round) => {
                         const placement = getRoundPlacement(round, teamId);
-                        const isMatchWinner = isRoundComplete(round) && placement.placement === 1;
+                        const isMatchWinner = isBattleRoyaleRoundComplete(round) && placement.placement === 1;
                         return [
                           <td
                             key={`${round.id}-${teamId}-placement`}
-                            className={clsx("border-l px-2 py-2", isMatchWinner ? "border-lime/70 text-lime" : "border-line")}
+                            className={clsx(
+                              "border-l px-2 py-2",
+                              isMatchWinner
+                                ? "border-lime/70 text-lime ring-1 ring-inset ring-lime/70"
+                                : "border-line"
+                            )}
                           >
                             <PlacementSelect
                               value={placement.placement}
@@ -360,7 +366,7 @@ function QualifierLobbyTables({
                           </td>,
                           <td
                             key={`${round.id}-${teamId}-kills`}
-                            className={clsx("px-2 py-2", isMatchWinner && "text-lime")}
+                            className={clsx("px-2 py-2", isMatchWinner && "text-lime ring-1 ring-inset ring-lime/70")}
                           >
                             <LobbyNumberCell
                               value={placement.kills}
@@ -407,17 +413,13 @@ function intersectTeamIds(left: string[], right: string[]) {
 function getChickenCounts(stage: BattleRoyaleStage) {
   const counts = new Map<string, number>();
   stage.rounds.forEach((round) => {
-    if (!isRoundComplete(round)) return;
+    if (!isBattleRoyaleRoundComplete(round)) return;
     round.placements.forEach((placement) => {
       if (placement.placement !== 1) return;
       counts.set(placement.teamId, (counts.get(placement.teamId) ?? 0) + 1);
     });
   });
   return counts;
-}
-
-function isRoundComplete(round: BattleRoyaleStage["rounds"][number]) {
-  return round.isComplete ?? round.placements.length > 0;
 }
 
 function getRoundPlacements(round: BattleRoyaleStage["rounds"][number]) {

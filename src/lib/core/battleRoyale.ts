@@ -170,12 +170,18 @@ export function createInitialBattleRoyalePlacements(teamIds: string[]): BattleRo
 export function hydrateBattleRoyaleStage(stage: BattleRoyaleStage): BattleRoyaleStage {
   let changed = false;
   const rounds = stage.rounds.map((round) => {
-    if (round.placements.length === round.teamIds.length) return round;
+    const placements =
+      round.placements.length === round.teamIds.length
+        ? round.placements
+        : mergeBattleRoyalePlacements(round.teamIds, round.placements);
+    const inferredComplete = round.isComplete === true || hasEnteredBattleRoyaleResult(round.teamIds, placements);
+
+    if (round.placements === placements && round.isComplete === inferredComplete) return round;
     changed = true;
     return {
       ...round,
-      placements: mergeBattleRoyalePlacements(round.teamIds, round.placements),
-      isComplete: round.isComplete ?? round.placements.length > 0
+      placements,
+      isComplete: inferredComplete
     };
   });
 
@@ -244,8 +250,8 @@ export function rankBattleRoyaleStandings(standings: BattleRoyaleStanding[]) {
     .map((standing, index) => ({ ...standing, rank: index + 1 }));
 }
 
-function isBattleRoyaleRoundComplete(round: BattleRoyaleStage["rounds"][number]) {
-  return round.isComplete ?? round.placements.length > 0;
+export function isBattleRoyaleRoundComplete(round: BattleRoyaleStage["rounds"][number]) {
+  return round.isComplete === true || hasEnteredBattleRoyaleResult(round.teamIds, round.placements);
 }
 
 export function compareBattleRoyaleStandings(left: BattleRoyaleStanding, right: BattleRoyaleStanding) {
@@ -269,6 +275,20 @@ function mergeBattleRoyalePlacements(teamIds: string[], placements: BattleRoyale
       penaltyPoints: 0
     }
   ));
+}
+
+function hasEnteredBattleRoyaleResult(teamIds: string[], placements: BattleRoyalePlacement[]) {
+  if (!placements.length) return false;
+  const defaultPlacementByTeamId = new Map(teamIds.map((teamId, index) => [teamId, index + 1]));
+  return placements.some((placement) => {
+    const defaultPlacement = defaultPlacementByTeamId.get(placement.teamId);
+    return (
+      placement.placement !== defaultPlacement ||
+      placement.kills > 0 ||
+      Boolean(placement.bonusPoints) ||
+      Boolean(placement.penaltyPoints)
+    );
+  });
 }
 
 function getBattleRoyaleTotalPoints(

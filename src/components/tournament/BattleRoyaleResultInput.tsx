@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import clsx from "clsx";
 import type { BattleRoyalePlacement, BattleRoyaleRound, Team } from "@/lib/core/models";
+import { isBattleRoyaleRoundComplete } from "@/lib/core/battleRoyale";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 
 type BattleRoyaleResultInputProps = {
@@ -43,7 +44,7 @@ export function BattleRoyaleResultInput({
         <tbody>
           {placements.map((placement) => {
             const team = teamsById.get(placement.teamId);
-            const isMatchWinner = isRoundComplete(round) && placement.placement === 1;
+            const isMatchWinner = isBattleRoyaleRoundComplete(round) && placement.placement === 1;
             return (
               <tr key={placement.teamId} className={clsx("border-t text-ink", isMatchWinner ? "border-lime/70" : "border-line")}>
                 <td className="px-3 py-3">
@@ -76,10 +77,6 @@ export function BattleRoyaleResultInput({
       </div>
     </div>
   );
-}
-
-function isRoundComplete(round: BattleRoyaleRound) {
-  return round.isComplete ?? round.placements.length > 0;
 }
 
 function getRoundPlacements(round: BattleRoyaleRound) {
