@@ -50,6 +50,11 @@ const qualifierStageOptions: StageFormat[] = [
 ];
 const finalStageOptions: StageFormat[] = ["single", "double", "triple", "stepladder", "battle_royale"];
 const qualifierFinalOptions: Partial<Record<StageFormat, StageFormat[]>> = {
+  league: ["single", "double", "triple", "stepladder"],
+  group: ["single", "double", "triple", "stepladder"],
+  group_double_elimination: ["single", "double", "triple", "stepladder"],
+  group_triple_elimination: ["single", "double", "triple", "stepladder"],
+  swiss: ["single", "double", "triple", "stepladder"],
   battle_royale: ["battle_royale"]
 };
 const doubleEliminationCounts = [4, 8, 16];
@@ -289,8 +294,8 @@ export default function DrawPage() {
       ? finalStageOptions
       : finalStageOptions;
   const disabledFinalOptions =
-    tournamentMode === "two-stage" && qualifierFormat === "battle_royale"
-      ? finalStageOptions.filter((option) => option !== "battle_royale")
+    tournamentMode === "two-stage"
+      ? finalStageOptions.filter((option) => !(qualifierFinalOptions[qualifierFormat] ?? finalStageOptions).includes(option))
       : [];
   const projectedFinalTeamCount =
     tournamentMode === "final-only"
@@ -743,6 +748,8 @@ export default function DrawPage() {
                 getDisabledReason={(option) =>
                   qualifierFormat === "battle_royale" && option !== "battle_royale"
                     ? "배틀로얄 예선은 배틀로얄 본선으로만 연결됩니다."
+                    : qualifierFormat !== "battle_royale" && option === "battle_royale"
+                      ? "배틀로얄 본선은 배틀로얄 예선에서만 연결됩니다."
                     : undefined
                 }
                 onChange={setFinalFormat}
