@@ -42,7 +42,7 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
       const groupStandings = groupTeamIds
         .map((teamId) => standingsByTeamId.get(teamId))
         .filter((standing): standing is BattleRoyaleStanding => Boolean(standing))
-        .sort((a, b) => b.totalPoints - a.totalPoints || b.killPoints - a.killPoints)
+        .sort(compareBattleRoyaleStandings)
         .map((standing, index) => ({ ...standing, rank: index + 1 }));
 
       return {
@@ -489,4 +489,14 @@ function getPlacementPointLabel(placement: number) {
   if (placement === 6) return 2;
   if (placement === 7 || placement === 8) return 1;
   return 0;
+}
+
+function compareBattleRoyaleStandings(left: BattleRoyaleStanding, right: BattleRoyaleStanding) {
+  return (
+    right.totalPoints - left.totalPoints ||
+    right.killPoints - left.killPoints ||
+    right.placementPoints - left.placementPoints ||
+    left.roundsPlayed - right.roundsPlayed ||
+    left.teamId.localeCompare(right.teamId)
+  );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import clsx from "clsx";
+import { useMemo } from "react";
 import type { BattleRoyaleStanding, Team } from "@/lib/core/models";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 
@@ -17,6 +18,14 @@ export function BattleRoyaleStandingsTable({
   advanceCount = 0,
   compact = false
 }: BattleRoyaleStandingsTableProps) {
+  const orderedStandings = useMemo(
+    () =>
+      [...standings]
+        .sort(compareBattleRoyaleStandings)
+        .map((standing, index) => ({ ...standing, rank: index + 1 })),
+    [standings]
+  );
+
   return (
     <div className="overflow-x-auto rounded-md border border-line bg-panel">
       <table className={clsx("w-full border-collapse text-sm", compact ? "min-w-[560px]" : "min-w-[820px]")}>
@@ -30,7 +39,7 @@ export function BattleRoyaleStandingsTable({
           </tr>
         </thead>
         <tbody>
-          {standings.map((standing) => {
+          {orderedStandings.map((standing) => {
             const team = teamsById.get(standing.teamId);
             const isAdvancing = standing.rank <= advanceCount;
             return (
@@ -55,5 +64,15 @@ export function BattleRoyaleStandingsTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+function compareBattleRoyaleStandings(left: BattleRoyaleStanding, right: BattleRoyaleStanding) {
+  return (
+    right.totalPoints - left.totalPoints ||
+    right.killPoints - left.killPoints ||
+    right.placementPoints - left.placementPoints ||
+    left.roundsPlayed - right.roundsPlayed ||
+    left.teamId.localeCompare(right.teamId)
   );
 }

@@ -203,8 +203,18 @@ export function calculateBattleRoyaleStandings(
   });
 
   return [...table.values()]
-    .sort((a, b) => b.totalPoints - a.totalPoints || b.killPoints - a.killPoints)
+    .sort(compareBattleRoyaleStandings)
     .map((standing, index) => ({ ...standing, rank: index + 1 }));
+}
+
+function compareBattleRoyaleStandings(left: BattleRoyaleStanding, right: BattleRoyaleStanding) {
+  return (
+    right.totalPoints - left.totalPoints ||
+    right.killPoints - left.killPoints ||
+    right.placementPoints - left.placementPoints ||
+    left.roundsPlayed - right.roundsPlayed ||
+    left.teamId.localeCompare(right.teamId)
+  );
 }
 
 function getCompleteRoundPlacements(teamIds: string[], placements: BattleRoyalePlacement[]) {
