@@ -186,7 +186,7 @@ export function calculateBattleRoyaleStandings(
   );
 
   stage.rounds.forEach((round) => {
-    round.placements.forEach((placement) => {
+    getCompleteRoundPlacements(round.teamIds, round.placements).forEach((placement) => {
       const standing = table.get(placement.teamId);
       if (!standing) return;
       standing.roundsPlayed += 1;
@@ -205,6 +205,19 @@ export function calculateBattleRoyaleStandings(
   return [...table.values()]
     .sort((a, b) => b.totalPoints - a.totalPoints || b.killPoints - a.killPoints)
     .map((standing, index) => ({ ...standing, rank: index + 1 }));
+}
+
+function getCompleteRoundPlacements(teamIds: string[], placements: BattleRoyalePlacement[]) {
+  const placementsByTeamId = new Map(placements.map((placement) => [placement.teamId, placement]));
+  return teamIds.map((teamId, index) => (
+    placementsByTeamId.get(teamId) ?? {
+      teamId,
+      placement: index + 1,
+      kills: 0,
+      bonusPoints: 0,
+      penaltyPoints: 0
+    }
+  ));
 }
 
 function getBattleRoyaleTotalPoints(

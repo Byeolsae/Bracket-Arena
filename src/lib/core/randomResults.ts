@@ -28,7 +28,7 @@ export function createRandomBattleRoyalePlacements(teamIds: string[]): BattleRoy
 }
 
 function createBattleRoyaleKillDistribution(teamIdsByPlacement: string[]) {
-  const maxKills = Math.min(63, teamIdsByPlacement.length * 4);
+  const maxKills = Math.min(64, teamIdsByPlacement.length * 4);
   const totalKills = Math.min(maxKills, Math.max(18, Math.round(randomNormal(45, 8))));
   const killsByTeamId = new Map(teamIdsByPlacement.map((teamId) => [teamId, 0]));
 
