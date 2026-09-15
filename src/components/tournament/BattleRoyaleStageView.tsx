@@ -11,7 +11,6 @@ import {
 } from "@/lib/core/battleRoyale";
 import { createRandomBattleRoyalePlacements } from "@/lib/core/randomResults";
 import { TeamLogo } from "@/components/teams/TeamLogo";
-import { BattleRoyaleResultInput } from "@/components/tournament/BattleRoyaleResultInput";
 
 type BattleRoyaleStageViewProps = {
   stage: BattleRoyaleStage;
@@ -103,65 +102,35 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
         </button>
       </div>
 
-      {isQualifier ? (
-        <QualifierLobbyTables
-          rounds={localStage.rounds}
-          teamsById={teamsById}
-          chickenCounts={chickenCounts}
-          onAutoFillRound={autoFillRound}
-          onUpdatePlacement={updateRoundPlacement}
-        />
-      ) : (
-        <div className="grid gap-5 xl:grid-cols-2">
-          {localStage.rounds.map((round) => (
-            <section key={round.id} className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-black uppercase text-ink">
-                  {round.groupName ?? `${round.round}라운드`}
-                </h3>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black uppercase text-slate-500">
-                    {round.teamIds.length}팀
-                  </span>
-                  <button
-                    type="button"
-                    className="grid h-8 w-8 place-items-center rounded border border-line bg-field text-muted transition hover:border-cyan hover:text-cyan"
-                    onClick={() => autoFillRound(round.id)}
-                    title="이 라운드 자동 결과"
-                  >
-                    <Dices className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                </div>
-              </div>
-              <BattleRoyaleResultInput
-                round={round}
-                teamsById={teamsById}
-                chickenCounts={chickenCounts}
-                onSave={(placements) => saveRound(round.id, placements)}
-              />
-            </section>
-          ))}
-        </div>
-      )}
+      <BattleRoyaleLobbyTables
+        rounds={localStage.rounds}
+        teamsById={teamsById}
+        chickenCounts={chickenCounts}
+        stageMode={localStage.options.stageMode ?? "standard"}
+        onAutoFillRound={autoFillRound}
+        onUpdatePlacement={updateRoundPlacement}
+      />
     </section>
   );
 }
 
-type QualifierLobbyTablesProps = {
+type BattleRoyaleLobbyTablesProps = {
   rounds: BattleRoyaleStage["rounds"];
   teamsById: Map<string, Team>;
   chickenCounts: Map<string, number>;
+  stageMode: BattleRoyaleStage["options"]["stageMode"];
   onAutoFillRound: (roundId: string) => void;
   onUpdatePlacement: (roundId: string, teamId: string, patch: Partial<BattleRoyalePlacement>) => void;
 };
 
-function QualifierLobbyTables({
+function BattleRoyaleLobbyTables({
   rounds,
   teamsById,
   chickenCounts,
+  stageMode,
   onAutoFillRound,
   onUpdatePlacement
-}: QualifierLobbyTablesProps) {
+}: BattleRoyaleLobbyTablesProps) {
   const lobbies = useMemo(() => {
     const lobbyMap = new Map<string, BattleRoyaleStage["rounds"]>();
     rounds.forEach((round) => {
@@ -175,12 +144,15 @@ function QualifierLobbyTables({
       teamIds: lobbyRounds[0]?.teamIds ?? []
     }));
   }, [rounds]);
+  const isQualifier = stageMode === "qualifier";
 
   return (
     <section className="space-y-5">
       <div>
-        <p className="section-kicker">예선 로비 입력</p>
-        <h2 className="text-xl font-black uppercase tracking-wide text-ink">AB / AC / BC 점수 입력 테이블</h2>
+        <p className="section-kicker">{isQualifier ? "예선 로비 입력" : "본선 로비 입력"}</p>
+        <h2 className="text-xl font-black uppercase tracking-wide text-ink">
+          {isQualifier ? "AB / AC / BC 점수 입력 테이블" : "결승 로비 점수 입력 테이블"}
+        </h2>
         <p className="mt-1 text-sm font-semibold text-muted">
           각 로비는 16팀이 동시에 경기합니다. 팀별로 경기마다 순위와 킬을 입력하세요.
         </p>
