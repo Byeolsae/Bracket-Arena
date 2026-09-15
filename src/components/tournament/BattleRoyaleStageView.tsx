@@ -86,10 +86,14 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
     updateStage((current) => {
       const round = current.rounds.find((item) => item.id === roundId);
       if (!round) return current;
-      const placements = getRoundPlacements(round).map((placement) =>
-        placement.teamId === teamId ? { ...placement, ...patch } : placement
-      );
-      return applyBattleRoyaleResult(current, roundId, placements);
+      const placements = getRoundPlacements(round);
+      const nextPlacements =
+        typeof patch.placement === "number"
+          ? swapPlacement(placements, teamId, patch.placement)
+          : placements.map((placement) =>
+              placement.teamId === teamId ? { ...placement, ...patch } : placement
+            );
+      return applyBattleRoyaleResult(current, roundId, nextPlacements);
     });
   };
 
@@ -376,6 +380,21 @@ function getRoundPlacement(round: BattleRoyaleStage["rounds"][number], teamId: s
       penaltyPoints: 0
     }
   );
+}
+
+function swapPlacement(
+  placements: BattleRoyalePlacement[],
+  teamId: string,
+  nextPlacement: number
+) {
+  const currentPlacement = placements.find((placement) => placement.teamId === teamId);
+  if (!currentPlacement || currentPlacement.placement === nextPlacement) return placements;
+
+  return placements.map((placement) => {
+    if (placement.teamId === teamId) return { ...placement, placement: nextPlacement };
+    if (placement.placement === nextPlacement) return { ...placement, placement: currentPlacement.placement };
+    return placement;
+  });
 }
 
 function PlacementSelect({

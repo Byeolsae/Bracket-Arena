@@ -34,9 +34,10 @@ export function BattleRoyaleResultInput({
   }, [initial]);
 
   const update = (teamId: string, patch: Partial<BattleRoyalePlacement>) => {
-    setPlacements((current) =>
-      current.map((placement) => (placement.teamId === teamId ? { ...placement, ...patch } : placement))
-    );
+    setPlacements((current) => {
+      if (typeof patch.placement === "number") return swapPlacement(current, teamId, patch.placement);
+      return current.map((placement) => (placement.teamId === teamId ? { ...placement, ...patch } : placement));
+    });
   };
 
   return (
@@ -123,4 +124,19 @@ function getPlacementPointLabel(placement: number) {
   if (placement === 6) return 2;
   if (placement === 7 || placement === 8) return 1;
   return 0;
+}
+
+function swapPlacement(
+  placements: BattleRoyalePlacement[],
+  teamId: string,
+  nextPlacement: number
+) {
+  const currentPlacement = placements.find((placement) => placement.teamId === teamId);
+  if (!currentPlacement || currentPlacement.placement === nextPlacement) return placements;
+
+  return placements.map((placement) => {
+    if (placement.teamId === teamId) return { ...placement, placement: nextPlacement };
+    if (placement.placement === nextPlacement) return { ...placement, placement: currentPlacement.placement };
+    return placement;
+  });
 }
