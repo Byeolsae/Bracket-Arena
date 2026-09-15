@@ -304,6 +304,7 @@ export type BattleRoyaleRound = {
   groupName?: string;
   teamIds: string[];
   placements: BattleRoyalePlacement[];
+  isComplete?: boolean;
 };
 
 export type BattleRoyaleOptions = {

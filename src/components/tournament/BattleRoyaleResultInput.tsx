@@ -8,12 +8,14 @@ import { TeamLogo } from "@/components/teams/TeamLogo";
 type BattleRoyaleResultInputProps = {
   round: BattleRoyaleRound;
   teamsById: Map<string, Team>;
+  chickenCounts?: Map<string, number>;
   onSave: (placements: BattleRoyalePlacement[]) => void;
 };
 
 export function BattleRoyaleResultInput({
   round,
   teamsById,
+  chickenCounts,
   onSave
 }: BattleRoyaleResultInputProps) {
   const initial = useMemo(() => round.teamIds.map((teamId, index) => {
@@ -35,10 +37,12 @@ export function BattleRoyaleResultInput({
   }, [initial]);
 
   const update = (teamId: string, patch: Partial<BattleRoyalePlacement>) => {
-    setPlacements((current) => {
-      if (typeof patch.placement === "number") return swapPlacement(current, teamId, patch.placement);
-      return current.map((placement) => (placement.teamId === teamId ? { ...placement, ...patch } : placement));
-    });
+    const nextPlacements =
+      typeof patch.placement === "number"
+        ? swapPlacement(placements, teamId, patch.placement)
+        : placements.map((placement) => (placement.teamId === teamId ? { ...placement, ...patch } : placement));
+    setPlacements(nextPlacements);
+    onSave(nextPlacements);
   };
 
   return (
@@ -56,13 +60,14 @@ export function BattleRoyaleResultInput({
         <tbody>
           {placements.map((placement) => {
             const team = teamsById.get(placement.teamId);
-            const isMatchWinner = placement.placement === 1;
+            const isMatchWinner = isRoundComplete(round) && placement.placement === 1;
             return (
-              <tr key={placement.teamId} className={clsx("border-t border-line text-ink", isMatchWinner && "bg-lime/15")}>
+              <tr key={placement.teamId} className={clsx("border-t text-ink", isMatchWinner ? "border-lime/70" : "border-line")}>
                 <td className="px-3 py-3">
                   <div className="flex items-center gap-3">
-                    <TeamLogo team={team} size="sm" highlighted={isMatchWinner} useVictoryLogo={isMatchWinner} />
+                    <TeamLogo team={team} size="sm" highlighted={isMatchWinner} />
                     <span className={clsx("font-black uppercase", isMatchWinner && "text-lime")}>{team?.shortName || team?.name || "미정"}</span>
+                    <ChickenBadge count={chickenCounts?.get(placement.teamId) ?? 0} />
                   </div>
                 </td>
                 <td className="px-3 py-3">
@@ -90,6 +95,10 @@ export function BattleRoyaleResultInput({
   );
 }
 
+function isRoundComplete(round: BattleRoyaleRound) {
+  return round.isComplete ?? round.placements.length > 0;
+}
+
 function PlacementSelect({ value, max, winner, onChange }: { value: number; max: number; winner?: boolean; onChange: (value: number) => void }) {
   return (
     <select
@@ -97,7 +106,7 @@ function PlacementSelect({ value, max, winner, onChange }: { value: number; max:
       onChange={(event) => onChange(Number(event.target.value))}
       className={clsx(
         "h-9 w-32 rounded-md border px-2 text-center font-black",
-        winner ? "border-lime bg-lime text-arena" : "border-line bg-field text-ink"
+        winner ? "border-lime text-lime" : "border-line bg-field text-ink"
       )}
     >
       {Array.from({ length: max }, (_, index) => index + 1).map((placement) => (
@@ -118,9 +127,18 @@ function NumberCell({ value, winner, onChange }: { value: number; winner?: boole
       onChange={(event) => onChange(Number(event.target.value))}
       className={clsx(
         "h-9 w-20 rounded-md border px-2 text-center font-black",
-        winner ? "border-lime bg-lime text-arena" : "border-line bg-field text-ink"
+        winner ? "border-lime text-lime" : "border-line bg-field text-ink"
       )}
     />
+  );
+}
+
+function ChickenBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span className="rounded border border-gold/50 bg-gold/10 px-1.5 py-0.5 text-[10px] font-black uppercase text-gold">
+      치킨 {count}
+    </span>
   );
 }
 

@@ -61,7 +61,8 @@ export function generateBattleRoyaleRounds(
         round: roundIndex + 1,
         groupName: groupsPerRound > 1 ? `Group ${groupIndex + 1}` : undefined,
         teamIds: groupTeams.map((team) => team.id),
-        placements: []
+        placements: createInitialBattleRoyalePlacements(groupTeams.map((team) => team.id)),
+        isComplete: false
       };
     })
   );
@@ -100,7 +101,8 @@ function generateBattleRoyaleQualifier(teams: Team[], options: BattleRoyaleOptio
         round: matchIndex * pairings.length + pairingIndex + 1,
         groupName: `${matchIndex + 1}경기 · ${leftGroup.name}/${rightGroup.name} 로비`,
         teamIds: [...leftGroup.teamIds, ...rightGroup.teamIds],
-        placements: []
+        placements: createInitialBattleRoyalePlacements([...leftGroup.teamIds, ...rightGroup.teamIds]),
+        isComplete: false
       };
     })
   );
@@ -130,7 +132,8 @@ function generateBattleRoyaleFinal(teams: Team[], options: BattleRoyaleOptions):
     round: roundIndex + 1,
     groupName: "결승 로비",
     teamIds: teams.map((team) => team.id),
-    placements: []
+    placements: createInitialBattleRoyalePlacements(teams.map((team) => team.id)),
+    isComplete: false
   }));
 
   return {
@@ -154,6 +157,31 @@ export function normalizeBattleRoyaleMatchCount(value: number | undefined) {
   return value === 6 ? 6 : 5;
 }
 
+export function createInitialBattleRoyalePlacements(teamIds: string[]): BattleRoyalePlacement[] {
+  return teamIds.map((teamId, index) => ({
+    teamId,
+    placement: index + 1,
+    kills: 0,
+    bonusPoints: 0,
+    penaltyPoints: 0
+  }));
+}
+
+export function hydrateBattleRoyaleStage(stage: BattleRoyaleStage): BattleRoyaleStage {
+  let changed = false;
+  const rounds = stage.rounds.map((round) => {
+    if (round.placements.length === round.teamIds.length) return round;
+    changed = true;
+    return {
+      ...round,
+      placements: mergeBattleRoyalePlacements(round.teamIds, round.placements),
+      isComplete: round.isComplete ?? round.placements.length > 0
+    };
+  });
+
+  return changed ? { ...stage, rounds } : stage;
+}
+
 export function applyBattleRoyaleResult(
   stage: BattleRoyaleStage,
   roundId: string,
@@ -162,7 +190,7 @@ export function applyBattleRoyaleResult(
   return {
     ...stage,
     rounds: stage.rounds.map((round) =>
-      round.id === roundId ? { ...round, placements } : round
+      round.id === roundId ? { ...round, placements, isComplete: true } : round
     )
   };
 }
@@ -186,7 +214,8 @@ export function calculateBattleRoyaleStandings(
   );
 
   stage.rounds.forEach((round) => {
-    getCompleteRoundPlacements(round.teamIds, round.placements).forEach((placement) => {
+    if (!isBattleRoyaleRoundComplete(round)) return;
+    round.placements.forEach((placement) => {
       const standing = table.get(placement.teamId);
       if (!standing) return;
       standing.roundsPlayed += 1;
@@ -194,20 +223,32 @@ export function calculateBattleRoyaleStandings(
       standing.killPoints += placement.kills * stage.options.killPoint;
       standing.bonusPoints += placement.bonusPoints ?? 0;
       standing.penaltyPoints += placement.penaltyPoints ?? 0;
-      standing.totalPoints = getBattleRoyaleTotalPoints(
-        standing.placementPoints,
-        standing.killPoints,
-        stage.options.scoringMode
-      );
     });
   });
 
-  return [...table.values()]
+  return rankBattleRoyaleStandings(
+    [...table.values()].map((standing) => ({
+      ...standing,
+      totalPoints: getBattleRoyaleTotalPoints(
+        standing.placementPoints,
+        standing.killPoints,
+        stage.options.scoringMode
+      )
+    }))
+  );
+}
+
+export function rankBattleRoyaleStandings(standings: BattleRoyaleStanding[]) {
+  return [...standings]
     .sort(compareBattleRoyaleStandings)
     .map((standing, index) => ({ ...standing, rank: index + 1 }));
 }
 
-function compareBattleRoyaleStandings(left: BattleRoyaleStanding, right: BattleRoyaleStanding) {
+function isBattleRoyaleRoundComplete(round: BattleRoyaleStage["rounds"][number]) {
+  return round.isComplete ?? round.placements.length > 0;
+}
+
+export function compareBattleRoyaleStandings(left: BattleRoyaleStanding, right: BattleRoyaleStanding) {
   return (
     right.totalPoints - left.totalPoints ||
     right.killPoints - left.killPoints ||
@@ -217,7 +258,7 @@ function compareBattleRoyaleStandings(left: BattleRoyaleStanding, right: BattleR
   );
 }
 
-function getCompleteRoundPlacements(teamIds: string[], placements: BattleRoyalePlacement[]) {
+function mergeBattleRoyalePlacements(teamIds: string[], placements: BattleRoyalePlacement[]) {
   const placementsByTeamId = new Map(placements.map((placement) => [placement.teamId, placement]));
   return teamIds.map((teamId, index) => (
     placementsByTeamId.get(teamId) ?? {

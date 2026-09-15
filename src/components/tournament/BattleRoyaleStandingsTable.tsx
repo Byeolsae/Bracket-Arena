@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import { useMemo } from "react";
 import type { BattleRoyaleStanding, Team } from "@/lib/core/models";
+import { rankBattleRoyaleStandings } from "@/lib/core/battleRoyale";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 
 type BattleRoyaleStandingsTableProps = {
@@ -10,19 +11,18 @@ type BattleRoyaleStandingsTableProps = {
   teamsById: Map<string, Team>;
   advanceCount?: number;
   compact?: boolean;
+  chickenCounts?: Map<string, number>;
 };
 
 export function BattleRoyaleStandingsTable({
   standings,
   teamsById,
   advanceCount = 0,
-  compact = false
+  compact = false,
+  chickenCounts
 }: BattleRoyaleStandingsTableProps) {
   const orderedStandings = useMemo(
-    () =>
-      [...standings]
-        .sort(compareBattleRoyaleStandings)
-        .map((standing, index) => ({ ...standing, rank: index + 1 })),
+    () => rankBattleRoyaleStandings(standings),
     [standings]
   );
 
@@ -52,6 +52,7 @@ export function BattleRoyaleStandingsTable({
                   <div className="flex items-center gap-3">
                     <TeamLogo team={team} size="sm" highlighted={isAdvancing} />
                     <span className="font-black uppercase">{team?.shortName || team?.name || "미정"}</span>
+                    <ChickenBadge count={chickenCounts?.get(standing.teamId) ?? 0} />
                   </div>
                 </td>
                 <td className="px-3 py-3">{standing.roundsPlayed}</td>
@@ -67,12 +68,11 @@ export function BattleRoyaleStandingsTable({
   );
 }
 
-function compareBattleRoyaleStandings(left: BattleRoyaleStanding, right: BattleRoyaleStanding) {
+function ChickenBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
   return (
-    right.totalPoints - left.totalPoints ||
-    right.killPoints - left.killPoints ||
-    right.placementPoints - left.placementPoints ||
-    left.roundsPlayed - right.roundsPlayed ||
-    left.teamId.localeCompare(right.teamId)
+    <span className="rounded border border-gold/50 bg-gold/10 px-1.5 py-0.5 text-[10px] font-black uppercase text-gold">
+      치킨 {count}
+    </span>
   );
 }

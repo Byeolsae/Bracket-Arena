@@ -11,6 +11,11 @@ import { createSwissStage } from "../src/lib/core/swiss";
 import { getTeamInitial } from "../src/lib/core/team";
 import { buildSeedOrder } from "../src/lib/core/bye";
 import {
+  applyBattleRoyaleResult,
+  calculateBattleRoyaleStandings,
+  generateBattleRoyaleRounds
+} from "../src/lib/core/battleRoyale";
+import {
   getDoubleLosersMatchCountByRound,
   getDoubleLosersRoundCount,
   getEliminationBracketSize,
@@ -1128,4 +1133,74 @@ test("triple elimination completes for power-of-two team counts", () => {
 
 test("triple elimination rejects teams over 8", () => {
   assert.throws(() => generateTripleEliminationBracket(teams(9)), /up to 8 teams/);
+});
+
+test("battle royale standings only count completed rounds", () => {
+  const roster = teams(24);
+  let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
+
+  const emptyStandings = calculateBattleRoyaleStandings(stage, roster);
+  assert.equal(emptyStandings.every((standing) => standing.roundsPlayed === 0), true);
+  assert.equal(emptyStandings.every((standing) => standing.totalPoints === 0), true);
+
+  const firstRound = stage.rounds[0];
+  stage = applyBattleRoyaleResult(
+    stage,
+    firstRound.id,
+    firstRound.teamIds.map((teamId, index) => ({
+      teamId,
+      placement: index + 1,
+      kills: teamId === "team-16" ? 50 : 0,
+      bonusPoints: 0,
+      penaltyPoints: 0
+    }))
+  );
+
+  const standings = calculateBattleRoyaleStandings(stage, roster);
+  assert.equal(standings[0].teamId, "team-16");
+  assert.equal(standings[0].totalPoints, 50);
+  assert.equal(standings.find((standing) => standing.teamId === "team-1")?.roundsPlayed, 1);
+  assert.equal(standings.find((standing) => standing.teamId === "team-17")?.roundsPlayed, 0);
+});
+
+test("battle royale group standings rerank inside each group", () => {
+  const roster = teams(24);
+  let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
+
+  const abRound = stage.rounds[0];
+  stage = applyBattleRoyaleResult(
+    stage,
+    abRound.id,
+    abRound.teamIds.map((teamId, index) => ({
+      teamId,
+      placement: index + 1,
+      kills: teamId === "team-16" ? 50 : 0,
+      bonusPoints: 0,
+      penaltyPoints: 0
+    }))
+  );
+
+  const acRound = stage.rounds[1];
+  stage = applyBattleRoyaleResult(
+    stage,
+    acRound.id,
+    acRound.teamIds.map((teamId, index) => ({
+      teamId,
+      placement: index + 1,
+      kills: teamId === "team-24" ? 40 : 0,
+      bonusPoints: 0,
+      penaltyPoints: 0
+    }))
+  );
+
+  const overallStandings = calculateBattleRoyaleStandings(stage, roster);
+  const bGroupStandings = calculateBattleRoyaleStandings(stage, roster.slice(8, 16));
+  const cGroupStandings = calculateBattleRoyaleStandings(stage, roster.slice(16, 24));
+
+  assert.equal(overallStandings[0].teamId, "team-16");
+  assert.equal(overallStandings[1].teamId, "team-24");
+  assert.equal(bGroupStandings[0].teamId, "team-16");
+  assert.equal(bGroupStandings[0].rank, 1);
+  assert.equal(cGroupStandings[0].teamId, "team-24");
+  assert.equal(cGroupStandings[0].rank, 1);
 });
