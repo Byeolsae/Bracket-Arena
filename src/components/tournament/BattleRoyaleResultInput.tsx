@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import clsx from "clsx";
 import type { BattleRoyalePlacement, BattleRoyaleRound, Team } from "@/lib/core/models";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 
@@ -55,23 +56,25 @@ export function BattleRoyaleResultInput({
         <tbody>
           {placements.map((placement) => {
             const team = teamsById.get(placement.teamId);
+            const isMatchWinner = placement.placement === 1;
             return (
-              <tr key={placement.teamId} className="border-t border-line text-ink">
+              <tr key={placement.teamId} className={clsx("border-t border-line text-ink", isMatchWinner && "bg-lime/15")}>
                 <td className="px-3 py-3">
                   <div className="flex items-center gap-3">
-                    <TeamLogo team={team} size="sm" />
-                    <span className="font-black uppercase">{team?.shortName || team?.name || "미정"}</span>
+                    <TeamLogo team={team} size="sm" highlighted={isMatchWinner} useVictoryLogo={isMatchWinner} />
+                    <span className={clsx("font-black uppercase", isMatchWinner && "text-lime")}>{team?.shortName || team?.name || "미정"}</span>
                   </div>
                 </td>
                 <td className="px-3 py-3">
                   <PlacementSelect
                     value={placement.placement}
                     max={round.teamIds.length}
+                    winner={isMatchWinner}
                     onChange={(nextPlacement) => update(placement.teamId, { placement: nextPlacement })}
                   />
                 </td>
                 <td className="px-3 py-3">
-                  <NumberCell value={placement.kills} onChange={(kills) => update(placement.teamId, { kills })} />
+                  <NumberCell value={placement.kills} winner={isMatchWinner} onChange={(kills) => update(placement.teamId, { kills })} />
                 </td>
               </tr>
             );
@@ -87,12 +90,15 @@ export function BattleRoyaleResultInput({
   );
 }
 
-function PlacementSelect({ value, max, onChange }: { value: number; max: number; onChange: (value: number) => void }) {
+function PlacementSelect({ value, max, winner, onChange }: { value: number; max: number; winner?: boolean; onChange: (value: number) => void }) {
   return (
     <select
       value={value}
       onChange={(event) => onChange(Number(event.target.value))}
-      className="h-9 w-32 rounded-md border border-line bg-field px-2 text-center font-black text-ink"
+      className={clsx(
+        "h-9 w-32 rounded-md border px-2 text-center font-black",
+        winner ? "border-lime bg-lime text-arena" : "border-line bg-field text-ink"
+      )}
     >
       {Array.from({ length: max }, (_, index) => index + 1).map((placement) => (
         <option key={placement} value={placement}>
@@ -103,14 +109,17 @@ function PlacementSelect({ value, max, onChange }: { value: number; max: number;
   );
 }
 
-function NumberCell({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+function NumberCell({ value, winner, onChange }: { value: number; winner?: boolean; onChange: (value: number) => void }) {
   return (
     <input
       type="number"
       min={0}
       value={value}
       onChange={(event) => onChange(Number(event.target.value))}
-      className="h-9 w-20 rounded-md border border-line bg-field px-2 text-center font-black text-ink"
+      className={clsx(
+        "h-9 w-20 rounded-md border px-2 text-center font-black",
+        winner ? "border-lime bg-lime text-arena" : "border-line bg-field text-ink"
+      )}
     />
   );
 }

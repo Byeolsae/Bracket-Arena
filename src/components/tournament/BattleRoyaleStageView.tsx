@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import clsx from "clsx";
 import { Dices } from "lucide-react";
 import type { BattleRoyalePlacement, BattleRoyaleStage, BattleRoyaleStanding, Team } from "@/lib/core/models";
 import {
@@ -321,28 +322,35 @@ function QualifierLobbyTables({
               <tbody>
                 {lobby.teamIds.map((teamId) => {
                   const team = teamsById.get(teamId);
+                  const hasLobbyWin = lobby.rounds.some((round) => getRoundPlacement(round, teamId).placement === 1);
                   return (
                     <tr key={teamId} className="border-t border-line text-ink">
                       <td className="sticky left-0 z-10 bg-panel px-3 py-3">
                         <div className="flex items-center gap-3">
-                          <TeamLogo team={team} size="sm" />
-                          <span className="font-black uppercase">{team?.shortName || team?.name || "미정"}</span>
+                          <TeamLogo team={team} size="sm" highlighted={hasLobbyWin} useVictoryLogo={hasLobbyWin} />
+                          <span className={clsx("font-black uppercase", hasLobbyWin && "text-lime")}>{team?.shortName || team?.name || "미정"}</span>
                         </div>
                       </td>
                       {lobby.rounds.flatMap((round) => {
                         const placement = getRoundPlacement(round, teamId);
+                        const isMatchWinner = placement.placement === 1;
                         return [
-                          <td key={`${round.id}-${teamId}-placement`} className="border-l border-line px-2 py-2">
+                          <td
+                            key={`${round.id}-${teamId}-placement`}
+                            className={clsx("border-l border-line px-2 py-2", isMatchWinner && "bg-lime/15")}
+                          >
                             <PlacementSelect
                               value={placement.placement}
                               max={round.teamIds.length}
+                              winner={isMatchWinner}
                               onChange={(nextPlacement) => onUpdatePlacement(round.id, teamId, { placement: nextPlacement })}
                             />
                           </td>,
-                          <td key={`${round.id}-${teamId}-kills`} className="px-2 py-2">
+                          <td key={`${round.id}-${teamId}-kills`} className={clsx("px-2 py-2", isMatchWinner && "bg-lime/15")}>
                             <LobbyNumberCell
                               value={placement.kills}
                               min={0}
+                              winner={isMatchWinner}
                               onChange={(kills) => onUpdatePlacement(round.id, teamId, { kills })}
                             />
                           </td>
@@ -415,17 +423,22 @@ function swapPlacement(
 function PlacementSelect({
   value,
   max,
+  winner,
   onChange
 }: {
   value: number;
   max: number;
+  winner?: boolean;
   onChange: (value: number) => void;
 }) {
   return (
     <select
       value={value}
       onChange={(event) => onChange(Number(event.target.value))}
-      className="h-8 w-28 rounded-md border border-line bg-field px-2 text-xs font-black text-ink"
+      className={clsx(
+        "h-8 w-28 rounded-md border px-2 text-xs font-black",
+        winner ? "border-lime bg-lime text-arena" : "border-line bg-field text-ink"
+      )}
     >
       {Array.from({ length: max }, (_, index) => index + 1).map((placement) => (
         <option key={placement} value={placement}>
@@ -440,11 +453,13 @@ function LobbyNumberCell({
   value,
   min,
   max,
+  winner,
   onChange
 }: {
   value: number;
   min: number;
   max?: number;
+  winner?: boolean;
   onChange: (value: number) => void;
 }) {
   return (
@@ -457,7 +472,10 @@ function LobbyNumberCell({
         const numericValue = Math.floor(Number(event.target.value) || min);
         onChange(Math.max(min, max ? Math.min(max, numericValue) : numericValue));
       }}
-      className="h-8 w-16 rounded-md border border-line bg-field px-2 text-center text-xs font-black text-ink"
+      className={clsx(
+        "h-8 w-16 rounded-md border px-2 text-center text-xs font-black",
+        winner ? "border-lime bg-lime text-arena" : "border-line bg-field text-ink"
+      )}
     />
   );
 }
