@@ -44,7 +44,7 @@ export function BattleRoyaleResultInput({
       <table className="w-full min-w-[720px] border-collapse text-sm">
         <thead className="bg-arena text-xs uppercase text-slate-400">
           <tr>
-            {["팀", "순위", "킬", "보너스", "페널티"].map((label) => (
+            {["팀", "순위", "킬"].map((label) => (
               <th key={label} className="px-3 py-3 text-left font-black">
                 {label}
               </th>
@@ -70,18 +70,6 @@ export function BattleRoyaleResultInput({
                 </td>
                 <td className="px-3 py-3">
                   <NumberCell value={placement.kills} onChange={(kills) => update(placement.teamId, { kills })} />
-                </td>
-                <td className="px-3 py-3">
-                  <NumberCell
-                    value={placement.bonusPoints ?? 0}
-                    onChange={(bonusPoints) => update(placement.teamId, { bonusPoints })}
-                  />
-                </td>
-                <td className="px-3 py-3">
-                  <NumberCell
-                    value={placement.penaltyPoints ?? 0}
-                    onChange={(penaltyPoints) => update(placement.teamId, { penaltyPoints })}
-                  />
                 </td>
               </tr>
             );

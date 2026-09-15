@@ -6,6 +6,7 @@ import { TeamLogo } from "@/components/teams/TeamLogo";
 import type { Team, TeamFolder } from "@/lib/core/models";
 import {
   BATTLE_ROYALE_FINAL_TEAM_COUNT,
+  BATTLE_ROYALE_GROUP_SIZE,
   BATTLE_ROYALE_QUALIFIER_TEAM_COUNT,
   normalizeBattleRoyaleMatchCount
 } from "@/lib/core/battleRoyale";
@@ -99,13 +100,14 @@ function getGroupShape(teamCount: number, teamsPerGroup: number) {
 }
 
 function getFixedQualifierTeamsPerGroup(format: StageFormat) {
+  if (format === "battle_royale") return BATTLE_ROYALE_GROUP_SIZE;
   if (format === "group_double_elimination") return 4;
   if (format === "group_triple_elimination") return 8;
   return undefined;
 }
 
 function supportsGroupDraw(format: StageFormat) {
-  return format === "group" || format === "group_double_elimination" || format === "group_triple_elimination";
+  return format === "group" || format === "group_double_elimination" || format === "group_triple_elimination" || format === "battle_royale";
 }
 
 function getFixedFormatError(format: StageFormat, teamCount: number, label: string) {
@@ -284,8 +286,12 @@ export default function DrawPage() {
   const seedResults = [...revealedResults].sort((a, b) => (a.seed ?? 0) - (b.seed ?? 0));
   const availableFinalStageOptions =
     tournamentMode === "two-stage"
-      ? qualifierFinalOptions[qualifierFormat] ?? finalStageOptions
+      ? finalStageOptions
       : finalStageOptions;
+  const disabledFinalOptions =
+    tournamentMode === "two-stage" && qualifierFormat === "battle_royale"
+      ? finalStageOptions.filter((option) => option !== "battle_royale")
+      : [];
   const projectedFinalTeamCount =
     tournamentMode === "final-only"
       ? selectedTeams.length
@@ -320,6 +326,15 @@ export default function DrawPage() {
       resetDraw();
     }
   }, [finalFormat, qualifierFormat, tournamentMode]);
+
+  useEffect(() => {
+    if (tournamentMode !== "two-stage" || qualifierFormat !== "battle_royale") return;
+    if (drawType !== "group") {
+      resetDraw();
+      setDrawType("group");
+    }
+    setGroupCount(3);
+  }, [drawType, qualifierFormat, tournamentMode]);
 
   useEffect(() => {
     if (drawType !== "group" || !canUseGroupDraw) return;
@@ -720,7 +735,18 @@ export default function DrawPage() {
               {tournamentMode === "two-stage" ? (
                 <DrawStageSelect label="예선 방식" value={qualifierFormat} options={qualifierStageOptions} onChange={setQualifierFormat} />
               ) : null}
-              <DrawStageSelect label="본선 방식" value={finalFormat} options={availableFinalStageOptions} onChange={setFinalFormat} />
+              <DrawStageSelect
+                label="본선 방식"
+                value={finalFormat}
+                options={availableFinalStageOptions}
+                disabledOptions={disabledFinalOptions}
+                getDisabledReason={(option) =>
+                  qualifierFormat === "battle_royale" && option !== "battle_royale"
+                    ? "배틀로얄 예선은 배틀로얄 본선으로만 연결됩니다."
+                    : undefined
+                }
+                onChange={setFinalFormat}
+              />
               {usesBattleRoyaleSetup ? (
                 <div className="space-y-3 rounded-md border border-line bg-field px-3 py-3">
                   <p className="text-xs font-semibold leading-5 text-muted">
@@ -1217,22 +1243,30 @@ function DrawStageSelect({
   label,
   value,
   options,
+  disabledOptions = [],
+  getDisabledReason,
   onChange
 }: {
   label: string;
   value: StageFormat;
   options: StageFormat[];
+  disabledOptions?: StageFormat[];
+  getDisabledReason?: (format: StageFormat) => string | undefined;
   onChange: (format: StageFormat) => void;
 }) {
   return (
     <label className="space-y-1.5">
       <span className="text-sm font-bold text-ink">{label}</span>
       <select className="input" value={value} onChange={(event) => onChange(event.target.value as StageFormat)}>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {stageLabels[option]} ({getStageLimitLabel(option)})
-          </option>
-        ))}
+        {options.map((option) => {
+          const disabled = disabledOptions.includes(option);
+          const reason = getDisabledReason?.(option);
+          return (
+            <option key={option} value={option} disabled={disabled} title={reason}>
+              {stageLabels[option]} ({getStageLimitLabel(option)}){disabled ? " - 비활성화" : ""}
+            </option>
+          );
+        })}
       </select>
       <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-muted">
         <span className="rounded border border-cyan/30 bg-cyan/10 px-2 py-0.5 text-cyan">

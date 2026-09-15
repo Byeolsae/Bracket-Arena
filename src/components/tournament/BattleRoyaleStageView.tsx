@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dices } from "lucide-react";
 import type { BattleRoyalePlacement, BattleRoyaleStage, Team } from "@/lib/core/models";
 import {
@@ -25,10 +25,28 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
     [localStage, teams]
   );
 
-  const saveRound = (roundId: string, placements: BattleRoyalePlacement[]) => {
-    const nextStage = applyBattleRoyaleResult(localStage, roundId, placements);
+  useEffect(() => {
+    setLocalStage(stage);
+  }, [stage]);
+
+  const updateStage = (nextStage: BattleRoyaleStage) => {
     setLocalStage(nextStage);
     onChange?.(nextStage);
+  };
+
+  const updateScoringMode = (scoringMode: NonNullable<BattleRoyaleStage["options"]["scoringMode"]>) => {
+    updateStage({
+      ...localStage,
+      options: {
+        ...localStage.options,
+        scoringMode
+      }
+    });
+  };
+
+  const saveRound = (roundId: string, placements: BattleRoyalePlacement[]) => {
+    const nextStage = applyBattleRoyaleResult(localStage, roundId, placements);
+    updateStage(nextStage);
   };
 
   const autoFillRound = (roundId: string) => {
@@ -42,8 +60,7 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
       (stage, round) => applyBattleRoyaleResult(stage, round.id, createRandomBattleRoyalePlacements(round.teamIds)),
       localStage
     );
-    setLocalStage(nextStage);
-    onChange?.(nextStage);
+    updateStage(nextStage);
   };
 
   return (
@@ -54,6 +71,29 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
           : localStage.options.stageMode === "final"
             ? `배틀로얄 본선: 16팀 단일 로비, ${localStage.options.roundCount}경기 누적 점수로 최종 순위를 결정합니다.`
             : "배틀로얄 누적 점수로 순위를 결정합니다."}
+      </div>
+
+      <div className="flex flex-wrap items-end justify-between gap-3 rounded-md border border-line bg-panel px-4 py-3">
+        <div>
+          <p className="text-xs font-black uppercase tracking-wide text-cyan">점수 방식</p>
+          <p className="mt-1 text-xs font-semibold text-muted">
+            순위 생존 점수는 1위 10점, 2위 6점, 3위 5점, 4위 4점, 5위 3점, 6위 2점, 7-8위 1점입니다.
+          </p>
+        </div>
+        <label className="w-full max-w-xs space-y-1.5">
+          <span className="text-sm font-bold text-ink">총점 계산</span>
+          <select
+            className="input"
+            value={localStage.options.scoringMode ?? "combined"}
+            onChange={(event) =>
+              updateScoringMode(event.target.value as NonNullable<BattleRoyaleStage["options"]["scoringMode"]>)
+            }
+          >
+            <option value="placement">순위</option>
+            <option value="kills">킬</option>
+            <option value="combined">순위 + 킬 합산</option>
+          </select>
+        </label>
       </div>
 
       {localStage.warnings.length ? (

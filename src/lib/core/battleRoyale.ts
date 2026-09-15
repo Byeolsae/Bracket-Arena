@@ -24,7 +24,8 @@ const defaultBattleRoyaleOptions: BattleRoyaleOptions = {
   placementPoints: defaultPlacementPoints,
   killPoint: 1,
   advanceCount: 16,
-  stageMode: "standard"
+  stageMode: "standard",
+  scoringMode: "combined"
 };
 
 export const BATTLE_ROYALE_QUALIFIER_TEAM_COUNT = 24;
@@ -193,17 +194,27 @@ export function calculateBattleRoyaleStandings(
       standing.killPoints += placement.kills * stage.options.killPoint;
       standing.bonusPoints += placement.bonusPoints ?? 0;
       standing.penaltyPoints += placement.penaltyPoints ?? 0;
-      standing.totalPoints =
-        standing.placementPoints +
-        standing.killPoints +
-        standing.bonusPoints -
-        standing.penaltyPoints;
+      standing.totalPoints = getBattleRoyaleTotalPoints(
+        standing.placementPoints,
+        standing.killPoints,
+        stage.options.scoringMode
+      );
     });
   });
 
   return [...table.values()]
     .sort((a, b) => b.totalPoints - a.totalPoints || b.killPoints - a.killPoints)
     .map((standing, index) => ({ ...standing, rank: index + 1 }));
+}
+
+function getBattleRoyaleTotalPoints(
+  placementPoints: number,
+  killPoints: number,
+  scoringMode: BattleRoyaleOptions["scoringMode"] = "combined"
+) {
+  if (scoringMode === "placement") return placementPoints;
+  if (scoringMode === "kills") return killPoints;
+  return placementPoints + killPoints;
 }
 
 export function getBattleRoyaleAdvancingTeams(

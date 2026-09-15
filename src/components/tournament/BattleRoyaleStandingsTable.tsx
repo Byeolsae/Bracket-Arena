@@ -20,7 +20,7 @@ export function BattleRoyaleStandingsTable({
       <table className="w-full min-w-[820px] border-collapse text-sm">
         <thead className="bg-arena text-xs uppercase text-slate-400">
           <tr>
-            {["순위", "팀", "라운드", "순위점수", "킬점수", "보너스", "페널티", "총점"].map((label) => (
+            {["순위", "팀", "라운드", "순위점수", "킬점수", "총점"].map((label) => (
               <th key={label} className="px-3 py-3 text-left font-black">
                 {label}
               </th>
@@ -46,8 +46,6 @@ export function BattleRoyaleStandingsTable({
                 <td className="px-3 py-3">{standing.roundsPlayed}</td>
                 <td className="px-3 py-3">{standing.placementPoints}</td>
                 <td className="px-3 py-3">{standing.killPoints}</td>
-                <td className="px-3 py-3">{standing.bonusPoints}</td>
-                <td className="px-3 py-3">{standing.penaltyPoints}</td>
                 <td className="px-3 py-3 font-black text-gold">{standing.totalPoints}</td>
               </tr>
             );
