@@ -3,9 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import { Dices } from "lucide-react";
-import type { BattleRoyalePlacement, BattleRoyaleStage, Team } from "@/lib/core/models";
+import type { BattleRoyalePlacement, BattleRoyaleStage, BattleRoyaleStanding, Team } from "@/lib/core/models";
 import {
+  BATTLE_ROYALE_GROUP_NAMES,
+  BATTLE_ROYALE_GROUP_SIZE,
   applyBattleRoyaleResult,
+  calculateBattleRoyaleStandings,
   hydrateBattleRoyaleStage,
   isBattleRoyaleRoundComplete
 } from "@/lib/core/battleRoyale";
@@ -24,6 +27,21 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
   const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
   const chickenCounts = useMemo(() => getChickenCounts(localStage), [localStage]);
   const isQualifier = localStage.options.stageMode === "qualifier";
+  const qualifierGroupTables = useMemo(() => {
+    if (!isQualifier) return [];
+    const groupNames = localStage.options.groupNames?.length ? localStage.options.groupNames : BATTLE_ROYALE_GROUP_NAMES;
+    const groupTeamIds = getQualifierGroupTeamIds(localStage);
+
+    return groupNames.map((groupName, groupIndex) => {
+      const groupTeams = (groupTeamIds[groupIndex] ?? [])
+        .map((teamId) => teamsById.get(teamId))
+        .filter((team): team is Team => Boolean(team));
+      return {
+        groupName,
+        standings: calculateBattleRoyaleStandings(localStage, groupTeams)
+      };
+    });
+  }, [isQualifier, localStage, teamsById]);
 
   useEffect(() => {
     const hydratedStage = hydrateBattleRoyaleStage(stage);
@@ -110,6 +128,86 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
         onAutoFillRound={autoFillRound}
         onUpdatePlacement={updateRoundPlacement}
       />
+
+      {isQualifier ? (
+        <BattleRoyaleGroupSummaryTables
+          groups={qualifierGroupTables}
+          teamsById={teamsById}
+          chickenCounts={chickenCounts}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+type BattleRoyaleGroupSummary = {
+  groupName: string;
+  standings: BattleRoyaleStanding[];
+};
+
+type BattleRoyaleGroupSummaryTablesProps = {
+  groups: BattleRoyaleGroupSummary[];
+  teamsById: Map<string, Team>;
+  chickenCounts: Map<string, number>;
+};
+
+function BattleRoyaleGroupSummaryTables({
+  groups,
+  teamsById,
+  chickenCounts
+}: BattleRoyaleGroupSummaryTablesProps) {
+  return (
+    <section className="space-y-4">
+      <div>
+        <p className="section-kicker">그룹 합산</p>
+        <h2 className="text-xl font-black uppercase tracking-wide text-ink">A/B/C 그룹 합산 테이블</h2>
+        <p className="mt-1 text-sm font-semibold text-muted">
+          AB, AC, BC 로비에 입력한 점수를 조별로 합산합니다. 총점이 높은 팀이 높은 순위로 표시됩니다.
+        </p>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        {groups.map((group) => (
+          <section key={group.groupName} className="space-y-2">
+            <h3 className="text-lg font-black uppercase text-ink">{group.groupName} 합산 테이블</h3>
+            <div className="overflow-x-auto rounded-md border border-line bg-panel">
+              <table className="w-full min-w-[620px] border-collapse text-sm">
+                <thead className="bg-arena text-xs uppercase text-slate-400">
+                  <tr>
+                    <th className="px-3 py-3 text-left font-black">순위</th>
+                    <th className="px-3 py-3 text-left font-black">팀</th>
+                    <th className="px-3 py-3 text-center font-black">라운드</th>
+                    <th className="px-3 py-3 text-center font-black">순위점수</th>
+                    <th className="px-3 py-3 text-center font-black">킬점수</th>
+                    <th className="px-3 py-3 text-center font-black">총점</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.standings.map((standing) => {
+                    const team = teamsById.get(standing.teamId);
+                    return (
+                      <tr key={standing.teamId} className="border-t border-line text-ink">
+                        <td className="px-3 py-3 font-black text-cyan">#{standing.rank}</td>
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-3">
+                            <TeamLogo team={team} size="sm" highlighted={(chickenCounts.get(standing.teamId) ?? 0) > 0} />
+                            <span className="font-black uppercase">{team?.shortName || team?.name || "미정"}</span>
+                            <ChickenBadge count={chickenCounts.get(standing.teamId) ?? 0} />
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-center font-bold">{standing.roundsPlayed}</td>
+                        <td className="px-3 py-3 text-center font-bold">{standing.placementPoints}</td>
+                        <td className="px-3 py-3 text-center font-bold">{standing.killPoints}</td>
+                        <td className="px-3 py-3 text-center font-black text-gold">{standing.totalPoints}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ))}
+      </div>
     </section>
   );
 }
@@ -275,6 +373,30 @@ function getChickenCounts(stage: BattleRoyaleStage) {
     });
   });
   return counts;
+}
+
+function getQualifierGroupTeamIds(stage: BattleRoyaleStage) {
+  const sourceTeamIds = stage.rounds.flatMap((round) => round.teamIds);
+  const uniqueTeamIds = [...new Set(sourceTeamIds)];
+  const seededGroups = Array.from({ length: BATTLE_ROYALE_GROUP_NAMES.length }, (_, groupIndex) => {
+    const start = groupIndex * BATTLE_ROYALE_GROUP_SIZE;
+    return uniqueTeamIds.slice(start, start + BATTLE_ROYALE_GROUP_SIZE);
+  });
+
+  const pairRounds = stage.rounds.slice(0, 3);
+  if (pairRounds.length < 3) return seededGroups;
+
+  const groupA = intersectTeamIds(pairRounds[0].teamIds, pairRounds[1].teamIds);
+  const groupB = intersectTeamIds(pairRounds[0].teamIds, pairRounds[2].teamIds);
+  const groupC = intersectTeamIds(pairRounds[1].teamIds, pairRounds[2].teamIds);
+  const inferredGroups = [groupA, groupB, groupC];
+
+  return inferredGroups.every((group) => group.length > 0) ? inferredGroups : seededGroups;
+}
+
+function intersectTeamIds(left: string[], right: string[]) {
+  const rightTeamIds = new Set(right);
+  return left.filter((teamId) => rightTeamIds.has(teamId));
 }
 
 function getRoundPlacements(round: BattleRoyaleStage["rounds"][number]) {
