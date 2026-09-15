@@ -294,7 +294,7 @@ function QualifierLobbyTables({
           </div>
 
           <div className="overflow-x-auto rounded-md border border-line bg-panel">
-            <table className="w-full min-w-[980px] border-collapse text-sm">
+            <table className="w-full min-w-[1440px] border-collapse text-sm">
               <thead className="bg-arena text-xs uppercase text-slate-400">
                 <tr>
                   <th className="sticky left-0 z-10 min-w-[220px] bg-arena px-3 py-3 text-left font-black">팀</th>
@@ -327,9 +327,8 @@ function QualifierLobbyTables({
                         const placement = getRoundPlacement(round, teamId);
                         return [
                           <td key={`${round.id}-${teamId}-placement`} className="border-l border-line px-2 py-2">
-                            <LobbyNumberCell
+                            <PlacementSelect
                               value={placement.placement}
-                              min={1}
                               max={round.teamIds.length}
                               onChange={(nextPlacement) => onUpdatePlacement(round.id, teamId, { placement: nextPlacement })}
                             />
@@ -356,7 +355,8 @@ function QualifierLobbyTables({
 }
 
 function getLobbyName(groupName?: string) {
-  return groupName?.split("·").at(1)?.trim() || groupName || "로비";
+  const lobbyName = groupName?.split("·").at(1)?.trim() || groupName || "로비";
+  return lobbyName.replace(/\s+vs\s+/i, "/").replace(/조\/(.+?)조$/, "조/$1조 로비");
 }
 
 function getRoundPlacements(round: BattleRoyaleStage["rounds"][number]) {
@@ -372,6 +372,30 @@ function getRoundPlacement(round: BattleRoyaleStage["rounds"][number], teamId: s
       bonusPoints: 0,
       penaltyPoints: 0
     }
+  );
+}
+
+function PlacementSelect({
+  value,
+  max,
+  onChange
+}: {
+  value: number;
+  max: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(event) => onChange(Number(event.target.value))}
+      className="h-8 w-28 rounded-md border border-line bg-field px-2 text-xs font-black text-ink"
+    >
+      {Array.from({ length: max }, (_, index) => index + 1).map((placement) => (
+        <option key={placement} value={placement}>
+          {placement}등 ({getPlacementPointLabel(placement)}점)
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -399,4 +423,15 @@ function LobbyNumberCell({
       className="h-8 w-16 rounded-md border border-line bg-field px-2 text-center text-xs font-black text-ink"
     />
   );
+}
+
+function getPlacementPointLabel(placement: number) {
+  if (placement === 1) return 10;
+  if (placement === 2) return 6;
+  if (placement === 3) return 5;
+  if (placement === 4) return 4;
+  if (placement === 5) return 3;
+  if (placement === 6) return 2;
+  if (placement === 7 || placement === 8) return 1;
+  return 0;
 }

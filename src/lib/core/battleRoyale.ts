@@ -98,7 +98,7 @@ function generateBattleRoyaleQualifier(teams: Team[], options: BattleRoyaleOptio
       return {
         id: `br-qualifier-m${matchIndex + 1}-p${pairingIndex + 1}`,
         round: matchIndex * pairings.length + pairingIndex + 1,
-        groupName: `${matchIndex + 1}경기 · ${leftGroup.name} vs ${rightGroup.name}`,
+        groupName: `${matchIndex + 1}경기 · ${leftGroup.name}/${rightGroup.name} 로비`,
         teamIds: [...leftGroup.teamIds, ...rightGroup.teamIds],
         placements: []
       };

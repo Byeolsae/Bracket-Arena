@@ -485,7 +485,9 @@ export default function MakerPage() {
       if (payload.type === "group") {
         setGroupCount(Math.max(1, payload.setup?.groupCount ?? payload.groupCount));
         setTeamGroupAssignments(payload.assignments);
-        setQualifierFormat((current) => (isGroupFormat(current) ? current : "group"));
+        setQualifierFormat((current) =>
+          current === "battle_royale" || isGroupFormat(current) ? current : "group"
+        );
       }
       setCreationNotice(payload.type === "group" ? "추첨 결과의 조 배정을 가져왔습니다." : "추첨 결과의 시드 순서를 가져왔습니다.");
     } catch {

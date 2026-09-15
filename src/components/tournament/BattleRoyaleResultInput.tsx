@@ -63,8 +63,9 @@ export function BattleRoyaleResultInput({
                   </div>
                 </td>
                 <td className="px-3 py-3">
-                  <NumberCell
+                  <PlacementSelect
                     value={placement.placement}
+                    max={round.teamIds.length}
                     onChange={(nextPlacement) => update(placement.teamId, { placement: nextPlacement })}
                   />
                 </td>
@@ -85,6 +86,22 @@ export function BattleRoyaleResultInput({
   );
 }
 
+function PlacementSelect({ value, max, onChange }: { value: number; max: number; onChange: (value: number) => void }) {
+  return (
+    <select
+      value={value}
+      onChange={(event) => onChange(Number(event.target.value))}
+      className="h-9 w-32 rounded-md border border-line bg-field px-2 text-center font-black text-ink"
+    >
+      {Array.from({ length: max }, (_, index) => index + 1).map((placement) => (
+        <option key={placement} value={placement}>
+          {placement}등 ({getPlacementPointLabel(placement)}점)
+        </option>
+      ))}
+    </select>
+  );
+}
+
 function NumberCell({ value, onChange }: { value: number; onChange: (value: number) => void }) {
   return (
     <input
@@ -95,4 +112,15 @@ function NumberCell({ value, onChange }: { value: number; onChange: (value: numb
       className="h-9 w-20 rounded-md border border-line bg-field px-2 text-center font-black text-ink"
     />
   );
+}
+
+function getPlacementPointLabel(placement: number) {
+  if (placement === 1) return 10;
+  if (placement === 2) return 6;
+  if (placement === 3) return 5;
+  if (placement === 4) return 4;
+  if (placement === 5) return 3;
+  if (placement === 6) return 2;
+  if (placement === 7 || placement === 8) return 1;
+  return 0;
 }
