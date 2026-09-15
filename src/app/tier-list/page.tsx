@@ -171,7 +171,7 @@ export default function TierListPage() {
     <main className="w-full px-3 py-6 sm:px-4 2xl:px-5">
       <section className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="section-kicker">Tier List</p>
+          <p className="section-kicker">티어리스트</p>
           <h1 className="mt-2 text-3xl font-black uppercase tracking-wide text-ink">티어리스트</h1>
           <p className="mt-2 text-sm font-semibold text-muted">
             만든 팀을 드래그해서 등급에 배치합니다. 색상은 티어 설정에서 관리합니다.
@@ -258,7 +258,7 @@ export default function TierListPage() {
       <section className="mb-5 arena-card p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="section-kicker">Tier Settings</p>
+            <p className="section-kicker">티어 설정</p>
             <h2 className="mt-1 font-black uppercase tracking-wide text-ink">티어 설정</h2>
           </div>
           <select
@@ -286,7 +286,7 @@ export default function TierListPage() {
       <div className="space-y-5">
         <section data-print-tier-root="true" className="arena-card overflow-hidden">
           <div className="print-only border-b border-line bg-panel px-4 py-3">
-            <p className="section-kicker">Tier List</p>
+            <p className="section-kicker">티어리스트</p>
             <h1 className="mt-2 text-3xl font-black uppercase tracking-wide text-ink">티어리스트</h1>
           </div>
           <div className="divide-y divide-line">
@@ -426,7 +426,7 @@ function TierStyleEditor({
           className="grid h-20 place-items-center rounded-md text-4xl font-black uppercase"
           style={{ backgroundColor: tierColor, color: tierTextColor }}
         >
-          {tier.name || "TIER"}
+          {tier.name || "티어"}
         </div>
       </div>
     </div>

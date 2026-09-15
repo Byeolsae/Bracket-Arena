@@ -43,10 +43,10 @@ export function BracketView({ tournament, teams, onSaveResult, onClearResult }: 
       <section className="bracket-board">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line bg-arena/85 px-5 py-4">
           <div>
-            <p className="section-kicker">Bracket Stage</p>
+            <p className="section-kicker">브래킷 스테이지</p>
             <h2 className="mt-1 text-3xl font-black uppercase tracking-wide text-ink">{tournament.name}</h2>
             <p className="mt-1 text-sm text-muted">
-              {tournament.teamIds.length} teams / {tournament.bracketSize} bracket / single elimination
+              {tournament.teamIds.length}팀 / {tournament.bracketSize}강 브래킷 / 싱글 엘리미네이션
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3">
@@ -72,10 +72,10 @@ export function BracketView({ tournament, teams, onSaveResult, onClearResult }: 
               }}
             >
               <section className="grid grid-cols-[64px_minmax(0,1fr)] gap-x-10 border-l-4 border-cyan/60 bg-arena/25 py-5 pr-4">
-                <BracketAxisLabel label="Main Bracket" tone="cyan" />
+                <BracketAxisLabel label="메인 브래킷" tone="cyan" />
                 <div className="min-w-0">
                   <BracketLane
-                    title="Main Bracket"
+                    title="메인 브래킷"
                     subtitle={placementText}
                     matches={mainMatches}
                     teamsById={teamsById}
@@ -129,8 +129,8 @@ function createSingleDisplayMatchId(round: number, matchNumber: number) {
 
 function getSingleDisplayRoundName(round: number, totalRounds: number) {
   const remaining = totalRounds - round;
-  if (remaining === 0) return "Final";
-  if (remaining === 1) return "Semifinal";
-  if (remaining === 2) return "Quarterfinal";
-  return `Round of ${2 ** (remaining + 1)}`;
+  if (remaining === 0) return "결승";
+  if (remaining === 1) return "준결승";
+  if (remaining === 2) return "8강";
+  return `${2 ** (remaining + 1)}강`;
 }

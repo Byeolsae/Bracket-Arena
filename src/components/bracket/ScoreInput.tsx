@@ -17,7 +17,7 @@ export function ScoreInput({ value, onChange, disabled }: ScoreInputProps) {
       }
       disabled={disabled}
       className="h-9 w-16 rounded-md border border-line bg-arena px-2 text-center text-sm font-black text-ink outline-none transition focus:border-cyan disabled:bg-field disabled:text-slate-500"
-      aria-label="Score"
+      aria-label="점수"
     />
   );
 }

@@ -216,7 +216,7 @@ function ScorePair({
         }}
         className="h-9 w-14 rounded-md border border-line bg-field text-center font-black text-ink"
         inputMode="numeric"
-        aria-label="Score A"
+        aria-label="A팀 점수"
         style={aWins ? getScoreInputStyle(teamA) : undefined}
       />
       <span className="text-slate-500">:</span>
@@ -228,7 +228,7 @@ function ScorePair({
         }}
         className="h-9 w-14 rounded-md border border-line bg-field text-center font-black text-ink"
         inputMode="numeric"
-        aria-label="Score B"
+        aria-label="B팀 점수"
         style={bWins ? getScoreInputStyle(teamB) : undefined}
       />
     </div>

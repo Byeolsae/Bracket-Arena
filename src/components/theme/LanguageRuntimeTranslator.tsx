@@ -1,13 +1,28 @@
 "use client";
 
 import { useEffect } from "react";
-import { useUiStore } from "@/store/uiStore";
+import { useUiStore, type AppLanguage } from "@/store/uiStore";
 
 const exactTranslations: Record<string, string> = {
+  "빠른 시작": "Quick Start",
   "브래킷": "Bracket",
+  "브래킷 시작": "Bracket Launch",
   "팀 관리": "Team Manager",
   "티어리스트": "Tier List",
   "추첨 및 참가팀 선택": "Draw & Team Selection",
+  "추첨 및 참가팀": "Draw & Teams",
+  "실시간 추첨": "Live Draw",
+  "시드 추첨 머신": "Seed Draw Machine",
+  "조 추첨 머신": "Group Draw Machine",
+  "포트": "Pots",
+  "추첨 중...": "Drawing...",
+  "추첨 완료": "Draw Complete",
+  "추첨 대기": "Waiting For Draw",
+  "클릭해서 추첨": "Click To Draw",
+  "포트 1": "Pot 1",
+  "포트 2": "Pot 2",
+  "포트 3": "Pot 3",
+  "포트 4": "Pot 4",
   "대진표 만들기": "Create Bracket",
   "팀 관리하기": "Manage Teams",
   "티어 정리하기": "Organize Tiers",
@@ -20,6 +35,10 @@ const exactTranslations: Record<string, string> = {
   "대회 설정": "Tournament Setup",
   "대회 이름": "Tournament Name",
   "새 대회": "New Tournament",
+  "새 팀": "New Team",
+  "팀 정보": "Team Info",
+  "색상": "Colors",
+  "공통 대체 로고": "Common fallback logo",
   "예선 + 본선": "Qualifier + Playoffs",
   "본선": "Playoffs",
   "본선만": "Playoffs Only",
@@ -33,6 +52,11 @@ const exactTranslations: Record<string, string> = {
   "참가팀": "Teams",
   "예상 본선 진출": "Projected Playoff Teams",
   "설정 요약": "Setup Summary",
+  "브래킷 스테이지": "Bracket Stage",
+  "메인 브래킷": "Main Bracket",
+  "결승": "Final",
+  "준결승": "Semifinal",
+  "8강": "Quarterfinal",
   "참가팀 선택과 대회 설정은 추첨 및 참가팀 선택 화면에서 관리합니다.": "Team selection and tournament setup are managed on the Draw & Team Selection page.",
   "추첨 및 참가팀 선택에서 팀을 선택한 뒤 브래킷으로 가져오세요.": "Select teams in Draw & Team Selection, then import them into the bracket.",
   "Stage 옵션": "Stage Options",
@@ -64,14 +88,32 @@ const exactTranslations: Record<string, string> = {
   "더블 엘리미네이션": "Double Elimination",
   "트리플 엘리미네이션": "Triple Elimination",
   "스텝래더": "Stepladder",
+  "최종 보스": "Final Boss",
   "리그": "League",
+  "리그 스테이지": "League Stage",
+  "리그 본선": "League Playoffs",
   "그룹 리그": "Group League",
   "그룹 더블 엘리미네이션": "Group Double Elimination",
   "그룹 트리플 엘리미네이션": "Group Triple Elimination",
   "스위스": "Swiss",
+  "스위스 생성": "Create Swiss",
+  "스위스 스테이지": "Swiss Stage",
+  "스위스 브래킷": "Swiss Bracket",
+  "스위스 본선": "Swiss Playoffs",
+  "스위스 확장 프로필": "Swiss Scale Profile",
+  "중계 보드": "Broadcast Board",
+  "스위스 브래킷 흐름": "Swiss Bracket Flow",
+  "전적 흐름 보드": "Record Flow Board",
+  "옵션": "Options",
+  "진출": "Qualified",
+  "탈락": "Eliminated",
+  "완료": "DONE",
+  "진행": "OPEN",
   "배틀로얄": "Battle Royale",
   "한 번 지면 탈락하는 기본 녹아웃 브래킷": "Classic knockout bracket where one loss eliminates a team",
   "상위조 / 하위조 / 그랜드 파이널": "Upper bracket / lower bracket / grand final",
+  "상위조 / 중위조 / 하위조": "Upper / Middle / Lower",
+  "상위조는 1위, 중위조는 2위, 하위조는 3위를 결정합니다.": "Upper decides 1st, Middle decides 2nd, and Lower decides 3rd.",
   "8팀 고정 본선, 0패 / 1패 / 2패 그룹 구조": "Fixed 8-team playoff with 0-loss / 1-loss / 2-loss groups",
   "낮은 시드부터 높은 시드에게 도전": "Lower seeds challenge higher seeds in order",
   "라운드 로빈 순위표": "Round-robin standings",
@@ -87,6 +129,8 @@ const exactTranslations: Record<string, string> = {
   "4/8/16팀": "4/8/16 teams",
   "8팀 고정": "Fixed 8 teams",
   "비활성": "Disabled",
+  "팀 바탕화면": "Team Desktop",
+  "폴더 열기": "Open folder",
   "티어 설정": "Tier Settings",
   "등급 추가": "Add Tier",
   "초기화": "Reset",
@@ -104,6 +148,9 @@ const exactTranslations: Record<string, string> = {
   "수정": "Edit",
   "복제": "Duplicate",
   "팀 삭제": "Delete Team",
+  "구조 빌더": "Structure Builder",
+  "페이즈 추가": "Add Phase",
+  "와일드카드": "Wildcard",
   "테마 전환": "Toggle Theme",
   "언어 선택": "Language",
   "새 폴더": "New Folder",
@@ -128,6 +175,9 @@ const exactTranslations: Record<string, string> = {
   "무승부 자동 반영": "Draws are applied automatically",
   "동점은 승자 미확정": "Ties leave the winner unresolved",
   "점수 입력 시 자동 반영": "Scores apply automatically",
+  "점수": "Score",
+  "A팀 점수": "Score A",
+  "B팀 점수": "Score B",
   "현재 라운드 자동": "Auto Current Round",
   "현재 진행 가능한 라운드의 빈 매치만 랜덤 입력": "Randomly fill only empty matches in the current playable round",
   "현재 스텝 자동": "Auto Current Step",
@@ -140,6 +190,17 @@ const exactTranslations: Record<string, string> = {
   "3위 결정": "3rd Place",
   "4위 결정": "4th Place",
   "패자조": "Losers Bracket",
+  "승자조": "Winners Bracket",
+  "중위조": "Middle Bracket",
+  "하위조": "Lower Bracket",
+  "그룹 더블": "Group Double",
+  "오프닝": "Opening",
+  "승자전": "Winners",
+  "최종전": "Decider",
+  "트리플 엘리미네이션 조": "Triple Elimination Group",
+  "더블 엘리미네이션 조": "Double Elimination Group",
+  "더블 엘리미네이션 토너먼트": "Double-Elimination Tournament",
+  "탈락팀": "Eliminated",
   "탈락전": "Elimination Match",
   "표준식 2패조": "Standard two-loss bracket",
   "상위조에서 한 번 지면 패자조로 내려가고, 패자조에서 다시 지면 탈락합니다.": "Lose once in the upper bracket to drop to the lower bracket; lose again there to be eliminated.",
@@ -200,39 +261,297 @@ const exactTranslations: Record<string, string> = {
   "조 선택": "Select Group"
 };
 
-const regexTranslations: Array<[RegExp, (match: RegExpMatchArray) => string]> = [
-  [/^(\d+)팀$/, (match) => `${match[1]} teams`],
-  [/^(\d+)-(\d+)팀$/, (match) => `${match[1]}-${match[2]} teams`],
-  [/^(\d+)\/(\d+)팀$/, (match) => `${match[1]}/${match[2]} teams`],
-  [/^(\d+)팀 참가 · 기준 브래킷 (\d+)강 · 부전승 (\d+)$/, (match) => `${match[1]} selected · ${match[2]}-slot bracket · ${match[3]} byes`],
-  [/^진출권 상위 (\d+)팀 \/ 본선 (\d+)강 \/ 부전승 (\d+)$/, (match) => `Top ${match[1]} advance / ${match[2]}-slot playoff / ${match[3]} byes`],
-  [/^예상 본선 진출팀은 (\d+)팀입니다\. 이 팀 수로 생성할 수 없는 본선 방식은 자동으로 비활성화됩니다\.$/, (match) => `Projected playoff teams: ${match[1]}. Playoff formats that cannot use this team count are disabled automatically.`],
-  [/^현재 참가팀 기준 조는 최대 (\d+)개, 조별 진출은 최대 (\d+)팀까지 가능합니다\.$/, (match) => `With the current teams, up to ${match[1]} groups and ${match[2]} advancers per group are available.`],
-  [/^(.+)은 조별 (\d+)팀 고정, 조별 (\d+)팀 진출입니다\. 현재 선택 기준 (\d+)개 조가 생성되며, 모든 조가 정확히 (\d+)팀이어야 생성할 수 있습니다\.$/, (match) => `${translateText(match[1])} is fixed at ${match[2]} teams per group with ${match[3]} advancers per group. ${match[4]} groups will be created, and every group must have exactly ${match[5]} teams.`],
-  [/^(\d+)번 시드$/, (match) => `Seed ${match[1]}`],
-  [/^(\d+)시드$/, (match) => `Seed ${match[1]}`],
-  [/^와일드카드 (\d+)시드$/, (match) => `Wildcard Seed ${match[1]}`],
-  [/^([A-Z])그룹$/, (match) => `Group ${match[1]}`],
-  [/^([A-Z])조$/, (match) => `Group ${match[1]}`],
-  [/^([A-Z])그룹 (\d+)시드$/, (match) => `Group ${match[1]} Seed ${match[2]}`],
-  [/^([A-Z])조 #(\d+)$/, (match) => `Group ${match[1]} #${match[2]}`],
-  [/^([A-Z])그룹 본선 배정 기준$/, (match) => `Group ${match[1]} main stage seed`],
-  [/^(\d+)위$/, (match) => `${ordinal(Number(match[1]))} Place`],
-  [/^(\d+)위 결정$/, (match) => `${ordinal(Number(match[1]))} Place`],
-  [/^진출팀 (\d+)팀 미만$/, (match) => `Fewer than ${match[1]} advancing teams`],
-  [/^진출팀 (\d+)팀, 최대 (\d+)팀$/, (match) => `${match[1]} advancing teams, max ${match[2]}`],
-  [/^진출팀 (\d+)팀, (\d+)팀 고정$/, (match) => `${match[1]} advancing teams, fixed ${match[2]}`],
-  [/^진출팀 (\d+)팀, 4\/8\/16팀 필요$/, (match) => `${match[1]} advancing teams, requires 4/8/16 teams`],
-  [/^진출팀 (\d+)팀, 8팀 필요$/, (match) => `${match[1]} advancing teams, requires 8 teams`],
-  [/^(.+)은 최대 (\d+)팀까지만 생성할 수 있습니다\.$/, (match) => `${translateText(match[1])} supports up to ${match[2]} teams.`],
-  [/^(.+)은 (\d+)팀 고정입니다\.$/, (match) => `${translateText(match[1])} is fixed at ${match[2]} teams.`],
-  [/^(.+)은 4팀, 8팀, 16팀일 때만 생성할 수 있습니다\. 현재 (\d+)팀입니다\.$/, (match) => `${translateText(match[1])} can only be created with 4, 8, or 16 teams. Current: ${match[2]}.`],
-  [/^(.+)은 8팀일 때만 생성할 수 있습니다\. 현재 (\d+)팀입니다\.$/, (match) => `${translateText(match[1])} can only be created with 8 teams. Current: ${match[2]}.`],
-  [/^(.+)은 조별 (\d+)팀 고정입니다\. (.+)가 (\d+)팀입니다\.$/, (match) => `${translateText(match[1])} requires exactly ${match[2]} teams per group. ${translateText(match[3])} has ${match[4]} teams.`],
-  [/^(.+)은 조별 최대 (\d+)팀까지만 생성할 수 있습니다\. (.+)가 (\d+)팀입니다\.$/, (match) => `${translateText(match[1])} supports up to ${match[2]} teams per group. ${translateText(match[3])} has ${match[4]} teams.`],
-  [/^(.+) \((.+)\)$/, (match) => `${translateText(match[1])} (${translateText(match[2])})`],
-  [/^(.+) · (.+)$/, (match) => `${translateText(match[1])} · ${match[2]}`],
-  [/^(.+) 폴더를 삭제할까요\?$/, (match) => `Delete the "${match[1]}" folder?`]
+const japaneseTranslations: Record<string, string> = {
+  "빠른 시작": "クイックスタート",
+  "브래킷": "ブラケット",
+  "브래킷 시작": "ブラケット開始",
+  "팀 관리": "チーム管理",
+  "티어리스트": "ティアリスト",
+  "추첨 및 참가팀 선택": "抽選・参加チーム選択",
+  "추첨 및 참가팀": "抽選・参加チーム",
+  "대진표 만들기": "ブラケットを作成",
+  "팀 관리하기": "チームを管理",
+  "티어 정리하기": "ティアを整理",
+  "참가팀 준비하기": "参加チームを準備",
+  "팀을 만들고, 원하는 대회 구조를 고른 뒤, 브래킷과 티어리스트를 빠르게 정리합니다.": "チームを作成し、大会形式を選んで、ブラケットとティアリストを素早く整理します。",
+  "참가팀을 고르고 예선/본선 방식으로 대진표를 만든 뒤 점수를 직접 입력합니다.": "参加チームを選び、予選・本戦形式でブラケットを作成して、スコアを手入力します。",
+  "팀 로고, 약칭, 전용 색상, 폴더 정리를 바탕화면처럼 관리합니다.": "チームロゴ、略称、専用カラー、フォルダをデスクトップのように管理します。",
+  "만든 팀을 S-F 등급에 드래그해서 배치하고, 등급 이름과 색상을 커스텀합니다.": "作成したチームをS-Fティアへドラッグして配置し、ティア名と色をカスタムします。",
+  "참가팀, 대회 설정, 포트, 시드/조 추첨을 준비하고 브래킷으로 가져옵니다.": "参加チーム、大会設定、ポット、シード・グループ抽選を準備してブラケットへ取り込みます。",
+  "대회 설정": "大会設定",
+  "대회 이름": "大会名",
+  "새 대회": "新しい大会",
+  "새 팀": "新しいチーム",
+  "팀 정보": "チーム情報",
+  "색상": "カラー",
+  "공통 대체 로고": "共通の代替ロゴ",
+  "예선 + 본선": "予選 + 本戦",
+  "본선": "本戦",
+  "본선만": "本戦のみ",
+  "예선": "予選",
+  "예선 방식": "予選形式",
+  "본선 방식": "本戦形式",
+  "예선 생성": "予選を作成",
+  "본선 생성": "本戦を作成",
+  "대진표 생성": "ブラケット作成",
+  "진행 방식": "進行方式",
+  "참가팀": "参加チーム",
+  "예상 본선 진출": "予想本戦進出",
+  "설정 요약": "設定概要",
+  "참가팀 선택과 대회 설정은 추첨 및 참가팀 선택 화면에서 관리합니다.": "参加チーム選択と大会設定は、抽選・参加チーム選択画面で管理します。",
+  "추첨 및 참가팀 선택에서 팀을 선택한 뒤 브래킷으로 가져오세요.": "抽選・参加チーム選択でチームを選んでから、ブラケットへ取り込んでください。",
+  "브래킷 스테이지": "ブラケットステージ",
+  "메인 브래킷": "メインブラケット",
+  "결승": "決勝",
+  "준결승": "準決勝",
+  "8강": "準々決勝",
+  "Stage 옵션": "ステージオプション",
+  "진출팀 수": "進出チーム数",
+  "리그 방식": "リーグ形式",
+  "싱글 라운드 로빈": "シングルラウンドロビン",
+  "더블 라운드 로빈": "ダブルラウンドロビン",
+  "스위스 설정": "スイス設定",
+  "그룹 설정": "グループ設定",
+  "배틀로얄 설정": "バトルロイヤル設定",
+  "조 개수": "グループ数",
+  "조별 진출팀": "グループ別進出",
+  "라운드 수": "ラウンド数",
+  "라운드 참가팀": "ラウンド参加チーム",
+  "전체": "全選択",
+  "해제": "解除",
+  "시드 랜덤": "シードランダム",
+  "시드 배분": "シード配分",
+  "그룹 랜덤": "グループランダム",
+  "조 편성": "グループ編成",
+  "여기에 드롭": "ここにドロップ",
+  "선택": "選択",
+  "비어 있는 폴더입니다.": "空のフォルダです。",
+  "PDF 출력": "PDF出力",
+  "싱글 엘리미네이션": "シングルエリミネーション",
+  "더블 엘리미네이션": "ダブルエリミネーション",
+  "트리플 엘리미네이션": "トリプルエリミネーション",
+  "스텝래더": "ステップラダー",
+  "최종 보스": "最終ボス",
+  "리그": "リーグ",
+  "리그 스테이지": "リーグステージ",
+  "리그 본선": "リーグ本戦",
+  "그룹 리그": "グループリーグ",
+  "그룹 더블 엘리미네이션": "グループダブルエリミネーション",
+  "그룹 트리플 엘리미네이션": "グループトリプルエリミネーション",
+  "스위스": "スイス",
+  "스위스 생성": "スイスを作成",
+  "스위스 스테이지": "スイスステージ",
+  "스위스 브래킷": "スイスブラケット",
+  "스위스 본선": "スイス本戦",
+  "스위스 확장 프로필": "スイス拡張プロファイル",
+  "중계 보드": "配信ボード",
+  "스위스 브래킷 흐름": "スイスブラケットの流れ",
+  "전적 흐름 보드": "戦績フローボード",
+  "옵션": "オプション",
+  "진출": "進出",
+  "탈락": "敗退",
+  "완료": "完了",
+  "진행": "進行中",
+  "배틀로얄": "バトルロイヤル",
+  "상위조 / 하위조 / 그랜드 파이널": "上位ブラケット / 下位ブラケット / グランドファイナル",
+  "상위조 / 중위조 / 하위조": "上位 / 中位 / 下位",
+  "상위조는 1위, 중위조는 2위, 하위조는 3위를 결정합니다.": "上位は1位、中位は2位、下位は3位を決定します。",
+  "비활성": "無効",
+  "팀 바탕화면": "チームデスクトップ",
+  "폴더 열기": "フォルダを開く",
+  "티어 설정": "ティア設定",
+  "등급 추가": "ティア追加",
+  "초기화": "リセット",
+  "설정할 등급이 없습니다.": "設定できるティアがありません。",
+  "등급 삭제": "ティア削除",
+  "여기에 팀을 드래그": "ここにチームをドラッグ",
+  "미배치 팀": "未配置チーム",
+  "등급 밖으로 꺼내려면 이 영역에 드래그하면 됩니다.": "ティアから外すには、このエリアへドラッグします。",
+  "아직 팀이 없습니다. 팀 관리에서 먼저 추가하세요.": "まだチームがありません。先にチーム管理で追加してください。",
+  "모든 팀이 등급에 배치되었습니다.": "すべてのチームがティアに配置されています。",
+  "등급 이름": "ティア名",
+  "티어 색상": "ティア色",
+  "티어 글씨 색상": "ティア文字色",
+  "미리보기": "プレビュー",
+  "수정": "編集",
+  "복제": "複製",
+  "팀 삭제": "チーム削除",
+  "구조 빌더": "構造ビルダー",
+  "페이즈 추가": "フェーズ追加",
+  "와일드카드": "ワイルドカード",
+  "테마 전환": "テーマ切替",
+  "언어 선택": "言語選択",
+  "새 폴더": "新しいフォルダ",
+  "이름 변경": "名前変更",
+  "시드": "シード",
+  "시드 순위": "シード順位",
+  "다음 Stage 배정 기준": "次ステージのシード基準",
+  "결과": "結果",
+  "최종 순위": "最終順位",
+  "결과 입력 후 자동 정리": "入力結果から自動整理",
+  "본선 시드": "本戦シード",
+  "와일드카드 본선 배정 기준": "ワイルドカード本戦シード基準",
+  "순위표": "順位表",
+  "경기 목록": "試合一覧",
+  "수동 결과 입력": "手動結果入力",
+  "아직 생성된 매치가 없습니다.": "まだ試合が生成されていません。",
+  "아직 탈락한 팀이 없습니다.": "まだ敗退チームはありません。",
+  "아직 확정된 진출팀이 없습니다.": "まだ進出確定チームはありません。",
+  "미정": "未定",
+  "대기 중": "待機中",
+  "팀 확정 대기": "チーム確定待ち",
+  "점수 입력 시 자동 반영": "スコア入力時に自動反映",
+  "점수": "スコア",
+  "A팀 점수": "チームAスコア",
+  "B팀 점수": "チームBスコア",
+  "현재 라운드 자동": "現在ラウンド自動",
+  "현재 스텝 자동": "現在ステップ自動",
+  "챔피언": "チャンピオン",
+  "러너업": "準優勝",
+  "3등": "3位",
+  "1위 결정": "1位決定",
+  "2위 결정": "2位決定",
+  "3위 결정": "3位決定",
+  "4위 결정": "4位決定",
+  "패자조": "敗者側",
+  "승자조": "勝者側",
+  "중위조": "中位側",
+  "하위조": "下位側",
+  "그룹 더블": "グループダブル",
+  "오프닝": "オープニング",
+  "승자전": "勝者戦",
+  "탈락전": "敗退戦",
+  "최종전": "最終戦",
+  "트리플 엘리미네이션 조": "トリプルエリミネーション組",
+  "더블 엘리미네이션 조": "ダブルエリミネーション組",
+  "더블 엘리미네이션 토너먼트": "ダブルエリミネーショントーナメント",
+  "탈락팀": "敗退チーム",
+  "표준식 2패조": "標準2敗方式",
+  "팀": "チーム",
+  "순위": "順位",
+  "상태": "状態",
+  "경기": "試合",
+  "승": "勝",
+  "무": "分",
+  "패": "敗",
+  "득점": "得点",
+  "실점": "失点",
+  "득실": "得失",
+  "승점": "勝点",
+  "총점": "合計",
+  "추첨": "抽選",
+  "시드 추첨": "シード抽選",
+  "포트 설정": "ポット設定",
+  "공개": "公開",
+  "브래킷으로 가져오기": "ブラケットへ取り込み",
+  "수동 결과 적용": "手動結果を適用",
+  "먼저 참가팀을 선택하세요.": "先に参加チームを選択してください。",
+  "아직 배정 전": "未割り当て",
+  "클릭해서 추첨 시작": "クリックして抽選開始",
+  "추첨 진행 중": "抽選中",
+  "팀을 먼저 선택하세요": "先にチームを選択してください",
+  "준비 완료": "準備完了",
+  "추첨 시작": "抽選開始",
+  "조 선택": "グループ選択",
+  "실시간 추첨": "リアルタイム抽選",
+  "시드 추첨 머신": "シード抽選マシン",
+  "조 추첨 머신": "グループ抽選マシン",
+  "포트": "ポット",
+  "수동 배정": "手動割り当て",
+  "추첨 중...": "抽選中...",
+  "추첨 완료": "抽選完了",
+  "추첨 대기": "抽選待機",
+  "클릭해서 추첨": "クリックして抽選",
+  "포트 1": "ポット1",
+  "포트 2": "ポット2",
+  "포트 3": "ポット3",
+  "포트 4": "ポット4",
+  "팀과 방식을 선택한 뒤 생성 버튼을 누르면 여기에 Stage가 표시됩니다.": "チームと形式を選んで作成ボタンを押すと、ここにステージが表示されます。",
+  "최소 2팀을 선택해야 합니다.": "最低2チームを選択してください。",
+  "본선 진출팀이 2팀 이상 확정된 뒤 본선을 생성할 수 있습니다.": "本戦進出チームが2チーム以上確定すると本戦を作成できます。",
+  "한 번 지면 탈락하는 기본 녹아웃 브래킷": "1敗で敗退する基本ノックアウトブラケット",
+  "8팀 고정 본선, 0패 / 1패 / 2패 그룹 구조": "8チーム固定本戦、0敗 / 1敗 / 2敗のグループ構造",
+  "낮은 시드부터 높은 시드에게 도전": "低いシードから高いシードへ挑戦",
+  "라운드 로빈 순위표": "ラウンドロビン順位表",
+  "조별 라운드 로빈": "グループ別ラウンドロビン",
+  "조별 4팀 더블 엘리, 상위 2팀 진출": "各組4チームのダブルエリミネーション、上位2チーム進出",
+  "조별 8팀 상위/하위/라스트 찬스 방식": "各組8チームの上位/下位/ラストチャンス方式",
+  "같은 전적끼리 매칭": "同じ戦績同士をマッチング",
+  "라운드별 순위/킬 누적 점수": "ラウンド別順位/キル累積点",
+  "자유": "自由",
+  "조별 자유": "グループ別自由",
+  "조당 4팀 고정": "1組4チーム固定",
+  "조당 8팀 고정": "1組8チーム固定",
+  "4/8/16팀": "4/8/16チーム",
+  "8팀 고정": "8チーム固定",
+  "무승부 자동 반영": "引き分けを自動反映",
+  "동점은 승자 미확정": "同点では勝者未確定",
+  "현재 진행 가능한 라운드의 빈 매치만 랜덤 입력": "現在進行可能なラウンドの空き試合のみランダム入力",
+  "현재 진행 가능한 스텝에 랜덤 점수를 입력합니다": "現在進行可能なステップにランダムスコアを入力します",
+  "상위조에서 한 번 지면 패자조로 내려가고, 패자조에서 다시 지면 탈락합니다.": "上位側で1敗すると敗者側へ移動し、敗者側でもう一度負けると敗退します。",
+  "Upper는 1위, Middle은 2위, Lower는 3위를 결정합니다.": "Upperは1位、Middleは2位、Lowerは3位を決定します。",
+  "라운드 결과 저장": "ラウンド結果を保存",
+  "순위점수": "順位点",
+  "킬점수": "キル点",
+  "보너스": "ボーナス",
+  "페널티": "ペナルティ",
+  "최대 라운드": "最大ラウンド",
+  "진출 방식": "進出方式",
+  "진출 승수": "進出勝利数",
+  "탈락 패수": "敗退敗北数",
+  "상위 N팀": "上位Nチーム",
+  "무승부 허용": "引き分け許可",
+  "재매칭 회피": "再マッチ回避",
+  "BYE 허용": "BYE許可",
+  "중복 BYE 방지": "重複BYE防止",
+  "BYE 승리 처리": "BYEを勝利扱い",
+  "승수 기준": "勝利数基準",
+  "순위 기준": "順位基準",
+  "슬롯 매핑": "スロット割り当て",
+  "순위 순서대로": "順位順",
+  "시드 순서대로": "シード順",
+  "랜덤 배정": "ランダム割り当て",
+  "같은 조 회피": "同組回避",
+  "같은 지역 회피": "同地域回避",
+  "대회 설정, 참가팀 설정, 조별 설정, 스테이지 옵션은 브래킷에서 추첨으로 넘어옵니다.": "大会設定、参加チーム設定、グループ設定、ステージオプションはブラケットから抽選へ渡されます。",
+  "중복 시드는 자동으로 서로 교체됩니다.": "重複したシードは自動で入れ替わります。",
+  "팀 카드를 원하는 조 칸으로 드래그해서 배정하세요.": "チームカードを希望するグループ枠へドラッグして割り当ててください。",
+  "시드 추첨을 시작하면 결과가 표시됩니다.": "シード抽選を開始すると結果が表示されます。"
+};
+
+const regexTranslations: Array<[RegExp, (match: RegExpMatchArray, language: AppLanguage) => string]> = [
+  [/^(\d+)팀$/, (match, language) => language === "ja" ? `${match[1]}チーム` : `${match[1]} teams`],
+  [/^(\d+)-(\d+)팀$/, (match, language) => language === "ja" ? `${match[1]}-${match[2]}チーム` : `${match[1]}-${match[2]} teams`],
+  [/^(\d+)\/(\d+)팀$/, (match, language) => language === "ja" ? `${match[1]}/${match[2]}チーム` : `${match[1]}/${match[2]} teams`],
+  [/^(\d+)팀 참가 · 기준 브래킷 (\d+)강 · 부전승 (\d+)$/, (match, language) => language === "ja" ? `${match[1]}チーム参加 · 基準ブラケット${match[2]}枠 · 不戦勝${match[3]}` : `${match[1]} selected · ${match[2]}-slot bracket · ${match[3]} byes`],
+  [/^진출권 상위 (\d+)팀 \/ 본선 (\d+)강 \/ 부전승 (\d+)$/, (match, language) => language === "ja" ? `進出枠上位${match[1]}チーム / 本戦${match[2]}枠 / 不戦勝${match[3]}` : `Top ${match[1]} advance / ${match[2]}-slot playoff / ${match[3]} byes`],
+  [/^예상 본선 진출팀은 (\d+)팀입니다\. 이 팀 수로 생성할 수 없는 본선 방식은 자동으로 비활성화됩니다\.$/, (match, language) => language === "ja" ? `予想本戦進出は${match[1]}チームです。このチーム数で作成できない本戦形式は自動で無効化されます。` : `Projected playoff teams: ${match[1]}. Playoff formats that cannot use this team count are disabled automatically.`],
+  [/^현재 참가팀 기준 조는 최대 (\d+)개, 조별 진출은 최대 (\d+)팀까지 가능합니다\.$/, (match, language) => language === "ja" ? `現在の参加チームでは、最大${match[1]}グループ、グループ別進出は最大${match[2]}チームまで可能です。` : `With the current teams, up to ${match[1]} groups and ${match[2]} advancers per group are available.`],
+  [/^(.+)은 조별 (\d+)팀 고정, 조별 (\d+)팀 진출입니다\. 현재 선택 기준 (\d+)개 조가 생성되며, 모든 조가 정확히 (\d+)팀이어야 생성할 수 있습니다\.$/, (match, language) => language === "ja" ? `${translateText(match[1], language)}は各グループ${match[2]}チーム固定、各グループ${match[3]}チーム進出です。現在の選択では${match[4]}グループが作成され、すべてのグループが正確に${match[5]}チームである必要があります。` : `${translateText(match[1], language)} is fixed at ${match[2]} teams per group with ${match[3]} advancers per group. ${match[4]} groups will be created, and every group must have exactly ${match[5]} teams.`],
+  [/^(\d+)번 시드$/, (match, language) => language === "ja" ? `シード${match[1]}` : `Seed ${match[1]}`],
+  [/^(\d+)시드$/, (match, language) => language === "ja" ? `シード${match[1]}` : `Seed ${match[1]}`],
+  [/^와일드카드 (\d+)시드$/, (match, language) => language === "ja" ? `ワイルドカードシード${match[1]}` : `Wildcard Seed ${match[1]}`],
+  [/^([A-Z])그룹$/, (match, language) => language === "ja" ? `${match[1]}グループ` : `Group ${match[1]}`],
+  [/^([A-Z])조$/, (match, language) => language === "ja" ? `${match[1]}組` : `Group ${match[1]}`],
+  [/^([A-Z])그룹 (\d+)시드$/, (match, language) => language === "ja" ? `${match[1]}グループ シード${match[2]}` : `Group ${match[1]} Seed ${match[2]}`],
+  [/^([A-Z])조 #(\d+)$/, (match, language) => language === "ja" ? `${match[1]}組 #${match[2]}` : `Group ${match[1]} #${match[2]}`],
+  [/^([A-Z])그룹 본선 배정 기준$/, (match, language) => language === "ja" ? `${match[1]}グループ本戦シード基準` : `Group ${match[1]} main stage seed`],
+  [/^(\d+)위$/, (match, language) => language === "ja" ? `${match[1]}位` : `${ordinal(Number(match[1]))} Place`],
+  [/^(\d+)위 결정$/, (match, language) => language === "ja" ? `${match[1]}位決定` : `${ordinal(Number(match[1]))} Place`],
+  [/^진출팀 (\d+)팀 미만$/, (match, language) => language === "ja" ? `進出チーム${match[1]}未満` : `Fewer than ${match[1]} advancing teams`],
+  [/^진출팀 (\d+)팀, 최대 (\d+)팀$/, (match, language) => language === "ja" ? `進出チーム${match[1]}、最大${match[2]}チーム` : `${match[1]} advancing teams, max ${match[2]}`],
+  [/^진출팀 (\d+)팀, (\d+)팀 고정$/, (match, language) => language === "ja" ? `進出チーム${match[1]}、${match[2]}チーム固定` : `${match[1]} advancing teams, fixed ${match[2]}`],
+  [/^진출팀 (\d+)팀, 4\/8\/16팀 필요$/, (match, language) => language === "ja" ? `進出チーム${match[1]}、4/8/16チームが必要` : `${match[1]} advancing teams, requires 4/8/16 teams`],
+  [/^진출팀 (\d+)팀, 8팀 필요$/, (match, language) => language === "ja" ? `進出チーム${match[1]}、8チームが必要` : `${match[1]} advancing teams, requires 8 teams`],
+  [/^(.+)은 최대 (\d+)팀까지만 생성할 수 있습니다\.$/, (match, language) => language === "ja" ? `${translateText(match[1], language)}は最大${match[2]}チームまで作成できます。` : `${translateText(match[1], language)} supports up to ${match[2]} teams.`],
+  [/^(.+)은 (\d+)팀 고정입니다\.$/, (match, language) => language === "ja" ? `${translateText(match[1], language)}は${match[2]}チーム固定です。` : `${translateText(match[1], language)} is fixed at ${match[2]} teams.`],
+  [/^(.+)은 4팀, 8팀, 16팀일 때만 생성할 수 있습니다\. 현재 (\d+)팀입니다\.$/, (match, language) => language === "ja" ? `${translateText(match[1], language)}は4、8、16チームの場合のみ作成できます。現在は${match[2]}チームです。` : `${translateText(match[1], language)} can only be created with 4, 8, or 16 teams. Current: ${match[2]}.`],
+  [/^(.+)은 8팀일 때만 생성할 수 있습니다\. 현재 (\d+)팀입니다\.$/, (match, language) => language === "ja" ? `${translateText(match[1], language)}は8チームの場合のみ作成できます。現在は${match[2]}チームです。` : `${translateText(match[1], language)} can only be created with 8 teams. Current: ${match[2]}.`],
+  [/^(.+)은 조별 (\d+)팀 고정입니다\. (.+)가 (\d+)팀입니다\.$/, (match, language) => language === "ja" ? `${translateText(match[1], language)}は各グループ${match[2]}チーム固定です。${translateText(match[3], language)}は${match[4]}チームです。` : `${translateText(match[1], language)} requires exactly ${match[2]} teams per group. ${translateText(match[3], language)} has ${match[4]} teams.`],
+  [/^(.+)은 조별 최대 (\d+)팀까지만 생성할 수 있습니다\. (.+)가 (\d+)팀입니다\.$/, (match, language) => language === "ja" ? `${translateText(match[1], language)}は各グループ最大${match[2]}チームまで作成できます。${translateText(match[3], language)}は${match[4]}チームです。` : `${translateText(match[1], language)} supports up to ${match[2]} teams per group. ${translateText(match[3], language)} has ${match[4]} teams.`],
+  [/^(.+) \((.+)\)$/, (match, language) => `${translateText(match[1], language)} (${translateText(match[2], language)})`],
+  [/^(.+) · (.+)$/, (match, language) => `${translateText(match[1], language)} · ${match[2]}`],
+  [/^(.+) 폴더를 삭제할까요\?$/, (match, language) => language === "ja" ? `「${match[1]}」フォルダを削除しますか？` : `Delete the "${match[1]}" folder?`]
 ];
 
 const originalText = new WeakMap<Text, string>();
@@ -262,13 +581,13 @@ export function LanguageRuntimeTranslator() {
   return null;
 }
 
-function translateDocument(language: "ko" | "en") {
+function translateDocument(language: AppLanguage) {
   const root = document.body;
   translateTextNodes(root, language);
   translateAttributes(root, language);
 }
 
-function translateTextNodes(root: HTMLElement, language: "ko" | "en") {
+function translateTextNodes(root: HTMLElement, language: AppLanguage) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
       const parent = node.parentElement;
@@ -285,12 +604,12 @@ function translateTextNodes(root: HTMLElement, language: "ko" | "en") {
   for (const node of nodes) {
     const baseText = originalText.get(node) ?? node.textContent ?? "";
     if (!originalText.has(node)) originalText.set(node, baseText);
-    const nextText = language === "en" ? translatePreservingWhitespace(baseText) : baseText;
+    const nextText = language === "ko" ? baseText : translatePreservingWhitespace(baseText, language);
     if (node.textContent !== nextText) node.textContent = nextText;
   }
 }
 
-function translateAttributes(root: HTMLElement, language: "ko" | "en") {
+function translateAttributes(root: HTMLElement, language: AppLanguage) {
   const elements = root.querySelectorAll<HTMLElement>("[title], [aria-label], [placeholder]");
 
   for (const element of elements) {
@@ -301,28 +620,40 @@ function translateAttributes(root: HTMLElement, language: "ko" | "en") {
       if (!originalAttributes.has(element)) originalAttributes.set(element, stored);
       if (!stored.has(attribute)) stored.set(attribute, value);
       const baseValue = stored.get(attribute) ?? value;
-      const nextValue = language === "en" ? translateText(baseValue) : baseValue;
+      const nextValue = language === "ko" ? baseValue : translateText(baseValue, language);
       if (value !== nextValue) element.setAttribute(attribute, nextValue);
     }
   }
 
-  document.documentElement.toggleAttribute(translatedMarker, language === "en");
+  document.documentElement.toggleAttribute(translatedMarker, language !== "ko");
 }
 
-function translatePreservingWhitespace(value: string) {
+function translatePreservingWhitespace(value: string, language: AppLanguage) {
   const leading = value.match(/^\s*/)?.[0] ?? "";
   const trailing = value.match(/\s*$/)?.[0] ?? "";
   const core = value.trim();
-  return core ? `${leading}${translateText(core)}${trailing}` : value;
+  return core ? `${leading}${translateText(core, language)}${trailing}` : value;
 }
 
-function translateText(value: string): string {
-  const direct = exactTranslations[value];
+function translateText(value: string, language: AppLanguage = "en"): string {
+  const dictionary = language === "ja" ? japaneseTranslations : exactTranslations;
+  const direct = dictionary[value];
   if (direct) return direct;
 
   for (const [pattern, replacer] of regexTranslations) {
     const match = value.match(pattern);
-    if (match) return replacer(match);
+    if (match) return replacer(match, language);
+  }
+
+  if (language === "ja") {
+    return value
+      .replace(/([A-Z])그룹/g, "$1グループ")
+      .replace(/([A-Z])조/g, "$1組")
+      .replace(/(\d+)팀/g, "$1チーム")
+      .replace(/(\d+)시드/g, "シード$1")
+      .replace(/(\d+)위/g, "$1位")
+      .replace(/(\d+)라운드/g, "ラウンド$1")
+      .replace(/(\d+)강/g, "ベスト$1");
   }
 
   return value
@@ -330,7 +661,9 @@ function translateText(value: string): string {
     .replace(/([A-Z])조/g, "Group $1")
     .replace(/(\d+)팀/g, "$1 teams")
     .replace(/(\d+)시드/g, "Seed $1")
-    .replace(/(\d+)위/g, "$1th Place");
+    .replace(/(\d+)위/g, "$1th Place")
+    .replace(/(\d+)라운드/g, "Round $1")
+    .replace(/(\d+)강/g, "Round of $1");
 }
 
 function ordinal(value: number) {

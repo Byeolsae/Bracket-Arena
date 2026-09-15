@@ -17,7 +17,7 @@ export function WildcardTable({ standings, teamsById, wildcardCount }: WildcardT
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-black uppercase text-ink">Wildcard</h3>
+        <h3 className="text-lg font-black uppercase text-ink">와일드카드</h3>
         <span className="rounded-md border border-gold/40 px-2 py-1 text-xs font-black text-gold">
           {wildcardCount}팀 추가 진출
         </span>

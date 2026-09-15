@@ -54,21 +54,21 @@ export function DoubleEliminationView({
     ...match,
     bracketGroup: "winners" as const,
     round: grandFinalRound,
-    roundName: `Winners Bracket ${grandFinalRound}`,
+    roundName: `승자조 ${grandFinalRound}라운드`,
     matchNumber: 1
   }));
   const winners = [
     ...actualWinners,
-    ...createWaitingMatchesByPrefix(actualWinners, bracket.pendingTeamIds, "W", "winners", "Winners Bracket"),
+    ...createWaitingMatchesByPrefix(actualWinners, bracket.pendingTeamIds, "W", "winners", "승자조"),
     ...grandFinalAsWinnerMatch
   ];
   const losers = normalizeDisplayRounds([
     ...actualLosers,
-    ...createWaitingMatchesByPrefix(actualLosers, bracket.pendingTeamIds, "L", "losers", "Losers Bracket")
+    ...createWaitingMatchesByPrefix(actualLosers, bracket.pendingTeamIds, "L", "losers", "패자조")
   ])
     .map((match) =>
       match.round === getActualRoundCount(normalizeDisplayRounds(actualLosers)) && loserFinalRound > 1
-        ? { ...match, roundName: "Losers Final" }
+        ? { ...match, roundName: "패자조 결승" }
         : match
     );
   const winnersDisplayRoundCount = Math.max(grandFinalRound, getActualRoundCount(winners));
@@ -89,9 +89,9 @@ export function DoubleEliminationView({
       <section className="bracket-board">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line bg-arena/85 px-5 py-4">
           <div>
-            <p className="section-kicker">Double Elimination</p>
+            <p className="section-kicker">더블 엘리미네이션</p>
             <h2 className="mt-1 text-3xl font-black uppercase tracking-wide text-ink">
-              Double-Elimination Tournament
+              더블 엘리미네이션 토너먼트
             </h2>
             <p className="mt-1 text-sm text-muted">
               승자조에서 한 번 지면 패자조로 내려가고, 패자조에서 다시 지면 탈락합니다.
@@ -119,9 +119,9 @@ export function DoubleEliminationView({
                 width: `${100 * zoom}%`
               }}
             >
-              <BracketStackSection title="Winners bracket" label="Winners Bracket" tone="cyan">
+              <BracketStackSection title="승자조" label="승자조" tone="cyan">
                 <BracketLane
-                  title="Winners bracket"
+                  title="승자조"
                   subtitle={winnersPlacementText}
                   matches={winners}
                   teamsById={teamsById}
@@ -140,9 +140,9 @@ export function DoubleEliminationView({
                 />
               </BracketStackSection>
 
-              <BracketStackSection title="Losers bracket" label="Losers Bracket" tone="red">
+              <BracketStackSection title="패자조" label="패자조" tone="red">
                 <BracketLane
-                  title="Losers bracket"
+                  title="패자조"
                   subtitle={losersPlacementText}
                   matches={losers}
                   teamsById={teamsById}
@@ -166,7 +166,7 @@ export function DoubleEliminationView({
       </section>
 
       <section className="arena-card p-4">
-        <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-danger">Eliminated</h3>
+        <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-danger">탈락팀</h3>
         <div className="flex flex-wrap gap-2">
           {eliminatedIds.map((teamId) => {
             const team = teamsById.get(teamId);

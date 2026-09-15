@@ -23,7 +23,7 @@ export function StructureBuilder() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="section-kicker">Structure Builder</p>
+          <p className="section-kicker">구조 빌더</p>
           <h1 className="mt-2 text-3xl font-black uppercase tracking-wide text-ink">
             대회 구조 빌더
           </h1>
@@ -31,7 +31,7 @@ export function StructureBuilder() {
         <div className="flex gap-2">
           <button className="button-muted" onClick={addPhase}>
             <Plus className="h-4 w-4" />
-            Phase 추가
+            페이즈 추가
           </button>
           <button className="button-primary">
             <Save className="h-4 w-4" />

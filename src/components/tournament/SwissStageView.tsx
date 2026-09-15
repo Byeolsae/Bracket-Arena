@@ -91,8 +91,8 @@ export function SwissStageView({ stage, teams, onChange }: SwissStageViewProps) 
       <div className="bracket-board">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-arena/85 px-5 py-4">
           <div>
-            <p className="section-kicker">Swiss Bracket</p>
-            <h2 className="text-2xl font-black uppercase tracking-wide text-ink">Record Flow Board</h2>
+            <p className="section-kicker">스위스 브래킷</p>
+            <h2 className="text-2xl font-black uppercase tracking-wide text-ink">전적 흐름 보드</h2>
           </div>
           <BracketZoomControls
             zoom={zoom}
@@ -208,8 +208,8 @@ function SwissBracketBoard({
           );
         })}
         <div className="flex min-h-[720px] w-72 shrink-0 flex-col justify-center gap-7">
-          <SwissOutcomeColumn title="Qualified" tone="bg-lime" records={qualified} teamsById={teamsById} />
-          <SwissOutcomeColumn title="Eliminated" tone="bg-danger" records={eliminated} teamsById={teamsById} />
+          <SwissOutcomeColumn title="진출" tone="bg-lime" records={qualified} teamsById={teamsById} />
+          <SwissOutcomeColumn title="탈락" tone="bg-danger" records={eliminated} teamsById={teamsById} />
         </div>
       </div>
     </div>
@@ -377,7 +377,7 @@ function SwissMiniTeam({
         )}
         disabled={isPlaceholder}
         inputMode="numeric"
-        aria-label={`${team?.shortName || team?.name || "TBD"} score`}
+        aria-label={`${team?.shortName || team?.name || "미정"} 점수`}
         style={scoreStyle}
       />
     </div>
@@ -463,14 +463,14 @@ function SwissOutcomeColumn({
           const textStyle = getTeamTextStyle(team);
           return (
             <div key={record.teamId} className="flex items-center gap-2 border border-line bg-field p-1.5">
-              <TeamLogo team={team} size="sm" highlighted={title === "Qualified"} />
+              <TeamLogo team={team} size="sm" highlighted={title === "진출"} />
               <span className="truncate text-xs font-black uppercase text-ink" style={textStyle}>
                 {team?.shortName || team?.name || "TBD"}
               </span>
             </div>
           );
         })}
-        {!records.length ? <div className="col-span-2 py-6 text-center text-xs font-bold text-slate-500">Waiting</div> : null}
+        {!records.length ? <div className="col-span-2 py-6 text-center text-xs font-bold text-slate-500">대기 중</div> : null}
       </div>
     </div>
   );

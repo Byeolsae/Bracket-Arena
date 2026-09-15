@@ -38,9 +38,9 @@ export default function SwissPage() {
     <main className="mx-auto w-full max-w-[1800px] px-4 py-6 sm:px-6 2xl:px-8">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="section-kicker">Swiss Stage</p>
+          <p className="section-kicker">스위스 스테이지</p>
           <h1 className="mt-2 text-4xl font-black uppercase tracking-wide text-ink">
-            Swiss Bracket
+            스위스 브래킷
           </h1>
           <p className="mt-1 max-w-3xl text-sm text-slate-400">
             같은 전적끼리 우선 매칭하고 결과는 직접 입력합니다. 2의 거듭제곱 팀 수를 맞추면
@@ -54,7 +54,7 @@ export default function SwissPage() {
             onClick={() => createSwissStage(teams, readSwissConfig())}
           >
             <Play className="h-4 w-4" aria-hidden="true" />
-            Swiss 생성
+            스위스 생성
           </button>
           <button
             className="button-muted"
@@ -67,7 +67,7 @@ export default function SwissPage() {
           <button
             className="button-muted"
             disabled={advancingTeams.length < 2}
-            onClick={() => createTournament(advancingTeams, "Swiss Playoffs")}
+            onClick={() => createTournament(advancingTeams, "스위스 본선")}
           >
             <Swords className="h-4 w-4" aria-hidden="true" />
             본선 생성
@@ -85,13 +85,13 @@ export default function SwissPage() {
           {profile ? (
             <section className="arena-card grid gap-4 p-4 lg:grid-cols-[1fr_auto]">
               <div>
-                <h2 className="font-black uppercase tracking-wide text-ink">Swiss Scale Profile</h2>
+                <h2 className="font-black uppercase tracking-wide text-ink">스위스 확장 프로필</h2>
                 <p className="mt-1 text-sm text-slate-400">{profile.message}</p>
               </div>
               <div className="grid grid-cols-3 gap-2 text-center">
-                <Metric label="Teams" value={profile.teamCount.toString()} accent={profile.isPowerOfTwo ? "cyan" : "gold"} />
-                <Metric label="Rounds" value={`${profile.configuredRounds}/${profile.recommendedRounds}`} accent="gold" />
-                <Metric label="Options" value={profile.extendedRoundOptions.join(" / ")} accent="lime" />
+                <Metric label="팀" value={profile.teamCount.toString()} accent={profile.isPowerOfTwo ? "cyan" : "gold"} />
+                <Metric label="라운드" value={`${profile.configuredRounds}/${profile.recommendedRounds}`} accent="gold" />
+                <Metric label="옵션" value={profile.extendedRoundOptions.join(" / ")} accent="lime" />
               </div>
             </section>
           ) : null}
@@ -99,13 +99,13 @@ export default function SwissPage() {
           <section className="arena-card overflow-hidden p-4">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="section-kicker">Broadcast Board</p>
+                <p className="section-kicker">중계 보드</p>
                 <h2 className="text-2xl font-black uppercase tracking-wide text-ink">
-                  Swiss Bracket Flow
+                  스위스 브래킷 흐름
                 </h2>
               </div>
               <div className="rounded-md border border-line bg-field px-3 py-2 text-sm font-black text-ink">
-                Round {swiss.currentRound} / {swiss.config.maxRounds} · Playoff {slotSummary.bracketSize}강 · BYE {slotSummary.byeCount}
+                {swiss.currentRound}라운드 / {swiss.config.maxRounds}라운드 · 본선 {slotSummary.bracketSize}강 · BYE {slotSummary.byeCount}
               </div>
             </div>
             <SwissBracketBoard swiss={swiss} teamsById={teamsById} records={records} />
@@ -114,7 +114,7 @@ export default function SwissPage() {
           <section className="arena-card p-4">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="font-black uppercase tracking-wide text-ink">Standings</h2>
+                <h2 className="font-black uppercase tracking-wide text-ink">순위표</h2>
                 <p className="text-sm text-slate-400">진출권 팀은 강조되고, 탈락 팀은 흐리게 표시됩니다.</p>
               </div>
             </div>
@@ -213,8 +213,8 @@ function SwissBracketBoard({
           </div>
         ))}
 
-        <SwissOutcomeColumn title="Qualified" tone="bg-lime" records={qualified} teamsById={teamsById} />
-        <SwissOutcomeColumn title="Eliminated" tone="bg-danger" records={eliminated} teamsById={teamsById} />
+        <SwissOutcomeColumn title="진출" tone="bg-lime" records={qualified} teamsById={teamsById} />
+        <SwissOutcomeColumn title="탈락" tone="bg-danger" records={eliminated} teamsById={teamsById} />
       </div>
     </div>
   );
@@ -262,7 +262,7 @@ function SwissMiniMatch({
       <div className="flex h-7 items-center justify-between bg-danger px-2 text-[10px] font-black uppercase tracking-wider text-white">
         <span>M{match.matchNumber.toString().padStart(2, "0")}</span>
         <span className="truncate px-2">Round {match.round}</span>
-        <span>{completedWithWinner ? "DONE" : "OPEN"}</span>
+        <span>{completedWithWinner ? "완료" : "진행"}</span>
       </div>
       <div className="space-y-px p-2">
         <SwissMiniTeam
@@ -341,7 +341,7 @@ function SwissOutcomeColumn({
           const team = teamsById.get(record.teamId);
           return (
             <div key={record.teamId} className="flex items-center gap-2 rounded-sm border border-line bg-field p-1">
-              <TeamLogo team={team} size="sm" highlighted={title === "Qualified"} />
+              <TeamLogo team={team} size="sm" highlighted={title === "진출"} />
               <span className="truncate text-xs font-black uppercase text-ink">
                 {team?.shortName || team?.name || "미정"}
               </span>

@@ -37,7 +37,7 @@ export default function HomePage() {
     <main className="flex min-h-[calc(100vh-73px)] w-full items-center px-4 py-8 sm:px-6 2xl:px-8">
       <section className="w-full">
         <div className="mb-8 max-w-2xl">
-          <p className="section-kicker">Quick Start</p>
+          <p className="section-kicker">빠른 시작</p>
           <h1 className="mt-3 text-4xl font-black uppercase leading-tight tracking-wide text-ink sm:text-5xl">
             Bracket Arena
           </h1>

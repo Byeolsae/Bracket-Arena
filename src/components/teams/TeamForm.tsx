@@ -51,7 +51,7 @@ const maxLogoDataUrlLength = 5_000_000;
 
 const ui = {
   defaultLogo: "\uAE30\uBCF8 \uB85C\uACE0",
-  defaultLogoHint: "\uACF5\uD1B5 fallback",
+  defaultLogoHint: "\uACF5\uD1B5 \uB300\uCCB4 \uB85C\uACE0",
   lightLogo: "\uB77C\uC774\uD2B8\uBAA8\uB4DC \uB85C\uACE0",
   lightLogoHint: "\uD770\uC0C9 \uBC30\uACBD\uC5D0\uC11C \uBBF8\uB9AC\uBCF4\uAE30",
   darkLogo: "\uB2E4\uD06C\uBAA8\uB4DC \uB85C\uACE0",
@@ -64,10 +64,10 @@ const ui = {
   victoryDarkLogoHint: "\uB2E4\uD06C \uC2B9\uB9AC \uBE0C\uB798\uD0B7\uC5D0\uC11C \uD45C\uC2DC",
   remove: "\uC81C\uAC70",
   chooseImage: "\uC774\uBBF8\uC9C0 \uC120\uD0DD",
-  teamInfo: "Team Info",
+  teamInfo: "\uD300 \uC815\uBCF4",
   teamName: "\uD300 \uC774\uB984",
   shortName: "\uC57D\uCE6D",
-  colors: "Colors",
+  colors: "\uC0C9\uC0C1",
   primaryColor: "\uC8FC \uC0C9\uC0C1",
   bracketAccentColor: "\uBE0C\uB798\uD0B7 \uD3EC\uC778\uD2B8 \uC0C9\uC0C1",
   bracketAccentHint: "\uBE0C\uB798\uD0B7 \uC67C\uCABD \uB450\uAEBC\uC6B4 \uC0C9 \uBD80\uBD84",
@@ -272,7 +272,7 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
   const previewTeam = useMemo<Team>(
     () => ({
       id: team?.id ?? "preview",
-      name: form.name || "New Team",
+      name: form.name || "\uC0C8 \uD300",
       shortName: form.shortName || undefined,
       logoDefault: form.logoDefault || undefined,
       logoLight: form.logoLight || undefined,
@@ -374,7 +374,7 @@ export function TeamForm({ team, onSubmit, onCancel }: TeamFormProps) {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
-  const livePreviewName = form.name.trim() || "New Team";
+  const livePreviewName = form.name.trim() || "\uC0C8 \uD300";
   const livePreviewShortName = form.shortName.trim();
 
   return (
@@ -845,7 +845,7 @@ function NormalSampleCard({
       : surface === "dark"
         ? "border-[#334158] text-white"
         : "border-line text-ink";
-  const fullLabel = displayName || team.name || "New Team";
+  const fullLabel = displayName || team.name || "\uC0C8 \uD300";
   const shortLabel = displayShortName || team.shortName || fullLabel;
   const point = getTeamBracketAccentColor(team) ?? defaultPrimary;
   const text = getTeamThemeTextColor(team);
@@ -901,7 +901,7 @@ function VictorySampleCard({
       : surface === "dark"
         ? "bg-[#0b1020] text-white"
         : "bg-arena text-ink";
-  const fullLabel = displayName || team.name || "New Team";
+  const fullLabel = displayName || team.name || "\uC0C8 \uD300";
   const shortLabel = displayShortName || team.shortName || fullLabel;
 
   return (

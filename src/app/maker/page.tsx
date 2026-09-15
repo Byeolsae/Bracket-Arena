@@ -969,7 +969,7 @@ function BracketLaunchPanel({
     <section className="arena-card mb-5 overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-arena/85 px-5 py-4">
         <div>
-          <p className="section-kicker">Bracket Launch</p>
+          <p className="section-kicker">브래킷 시작</p>
           <h1 className="text-2xl font-black uppercase tracking-wide text-ink">{tournamentName}</h1>
           <p className="mt-1 text-sm text-muted">
             참가팀 선택과 대회 설정은 추첨 및 참가팀 선택 화면에서 관리합니다.
@@ -1967,7 +1967,6 @@ function buildPlacementSummary(source: PlacementSummarySource): PlacementSummary
   if (source.format === "swiss") return null;
 
   const seedMode = source.activeStage.role === "qualifier";
-  const isKorean = source.language === "ko";
   const seedItems = seedMode ? getSeedSummaryItems(source) : [];
   const rankedTeams = seedMode ? seedItems.map((item) => item.team) : getFinalRankedTeams(source);
   if (rankedTeams.length === 0) return null;
@@ -1975,39 +1974,32 @@ function buildPlacementSummary(source: PlacementSummarySource): PlacementSummary
   const limitedTeams = seedMode ? rankedTeams : rankedTeams.slice(0, 3);
   const entries = limitedTeams.map((team, index): PlacementSummaryEntry => {
     const seedItem = seedMode ? seedItems[index] : undefined;
-    const finalLabels = isKorean ? ["1위", "2위", "3위"] : ["Champion", "Runner Up", "Third Place"];
+    const finalLabels = getFinalPlacementLabels(source.language);
     const finalTones: PlacementSummaryEntry["tone"][] = ["gold", "silver", "bronze"];
     return {
       label: seedMode
-        ? seedItem?.label ?? (isKorean ? `${index + 1}시드` : `Seed ${index + 1}`)
+        ? seedItem?.label ?? getSeedLabel(index + 1, source.language)
         : finalLabels[index] ?? `${index + 1}`,
       team,
       tone: seedMode ? "seed" : finalTones[index] ?? "rank",
-      description: seedMode ? seedItem?.description ?? (isKorean ? "본선 시드" : "Main stage seed") : team.name
+      description: seedMode ? seedItem?.description ?? getMainStageSeedText(source.language) : team.name
     };
   });
 
   return {
-    eyebrow: seedMode ? (isKorean ? "시드" : "SEEDING") : isKorean ? "결과" : "RESULT",
-    title: seedMode ? (isKorean ? "시드 순위" : "Seed Ranking") : isKorean ? "최종 순위" : "Final Ranking",
-    subtitle: seedMode
-      ? isKorean
-        ? "다음 Stage 배정 기준"
-        : "Used for next stage seeding"
-      : isKorean
-        ? "결과 입력 후 자동 정리"
-        : "Updated from entered results",
+    eyebrow: seedMode ? getSeedingEyebrow(source.language) : getResultEyebrow(source.language),
+    title: seedMode ? getSeedRankingTitle(source.language) : getFinalRankingTitle(source.language),
+    subtitle: seedMode ? getNextStageSeedText(source.language) : getUpdatedResultsText(source.language),
     entries,
     variant: seedMode ? "seed" : "final"
   };
 }
 
 function getSeedSummaryItems(source: PlacementSummarySource): SeedSummaryItem[] {
-  const isKorean = source.language === "ko";
   const groupSeedLabel = (groupName: string, seed: number) =>
-    isKorean ? `${groupName} ${seed}시드` : `${groupName} Seed ${seed}`;
+    source.language === "ja" ? `${groupName} シード${seed}` : source.language === "ko" ? `${groupName} ${seed}시드` : `${groupName} Seed ${seed}`;
   const groupSeedDescription = (groupName: string) =>
-    isKorean ? `${groupName} 본선 배정 기준` : `${groupName} main stage seed`;
+    source.language === "ja" ? `${groupName} 本戦シード基準` : source.language === "ko" ? `${groupName} 본선 배정 기준` : `${groupName} main stage seed`;
 
   if (source.format === "group" && source.groupStage) {
     if (!hasAnyLeagueResult(source.groupStage.matches)) return [];
@@ -2046,8 +2038,8 @@ function getSeedSummaryItems(source: PlacementSummarySource): SeedSummaryItem[] 
         return team
           ? {
               team,
-              label: isKorean ? `와일드카드 ${index + 1}시드` : `Wildcard Seed ${index + 1}`,
-              description: isKorean ? "와일드카드 본선 배정 기준" : "Wildcard main stage seed"
+              label: source.language === "ja" ? `ワイルドカードシード${index + 1}` : source.language === "ko" ? `와일드카드 ${index + 1}시드` : `Wildcard Seed ${index + 1}`,
+              description: source.language === "ja" ? "ワイルドカード本戦シード基準" : source.language === "ko" ? "와일드카드 본선 배정 기준" : "Wildcard main stage seed"
             }
           : undefined;
       })
@@ -2118,9 +2110,63 @@ function getSeedSummaryItems(source: PlacementSummarySource): SeedSummaryItem[] 
 
   return getSeedRankedTeams(source).map((team, index) => ({
     team,
-    label: isKorean ? `${index + 1}시드` : `Seed ${index + 1}`,
-    description: isKorean ? "본선 시드" : "Main stage seed"
+    label: getSeedLabel(index + 1, source.language),
+    description: getMainStageSeedText(source.language)
   }));
+}
+
+function getFinalPlacementLabels(language: AppLanguage) {
+  if (language === "ja") return ["優勝", "準優勝", "3位"];
+  if (language === "ko") return ["1위", "2위", "3위"];
+  return ["Champion", "Runner Up", "Third Place"];
+}
+
+function getSeedLabel(seed: number, language: AppLanguage) {
+  if (language === "ja") return `シード${seed}`;
+  if (language === "ko") return `${seed}시드`;
+  return `Seed ${seed}`;
+}
+
+function getMainStageSeedText(language: AppLanguage) {
+  if (language === "ja") return "本戦シード";
+  if (language === "ko") return "본선 시드";
+  return "Main stage seed";
+}
+
+function getSeedingEyebrow(language: AppLanguage) {
+  if (language === "ja") return "シード";
+  if (language === "ko") return "시드";
+  return "SEEDING";
+}
+
+function getResultEyebrow(language: AppLanguage) {
+  if (language === "ja") return "結果";
+  if (language === "ko") return "결과";
+  return "RESULT";
+}
+
+function getSeedRankingTitle(language: AppLanguage) {
+  if (language === "ja") return "シード順位";
+  if (language === "ko") return "시드 순위";
+  return "Seed Ranking";
+}
+
+function getFinalRankingTitle(language: AppLanguage) {
+  if (language === "ja") return "最終順位";
+  if (language === "ko") return "최종 순위";
+  return "Final Ranking";
+}
+
+function getNextStageSeedText(language: AppLanguage) {
+  if (language === "ja") return "次ステージのシード基準";
+  if (language === "ko") return "다음 Stage 배정 기준";
+  return "Used for next stage seeding";
+}
+
+function getUpdatedResultsText(language: AppLanguage) {
+  if (language === "ja") return "入力結果から自動整理";
+  if (language === "ko") return "결과 입력 후 자동 정리";
+  return "Updated from entered results";
 }
 
 function getSeedRankedTeams(source: PlacementSummarySource): Team[] {

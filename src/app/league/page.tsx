@@ -35,7 +35,7 @@ export default function LeaguePage() {
     <main className="mx-auto w-full max-w-[1800px] px-4 py-6 sm:px-6 2xl:px-8">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="section-kicker">League Stage</p>
+          <p className="section-kicker">리그 스테이지</p>
           <h1 className="mt-2 text-3xl font-black uppercase tracking-wide text-ink">리그 스테이지</h1>
           <p className="mt-1 text-sm text-slate-400">
             싱글 라운드 로빈 결과를 직접 입력하고 상위 N팀을 본선으로 보냅니다.
@@ -55,7 +55,7 @@ export default function LeaguePage() {
             <Play className="h-4 w-4" aria-hidden="true" />
             리그 생성
           </button>
-          <button className="button-muted" disabled={advancingTeams.length < 2} onClick={() => createTournament(advancingTeams, "League Playoffs")}>
+          <button className="button-muted" disabled={advancingTeams.length < 2} onClick={() => createTournament(advancingTeams, "리그 본선")}>
             <Swords className="h-4 w-4" aria-hidden="true" />
             본선 생성
           </button>

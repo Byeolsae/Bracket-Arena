@@ -32,9 +32,9 @@ type TripleLane = {
 };
 
 const standardLanes: TripleLane[] = [
-  { group: "zero-loss", title: "Upper Bracket", subtitle: "1위 결정", tone: "cyan", minHeight: 520, placementName: "1위" },
-  { group: "one-loss", title: "Middle Bracket", subtitle: "2위 결정", tone: "gold", minHeight: 440, placementName: "2위" },
-  { group: "two-loss", title: "Lower Bracket", subtitle: "3위 결정", tone: "red", minHeight: 440, placementName: "3위" }
+  { group: "zero-loss", title: "상위조", subtitle: "1위 결정", tone: "cyan", minHeight: 520, placementName: "1위" },
+  { group: "one-loss", title: "중위조", subtitle: "2위 결정", tone: "gold", minHeight: 440, placementName: "2위" },
+  { group: "two-loss", title: "하위조", subtitle: "3위 결정", tone: "red", minHeight: 440, placementName: "3위" }
 ];
 
 export function TripleEliminationView({ stage, teams, onChange }: TripleEliminationViewProps) {
@@ -54,20 +54,20 @@ export function TripleEliminationView({ stage, teams, onChange }: TripleEliminat
         actualMatches.filter((match) => normalizeGroup(match.bracketGroup) === "zero-loss"),
         pending["0"] ?? [],
         "zero-loss",
-        "Upper Round"
+        "상위조"
       ),
       ...createTripleDisplayWaitingMatches(
         actualMatches,
         pending["1"] ?? [],
         "one-loss",
-        "Middle Round",
+        "중위조",
         "zero-loss"
       ),
       ...createTripleDisplayWaitingMatches(
         actualMatches,
         pending["2"] ?? [],
         "two-loss",
-        "Lower Round",
+        "하위조",
         "one-loss"
       ),
       ...createStandardPlacementWaitingMatch(
@@ -108,12 +108,12 @@ export function TripleEliminationView({ stage, teams, onChange }: TripleEliminat
       <section className="bracket-board">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line bg-arena/85 px-5 py-4">
           <div>
-            <p className="section-kicker">Triple Elimination</p>
+            <p className="section-kicker">트리플 엘리미네이션</p>
             <h2 className="mt-1 text-3xl font-black uppercase tracking-wide text-ink">
-              Upper / Middle / Lower
+              상위조 / 중위조 / 하위조
             </h2>
             <p className="mt-1 text-sm text-muted">
-              Upper는 1위, Middle은 2위, Lower는 3위를 결정합니다.
+              상위조는 1위, 중위조는 2위, 하위조는 3위를 결정합니다.
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3">
@@ -202,7 +202,7 @@ export function TripleEliminationView({ stage, teams, onChange }: TripleEliminat
       </section>
 
       <section className="arena-card p-4">
-        <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-danger">Eliminated</h3>
+        <h3 className="mb-3 text-sm font-black uppercase tracking-wide text-danger">탈락팀</h3>
         <div className="flex flex-wrap gap-2">
           {localStage.eliminatedTeamIds.map((teamId) => {
             const team = teamsById.get(teamId);

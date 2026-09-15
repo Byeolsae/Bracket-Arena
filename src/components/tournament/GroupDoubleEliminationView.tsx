@@ -202,9 +202,9 @@ function GroupDoubleHourglassBracket({
     result: { scoreA?: number; scoreB?: number; winnerId: string }
   ) => void;
 }) {
-  const upperMatches = sections.find((section) => section.title === "Upper Bracket")?.matches ?? [];
-  const lowerMatches = sections.find((section) => section.title === "Lower Bracket")?.matches ?? [];
-  const deciderMatches = sections.find((section) => section.title === "Decider")?.matches ?? [];
+  const upperMatches = sections.find((section) => ["Upper Bracket", "승자조", "상위조"].includes(section.title))?.matches ?? [];
+  const lowerMatches = sections.find((section) => ["Lower Bracket", "패자조", "하위조"].includes(section.title))?.matches ?? [];
+  const deciderMatches = sections.find((section) => ["Decider", "최종전"].includes(section.title))?.matches ?? [];
   const allMatches = [...upperMatches, ...lowerMatches, ...deciderMatches];
   const activeMatchIds = getCurrentPlayableMatchIds(allMatches);
   const openingMatches = upperMatches.filter((match) => match.round <= 1);
@@ -233,17 +233,17 @@ function GroupDoubleHourglassBracket({
 
   return (
     <section className="grid grid-cols-[56px_minmax(0,1fr)] gap-x-7 border-l-4 border-cyan/60 bg-arena/25 py-5 pr-5">
-      <BracketAxisLabel label="Group Double" tone="cyan" />
+      <BracketAxisLabel label="그룹 더블" tone="cyan" />
       <div className="min-w-0 space-y-3">
         <div className="flex items-center gap-3">
-          <div className="bracket-ribbon bg-cyan text-arena">Group Double</div>
+          <div className="bracket-ribbon bg-cyan text-arena">그룹 더블</div>
         </div>
 
         <div className="overflow-x-auto pb-6">
           <div className="relative min-h-[560px] min-w-[1240px] py-8">
             <div className="relative z-10 grid grid-cols-[280px_280px_280px] gap-x-32">
               <HourglassColumn
-                title="Opening"
+                title="오프닝"
                 tone="cyan"
                 matches={openingMatches}
                 teamsById={teamsById}
@@ -254,7 +254,7 @@ function GroupDoubleHourglassBracket({
 
               <div className="flex min-h-[500px] flex-col justify-between">
                 <HourglassColumn
-                  title="Winners"
+                  title="승자전"
                   tone="cyan"
                   matches={winnersMatches}
                   teamsById={teamsById}
@@ -263,7 +263,7 @@ function GroupDoubleHourglassBracket({
                   onSaveResult={(matchId, result) => onSaveResult(groupId, matchId, result)}
                 />
                 <HourglassColumn
-                  title="Elimination"
+                  title="탈락전"
                   tone="red"
                   matches={lowerMatches}
                   teamsById={teamsById}
@@ -274,7 +274,7 @@ function GroupDoubleHourglassBracket({
               </div>
 
               <HourglassColumn
-                title="Decider"
+                title="최종전"
                 tone="gold"
                 matches={deciderMatches}
                 teamsById={teamsById}
@@ -413,19 +413,19 @@ function getBracketSections(
     const bracket = entry.bracket as GroupTripleEliminationStage["brackets"][number]["bracket"];
     return [
       {
-        title: "Upper Bracket",
+        title: "상위조",
         subtitle: "1위 / 2위 결정",
         tone: "cyan",
         matches: bracket.matches.filter((match) => match.bracketGroup === "zero-loss")
       },
       {
-        title: "Middle Bracket",
+        title: "중위조",
         subtitle: "3위 결정",
         tone: "gold",
         matches: bracket.matches.filter((match) => match.bracketGroup === "one-loss")
       },
       {
-        title: "Lower Bracket",
+        title: "하위조",
         subtitle: "4위 결정",
         tone: "red",
         matches: bracket.matches.filter((match) => match.bracketGroup === "two-loss")
@@ -441,13 +441,13 @@ function getBracketSections(
   if (!deciderMatches.length) {
     return [
       {
-        title: "Upper Bracket",
+        title: "승자조",
         subtitle: "1-2시드 결정",
         tone: "cyan",
         matches: winnersMatches
       },
       {
-        title: "Lower Bracket",
+        title: "패자조",
         subtitle: "3-4시드 결정",
         tone: "red",
         matches: losersMatches
@@ -457,19 +457,19 @@ function getBracketSections(
 
   return [
     {
-      title: "Upper Bracket",
+      title: "승자조",
       subtitle: "1위 결정",
       tone: "cyan",
       matches: winnersMatches
     },
     {
-      title: "Lower Bracket",
+      title: "패자조",
       subtitle: "탈락전",
       tone: "red",
       matches: losersMatches
     },
     {
-      title: "Decider",
+      title: "최종전",
       subtitle: "2위 결정",
       tone: "gold",
       matches: deciderMatches
@@ -481,14 +481,14 @@ function getStageMeta(type: GroupEliminationStage["type"]) {
   if (type === "group_triple_elimination") {
     return {
       title: "그룹 트리플 엘리미네이션",
-      groupTitle: "Triple Elimination Group",
+      groupTitle: "트리플 엘리미네이션 조",
       description: "각 조 8팀 기준으로 상위 조에서 1, 2위, 중위/하위 조에서 3, 4위를 결정합니다."
     };
   }
 
   return {
     title: "그룹 더블 엘리미네이션",
-    groupTitle: "Double Elimination Group",
+    groupTitle: "더블 엘리미네이션 조",
     description: "각 조 8팀 기준으로 승자조 2팀은 1-2시드, 패자조 2팀은 3-4시드로 진출합니다."
   };
 }

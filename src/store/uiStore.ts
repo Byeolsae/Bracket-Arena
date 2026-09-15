@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type AppLanguage = "ko" | "en";
+export type AppLanguage = "ko" | "en" | "ja";
 export type TeamDisplaySize = 1 | 2 | 3 | 4 | 5;
 
 type UiState = {

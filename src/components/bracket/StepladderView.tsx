@@ -49,7 +49,7 @@ export function StepladderView({
     <section className="bracket-board">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line bg-arena/85 px-5 py-4">
         <div>
-          <p className="section-kicker">Stepladder</p>
+          <p className="section-kicker">스텝래더</p>
           <h2 className="mt-1 text-3xl font-black uppercase tracking-wide text-ink">
             낮은 시드부터 최상위 시드까지
           </h2>
@@ -96,7 +96,7 @@ export function StepladderView({
                   style={{ paddingTop: `${index * 56}px` }}
                 >
                   <div className={`bracket-round-label ${toneClassName}`}>
-                    {index === bracket.matches.length - 1 ? "Final Boss" : `Step ${index + 1}`}
+                    {index === bracket.matches.length - 1 ? "최종 보스" : `${index + 1}단계`}
                   </div>
                   <div className="mt-3">
                     <MatchCard

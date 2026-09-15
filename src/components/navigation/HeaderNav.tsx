@@ -17,6 +17,12 @@ const labels = {
     teams: "Teams",
     tier: "Tier List",
     draw: "Draw & Teams"
+  },
+  ja: {
+    maker: "ブラケット",
+    teams: "チーム管理",
+    tier: "ティアリスト",
+    draw: "抽選・参加チーム"
   }
 };
 

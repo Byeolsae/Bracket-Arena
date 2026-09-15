@@ -534,7 +534,7 @@ export default function DrawPage() {
                 <Shuffle className="h-5 w-5" aria-hidden="true" />
               </div>
               <div>
-                <p className="section-kicker">Draw & Teams</p>
+                <p className="section-kicker">추첨 및 참가팀</p>
                 <h1 className="text-xl font-black uppercase tracking-wide text-ink">추첨 및 참가팀 선택</h1>
               </div>
             </div>
@@ -650,7 +650,7 @@ export default function DrawPage() {
 
           <section className="arena-card p-4">
             <div className="mb-3">
-              <p className="section-kicker">Tournament Setup</p>
+              <p className="section-kicker">대회 설정</p>
               <h2 className="text-lg font-black uppercase tracking-wide text-ink">브래킷 시작 설정</h2>
             </div>
             <div className="space-y-3">
@@ -790,7 +790,7 @@ export default function DrawPage() {
                             </div>
                             {checked && assignmentMode === "draw" && drawType === "group" ? (
                               <span className="rounded bg-cyan/15 px-2 py-1 text-[10px] font-black uppercase text-cyan">
-                                Pot {potIndex + 1}
+                                포트 {potIndex + 1}
                               </span>
                             ) : null}
                           </button>
@@ -835,9 +835,9 @@ export default function DrawPage() {
             <section className="arena-card overflow-hidden">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-arena/85 px-5 py-4">
                 <div>
-                  <p className="section-kicker">Live Draw</p>
+                  <p className="section-kicker">실시간 추첨</p>
                   <h2 className="text-3xl font-black uppercase tracking-wide text-ink">
-                    {drawType === "seed" ? "Seed Draw Machine" : "Group Draw Machine"}
+                    {drawType === "seed" ? "시드 추첨 머신" : "조 추첨 머신"}
                   </h2>
                 </div>
                 <div className="rounded-md border border-cyan/40 bg-cyan/10 px-3 py-2 text-sm font-black text-cyan">
@@ -894,7 +894,7 @@ export default function DrawPage() {
           <section className="arena-card p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="section-kicker">Pots</p>
+                <p className="section-kicker">포트</p>
                 <h2 className="text-lg font-black uppercase tracking-wide text-ink">포트 설정</h2>
               </div>
               <span className="text-xs font-semibold text-muted">팀을 드래그해서 포트에 넣으세요.</span>
@@ -917,7 +917,7 @@ export default function DrawPage() {
                   }}
                 >
                   <div className="mb-3 flex items-center justify-between">
-                    <h3 className="text-sm font-black uppercase tracking-wide text-ink">Pot {pot.potIndex + 1}</h3>
+                    <h3 className="text-sm font-black uppercase tracking-wide text-ink">포트 {pot.potIndex + 1}</h3>
                     <span className="text-xs font-semibold text-muted">{pot.teams.length}팀</span>
                   </div>
                   <div className="space-y-2">
@@ -1001,7 +1001,7 @@ function ManualAssignmentPanel({
     <section className="arena-card overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-arena/85 px-5 py-4">
         <div>
-          <p className="section-kicker">Manual Assignment</p>
+          <p className="section-kicker">수동 배정</p>
           <h2 className="text-3xl font-black uppercase tracking-wide text-ink">{title}</h2>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -1209,7 +1209,7 @@ function DrawMachine({
       ? `Seed #${currentResult.seed}`
       : currentResult
         ? `${String.fromCharCode(65 + (currentResult.groupIndex ?? 0))}조 #${(currentResult.slotIndex ?? 0) + 1}`
-        : "Ready";
+        : "준비 완료";
 
   return (
     <div className="relative min-h-[450px] overflow-hidden rounded-md border border-line bg-[radial-gradient(circle_at_50%_42%,rgba(47,230,255,0.16),transparent_36%),hsl(var(--field))]">
@@ -1246,22 +1246,22 @@ function DrawMachine({
             <div className="mt-1 text-xs font-black uppercase tracking-[0.18em] text-cyan">{destination}</div>
             {typeof currentResult.potIndex === "number" ? (
               <div className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-muted">
-                Pot {currentResult.potIndex + 1}
+                포트 {currentResult.potIndex + 1}
               </div>
             ) : null}
           </div>
         ) : (
           <div className="text-center">
             <Trophy className="mx-auto h-10 w-10 text-cyan" />
-            <div className="mt-3 text-xs font-black uppercase tracking-[0.18em] text-muted">Ready</div>
+            <div className="mt-3 text-xs font-black uppercase tracking-[0.18em] text-muted">준비 완료</div>
             <div className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan">
-              Click To Draw
+              클릭해서 추첨
             </div>
           </div>
         )}
       </button>
       <div className="absolute inset-x-0 bottom-0 border-t border-line bg-arena/90 px-4 py-3 text-center text-xs font-black uppercase tracking-[0.18em] text-muted">
-        {active ? "Drawing..." : currentResult ? "Draw Complete" : "Waiting For Draw"}
+        {active ? "추첨 중..." : currentResult ? "추첨 완료" : "추첨 대기"}
       </div>
     </div>
   );

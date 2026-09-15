@@ -98,7 +98,7 @@ export function TeamLogo({
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={resolvedLogo}
-        alt={`${team?.name ?? "Team"} logo`}
+        alt={`${team?.name ?? "팀"} 로고`}
         className={clsx(
           sizeClass[size],
           "shrink-0 bg-transparent object-contain object-center p-0.5",
@@ -115,7 +115,7 @@ export function TeamLogo({
         "grid shrink-0 place-items-center rounded-full bg-cyan/10 text-cyan",
         highlighted && "bg-cyan text-arena shadow-glow"
       )}
-      aria-label={team ? `${team.name} placeholder logo` : "Empty team placeholder logo"}
+      aria-label={team ? `${team.name} 대체 로고` : "빈 팀 대체 로고"}
     >
       <span className={clsx("font-black uppercase tracking-wide", initialTextClass[size])}>{getTeamInitial(team)}</span>
     </div>

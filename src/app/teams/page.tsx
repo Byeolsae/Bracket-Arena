@@ -19,7 +19,7 @@ const outsideFolderId = "folder-default";
 const itemSizeClass = "h-40 w-[124px]";
 
 const text = {
-  kicker: "Team Desktop",
+  kicker: "\uD300 \uBC14\uD0D5\uD654\uBA74",
   title: "\uD300 \uBC14\uD0D5\uD654\uBA74",
   desc:
     "\uD3F4\uB354\uC640 \uD300\uC744 \uBC14\uD0D5\uD654\uBA74 \uC544\uC774\uCF58\uCC98\uB7FC \uAD00\uB9AC\uD569\uB2C8\uB2E4. \uC544\uC774\uCF58 \uC0AC\uC774\uC5D0 \uB193\uC73C\uBA74 \uADF8 \uC790\uB9AC\uB85C \uBC00\uB824\uB098\uACE0, \uD3F4\uB354 \uC544\uC774\uCF58 \uC704\uC5D0 \uB193\uC73C\uBA74 \uD3F4\uB354 \uC548\uC73C\uB85C \uB4E4\uC5B4\uAC11\uB2C8\uB2E4.",
@@ -422,7 +422,7 @@ export default function TeamsPage() {
           <section className="mx-auto max-w-5xl arena-card p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <p className="section-kicker">{formMode === "edit" ? "Edit Team" : "New Team"}</p>
+                <p className="section-kicker">{formMode === "edit" ? "\uD300 \uC218\uC815" : "\uC0C8 \uD300"}</p>
                 <h2 className="mt-1 text-2xl font-black uppercase tracking-wide text-ink">
                   {formMode === "edit" ? text.editTeam : text.addTeam}
                 </h2>
@@ -628,7 +628,7 @@ function DesktopFolderIcon({
         }
       }}
     >
-      <button type="button" className="relative grid h-16 w-20 place-items-center text-yellow-300 drop-shadow" onClick={onOpen} title="Open folder">
+      <button type="button" className="relative grid h-16 w-20 place-items-center text-yellow-300 drop-shadow" onClick={onOpen} title="\uD3F4\uB354 \uC5F4\uAE30">
         <Folder className="h-14 w-14 fill-yellow-300/20" />
         <span className="absolute bottom-2 rounded bg-black/50 px-1 text-[10px] font-black text-white">
           {(item.folder.itemIds ?? []).length}
@@ -746,7 +746,7 @@ function DesktopTeamIcon({
             event.stopPropagation();
             onEdit();
           }}
-          title="Edit"
+          title="\uC218\uC815"
         >
           <Edit3 className="h-3.5 w-3.5" />
         </button>
@@ -758,7 +758,7 @@ function DesktopTeamIcon({
             event.stopPropagation();
             onDelete();
           }}
-          title="Delete"
+          title="\uC0AD\uC81C"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
