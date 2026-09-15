@@ -10,6 +10,7 @@ import {
   calculateBattleRoyaleStandings
 } from "@/lib/core/battleRoyale";
 import { createRandomBattleRoyalePlacements } from "@/lib/core/randomResults";
+import { TeamLogo } from "@/components/teams/TeamLogo";
 import { BattleRoyaleResultInput } from "@/components/tournament/BattleRoyaleResultInput";
 import { BattleRoyaleStandingsTable } from "@/components/tournament/BattleRoyaleStandingsTable";
 
@@ -73,6 +74,19 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
   const saveRound = (roundId: string, placements: BattleRoyalePlacement[]) => {
     const nextStage = applyBattleRoyaleResult(localStage, roundId, placements);
     updateStage(nextStage);
+  };
+
+  const updateRoundPlacement = (
+    roundId: string,
+    teamId: string,
+    patch: Partial<BattleRoyalePlacement>
+  ) => {
+    const round = localStage.rounds.find((item) => item.id === roundId);
+    if (!round) return;
+    const placements = getRoundPlacements(round).map((placement) =>
+      placement.teamId === teamId ? { ...placement, ...patch } : placement
+    );
+    saveRound(roundId, placements);
   };
 
   const autoFillRound = (roundId: string) => {
@@ -139,35 +153,44 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
         </button>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-2">
-        {localStage.rounds.map((round) => (
-          <section key={round.id} className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-black uppercase text-ink">
-                {round.groupName ?? `${round.round}라운드`}
-              </h3>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black uppercase text-slate-500">
-                  {round.teamIds.length}팀
-                </span>
-                <button
-                  type="button"
-                  className="grid h-8 w-8 place-items-center rounded border border-line bg-field text-muted transition hover:border-cyan hover:text-cyan"
-                  onClick={() => autoFillRound(round.id)}
-                  title="이 라운드 자동 결과"
-                >
-                  <Dices className="h-4 w-4" aria-hidden="true" />
-                </button>
+      {isQualifier ? (
+        <QualifierLobbyTables
+          rounds={localStage.rounds}
+          teamsById={teamsById}
+          onAutoFillRound={autoFillRound}
+          onUpdatePlacement={updateRoundPlacement}
+        />
+      ) : (
+        <div className="grid gap-5 xl:grid-cols-2">
+          {localStage.rounds.map((round) => (
+            <section key={round.id} className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-black uppercase text-ink">
+                  {round.groupName ?? `${round.round}라운드`}
+                </h3>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black uppercase text-slate-500">
+                    {round.teamIds.length}팀
+                  </span>
+                  <button
+                    type="button"
+                    className="grid h-8 w-8 place-items-center rounded border border-line bg-field text-muted transition hover:border-cyan hover:text-cyan"
+                    onClick={() => autoFillRound(round.id)}
+                    title="이 라운드 자동 결과"
+                  >
+                    <Dices className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
               </div>
-            </div>
-            <BattleRoyaleResultInput
-              round={round}
-              teamsById={teamsById}
-              onSave={(placements) => saveRound(round.id, placements)}
-            />
-          </section>
-        ))}
-      </div>
+              <BattleRoyaleResultInput
+                round={round}
+                teamsById={teamsById}
+                onSave={(placements) => saveRound(round.id, placements)}
+              />
+            </section>
+          ))}
+        </div>
+      )}
 
       {isQualifier ? (
         <section className="space-y-4">
@@ -207,5 +230,173 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
         />
       </section>
     </section>
+  );
+}
+
+type QualifierLobbyTablesProps = {
+  rounds: BattleRoyaleStage["rounds"];
+  teamsById: Map<string, Team>;
+  onAutoFillRound: (roundId: string) => void;
+  onUpdatePlacement: (roundId: string, teamId: string, patch: Partial<BattleRoyalePlacement>) => void;
+};
+
+function QualifierLobbyTables({
+  rounds,
+  teamsById,
+  onAutoFillRound,
+  onUpdatePlacement
+}: QualifierLobbyTablesProps) {
+  const lobbies = useMemo(() => {
+    const lobbyMap = new Map<string, BattleRoyaleStage["rounds"]>();
+    rounds.forEach((round) => {
+      const lobbyName = getLobbyName(round.groupName);
+      lobbyMap.set(lobbyName, [...(lobbyMap.get(lobbyName) ?? []), round]);
+    });
+
+    return [...lobbyMap.entries()].map(([lobbyName, lobbyRounds]) => ({
+      lobbyName,
+      rounds: lobbyRounds.sort((a, b) => a.round - b.round),
+      teamIds: lobbyRounds[0]?.teamIds ?? []
+    }));
+  }, [rounds]);
+
+  return (
+    <section className="space-y-5">
+      <div>
+        <p className="section-kicker">예선 로비 입력</p>
+        <h2 className="text-xl font-black uppercase tracking-wide text-ink">AB / AC / BC 점수 입력 테이블</h2>
+        <p className="mt-1 text-sm font-semibold text-muted">
+          각 로비는 16팀이 동시에 경기합니다. 팀별로 경기마다 순위와 킬을 입력하세요.
+        </p>
+      </div>
+
+      {lobbies.map((lobby) => (
+        <section key={lobby.lobbyName} className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-black uppercase text-ink">{lobby.lobbyName}</h3>
+              <p className="text-xs font-semibold text-muted">{lobby.teamIds.length}팀 로비</p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {lobby.rounds.map((round, index) => (
+                <button
+                  key={round.id}
+                  type="button"
+                  className="inline-flex h-8 items-center gap-1 rounded border border-line bg-field px-2 text-[11px] font-black text-muted transition hover:border-cyan hover:text-cyan"
+                  onClick={() => onAutoFillRound(round.id)}
+                  title={`${index + 1}경기 자동 결과`}
+                >
+                  <Dices className="h-3.5 w-3.5" aria-hidden="true" />
+                  {index + 1}경기
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-md border border-line bg-panel">
+            <table className="w-full min-w-[980px] border-collapse text-sm">
+              <thead className="bg-arena text-xs uppercase text-slate-400">
+                <tr>
+                  <th className="sticky left-0 z-10 min-w-[220px] bg-arena px-3 py-3 text-left font-black">팀</th>
+                  {lobby.rounds.map((round, index) => (
+                    <th key={round.id} className="border-l border-line px-3 py-3 text-center font-black" colSpan={2}>
+                      {index + 1}경기
+                    </th>
+                  ))}
+                </tr>
+                <tr>
+                  <th className="sticky left-0 z-10 bg-arena px-3 py-2 text-left font-black text-slate-500">로비 참가팀</th>
+                  {lobby.rounds.flatMap((round) => [
+                    <th key={`${round.id}-placement`} className="border-l border-line px-2 py-2 text-center font-black">순위</th>,
+                    <th key={`${round.id}-kills`} className="px-2 py-2 text-center font-black">킬</th>
+                  ])}
+                </tr>
+              </thead>
+              <tbody>
+                {lobby.teamIds.map((teamId) => {
+                  const team = teamsById.get(teamId);
+                  return (
+                    <tr key={teamId} className="border-t border-line text-ink">
+                      <td className="sticky left-0 z-10 bg-panel px-3 py-3">
+                        <div className="flex items-center gap-3">
+                          <TeamLogo team={team} size="sm" />
+                          <span className="font-black uppercase">{team?.shortName || team?.name || "미정"}</span>
+                        </div>
+                      </td>
+                      {lobby.rounds.flatMap((round) => {
+                        const placement = getRoundPlacement(round, teamId);
+                        return [
+                          <td key={`${round.id}-${teamId}-placement`} className="border-l border-line px-2 py-2">
+                            <LobbyNumberCell
+                              value={placement.placement}
+                              min={1}
+                              max={round.teamIds.length}
+                              onChange={(nextPlacement) => onUpdatePlacement(round.id, teamId, { placement: nextPlacement })}
+                            />
+                          </td>,
+                          <td key={`${round.id}-${teamId}-kills`} className="px-2 py-2">
+                            <LobbyNumberCell
+                              value={placement.kills}
+                              min={0}
+                              onChange={(kills) => onUpdatePlacement(round.id, teamId, { kills })}
+                            />
+                          </td>
+                        ];
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ))}
+    </section>
+  );
+}
+
+function getLobbyName(groupName?: string) {
+  return groupName?.split("·").at(1)?.trim() || groupName || "로비";
+}
+
+function getRoundPlacements(round: BattleRoyaleStage["rounds"][number]) {
+  return round.teamIds.map((teamId, index) => getRoundPlacement(round, teamId, index));
+}
+
+function getRoundPlacement(round: BattleRoyaleStage["rounds"][number], teamId: string, fallbackIndex?: number): BattleRoyalePlacement {
+  return (
+    round.placements.find((placement) => placement.teamId === teamId) ?? {
+      teamId,
+      placement: (fallbackIndex ?? round.teamIds.indexOf(teamId)) + 1,
+      kills: 0,
+      bonusPoints: 0,
+      penaltyPoints: 0
+    }
+  );
+}
+
+function LobbyNumberCell({
+  value,
+  min,
+  max,
+  onChange
+}: {
+  value: number;
+  min: number;
+  max?: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <input
+      type="number"
+      min={min}
+      max={max}
+      value={value}
+      onChange={(event) => {
+        const numericValue = Math.floor(Number(event.target.value) || min);
+        onChange(Math.max(min, max ? Math.min(max, numericValue) : numericValue));
+      }}
+      className="h-8 w-16 rounded-md border border-line bg-field px-2 text-center text-xs font-black text-ink"
+    />
   );
 }
