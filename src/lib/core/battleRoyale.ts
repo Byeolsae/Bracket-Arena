@@ -24,8 +24,7 @@ const defaultBattleRoyaleOptions: BattleRoyaleOptions = {
   placementPoints: defaultPlacementPoints,
   killPoint: 1,
   advanceCount: 16,
-  stageMode: "standard",
-  scoringMode: "combined"
+  stageMode: "standard"
 };
 
 export const BATTLE_ROYALE_QUALIFIER_TEAM_COUNT = 24;
@@ -235,11 +234,7 @@ export function calculateBattleRoyaleStandings(
   return rankBattleRoyaleStandings(
     [...table.values()].map((standing) => ({
       ...standing,
-      totalPoints: getBattleRoyaleTotalPoints(
-        standing.placementPoints,
-        standing.killPoints,
-        stage.options.scoringMode
-      )
+      totalPoints: getBattleRoyaleTotalPoints(standing.placementPoints, standing.killPoints)
     }))
   );
 }
@@ -291,13 +286,7 @@ function hasEnteredBattleRoyaleResult(teamIds: string[], placements: BattleRoyal
   });
 }
 
-function getBattleRoyaleTotalPoints(
-  placementPoints: number,
-  killPoints: number,
-  scoringMode: BattleRoyaleOptions["scoringMode"] = "combined"
-) {
-  if (scoringMode === "placement") return placementPoints;
-  if (scoringMode === "kills") return killPoints;
+function getBattleRoyaleTotalPoints(placementPoints: number, killPoints: number) {
   return placementPoints + killPoints;
 }
 

@@ -54,7 +54,7 @@ export function BattleRoyaleResultInput({
                     <ChickenBadge count={chickenCounts?.get(placement.teamId) ?? 0} />
                   </div>
                 </td>
-                <td className={clsx("px-3 py-3", isMatchWinner && "ring-1 ring-inset ring-lime/70")}>
+                <td className={clsx("px-3 py-3", isMatchWinner && "border-y border-l border-lime/70")}>
                   <PlacementSelect
                     value={placement.placement}
                     max={round.teamIds.length}
@@ -62,7 +62,7 @@ export function BattleRoyaleResultInput({
                     onChange={(nextPlacement) => update(placement.teamId, { placement: nextPlacement })}
                   />
                 </td>
-                <td className={clsx("px-3 py-3", isMatchWinner && "ring-1 ring-inset ring-lime/70")}>
+                <td className={clsx("px-3 py-3", isMatchWinner && "border-y border-r border-lime/70")}>
                   <NumberCell value={placement.kills} winner={isMatchWinner} onChange={(kills) => update(placement.teamId, { kills })} />
                 </td>
               </tr>
@@ -101,7 +101,7 @@ function PlacementSelect({ value, max, winner, onChange }: { value: number; max:
       onChange={(event) => onChange(Number(event.target.value))}
       className={clsx(
         "h-9 w-32 rounded-md border px-2 text-center font-black",
-        winner ? "border-lime text-lime" : "border-line bg-field text-ink"
+        winner ? "border-line bg-field text-lime" : "border-line bg-field text-ink"
       )}
     >
       {Array.from({ length: max }, (_, index) => index + 1).map((placement) => (
@@ -122,7 +122,7 @@ function NumberCell({ value, winner, onChange }: { value: number; winner?: boole
       onChange={(event) => onChange(Number(event.target.value))}
       className={clsx(
         "h-9 w-20 rounded-md border px-2 text-center font-black",
-        winner ? "border-lime text-lime" : "border-line bg-field text-ink"
+        winner ? "border-line bg-field text-lime" : "border-line bg-field text-ink"
       )}
     />
   );

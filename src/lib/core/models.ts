@@ -314,7 +314,6 @@ export type BattleRoyaleOptions = {
   killPoint: number;
   advanceCount: number;
   stageMode?: "standard" | "qualifier" | "final";
-  scoringMode?: "placement" | "kills" | "combined";
   groupCount?: number;
   groupNames?: string[];
   matchesPerPair?: number;
