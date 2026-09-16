@@ -1217,6 +1217,49 @@ test("battle royale standings rank by total points", () => {
   assert.equal(standings[1].totalPoints, 10);
 });
 
+test("battle royale standings rank the sample placement and kill totals", () => {
+  const roster = teams(24);
+  let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
+  const firstRound = stage.rounds[0];
+  const sampleResults = new Map([
+    ["team-1", { placement: 1, kills: 5, totalPoints: 15 }],
+    ["team-2", { placement: 2, kills: 4, totalPoints: 10 }],
+    ["team-3", { placement: 3, kills: 7, totalPoints: 12 }],
+    ["team-4", { placement: 4, kills: 2, totalPoints: 6 }],
+    ["team-5", { placement: 5, kills: 11, totalPoints: 14 }]
+  ]);
+
+  stage = applyBattleRoyaleResult(
+    stage,
+    firstRound.id,
+    firstRound.teamIds.map((teamId, index) => {
+      const sample = sampleResults.get(teamId);
+      return {
+        teamId,
+        placement: sample?.placement ?? index + 1,
+        kills: sample?.kills ?? 0,
+        bonusPoints: 0,
+        penaltyPoints: 0
+      };
+    })
+  );
+
+  const standings = calculateBattleRoyaleStandings(stage, roster);
+  assert.deepEqual(
+    standings.slice(0, 5).map((standing) => ({
+      teamId: standing.teamId,
+      totalPoints: standing.totalPoints
+    })),
+    [
+      { teamId: "team-1", totalPoints: 15 },
+      { teamId: "team-5", totalPoints: 14 },
+      { teamId: "team-3", totalPoints: 12 },
+      { teamId: "team-2", totalPoints: 10 },
+      { teamId: "team-4", totalPoints: 6 }
+    ]
+  );
+});
+
 test("battle royale group standings rank by total points within each scope", () => {
   const roster = teams(24);
   let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
