@@ -1140,8 +1140,11 @@ test("battle royale standings only count completed rounds", () => {
   const roster = teams(24);
   let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
 
+  assert.equal(stage.rounds.every((round) => round.placements.every((placement) => placement.placement === 0)), true);
+
   const emptyStandings = calculateBattleRoyaleStandings(stage, roster);
   assert.equal(emptyStandings.every((standing) => standing.roundsPlayed === 0), true);
+  assert.equal(emptyStandings.every((standing) => standing.totalPoints === 0), true);
 
   const firstRound = stage.rounds[0];
   stage = applyBattleRoyaleResult(
@@ -1377,7 +1380,17 @@ for (const matchCount of [5, 6]) {
     assert.equal(stage.rounds.length, matchCount * 3);
 
     stage = stage.rounds.reduce(
-      (currentStage, round) => applyBattleRoyaleResult(currentStage, round.id, round.placements),
+      (currentStage, round) => applyBattleRoyaleResult(
+        currentStage,
+        round.id,
+        round.teamIds.map((teamId, index) => ({
+          teamId,
+          placement: index + 1,
+          kills: 0,
+          bonusPoints: 0,
+          penaltyPoints: 0
+        }))
+      ),
       stage
     );
 

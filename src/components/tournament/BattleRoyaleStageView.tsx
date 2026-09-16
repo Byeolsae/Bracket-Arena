@@ -494,14 +494,14 @@ function getChickenCounts(stage: BattleRoyaleStage) {
 }
 
 function getRoundPlacements(round: BattleRoyaleStage["rounds"][number]) {
-  return round.teamIds.map((teamId, index) => getRoundPlacement(round, teamId, index));
+  return round.teamIds.map((teamId) => getRoundPlacement(round, teamId));
 }
 
-function getRoundPlacement(round: BattleRoyaleStage["rounds"][number], teamId: string, fallbackIndex?: number): BattleRoyalePlacement {
+function getRoundPlacement(round: BattleRoyaleStage["rounds"][number], teamId: string): BattleRoyalePlacement {
   return (
     round.placements.find((placement) => placement.teamId === teamId) ?? {
       teamId,
-      placement: (fallbackIndex ?? round.teamIds.indexOf(teamId)) + 1,
+      placement: 0,
       kills: 0,
       bonusPoints: 0,
       penaltyPoints: 0
@@ -516,6 +516,11 @@ function swapPlacement(
 ) {
   const currentPlacement = placements.find((placement) => placement.teamId === teamId);
   if (!currentPlacement || currentPlacement.placement === nextPlacement) return placements;
+  if (nextPlacement <= 0) {
+    return placements.map((placement) =>
+      placement.teamId === teamId ? { ...placement, placement: 0 } : placement
+    );
+  }
 
   return placements.map((placement) => {
     if (placement.teamId === teamId) return { ...placement, placement: nextPlacement };
@@ -546,6 +551,7 @@ function PlacementSelect({
         winner ? "border-line bg-field text-lime" : "border-line bg-field text-ink"
       )}
     >
+      <option value={0}>-</option>
       {Array.from({ length: max }, (_, index) => index + 1).map((placement) => (
         <option key={placement} value={placement}>
           {placement}등 ({getBattleRoyalePlacementPoints(options, placement)}점)

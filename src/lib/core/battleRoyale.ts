@@ -165,6 +165,7 @@ export function getBattleRoyalePlacementPoints(
   options: Pick<BattleRoyaleOptions, "placementPoints"> | undefined,
   placement: number
 ) {
+  if (placement <= 0) return 0;
   return (options?.placementPoints ?? defaultBattleRoyalePlacementPoints)[placement] ?? 0;
 }
 
@@ -176,9 +177,9 @@ export function getBattleRoyaleKillPoints(
 }
 
 export function createInitialBattleRoyalePlacements(teamIds: string[]): BattleRoyalePlacement[] {
-  return teamIds.map((teamId, index) => ({
+  return teamIds.map((teamId) => ({
     teamId,
-    placement: index + 1,
+    placement: 0,
     kills: 0,
     bonusPoints: 0,
     penaltyPoints: 0
@@ -188,11 +189,15 @@ export function createInitialBattleRoyalePlacements(teamIds: string[]): BattleRo
 export function hydrateBattleRoyaleStage(stage: BattleRoyaleStage): BattleRoyaleStage {
   let changed = false;
   const rounds = stage.rounds.map((round) => {
-    const placements =
+    const mergedPlacements =
       round.placements.length === round.teamIds.length
         ? round.placements
         : mergeBattleRoyalePlacements(round.teamIds, round.placements);
-    const inferredComplete = round.isComplete === true || hasEnteredBattleRoyaleResult(round.teamIds, placements);
+    const placements =
+      round.isComplete === true || !hasLegacyInitialBattleRoyalePlacements(round.teamIds, mergedPlacements)
+        ? mergedPlacements
+        : createInitialBattleRoyalePlacements(round.teamIds);
+    const inferredComplete = round.isComplete === true || hasEnteredBattleRoyaleResult(placements);
 
     if (round.placements === placements && round.isComplete === inferredComplete) return round;
     changed = true;
@@ -300,15 +305,15 @@ function getBattleRoyaleStandingGroups(stage: BattleRoyaleStage, teams: Team[]) 
 }
 
 export function isBattleRoyaleRoundComplete(round: BattleRoyaleStage["rounds"][number]) {
-  return round.isComplete === true || hasEnteredBattleRoyaleResult(round.teamIds, round.placements);
+  return round.isComplete === true || hasEnteredBattleRoyaleResult(round.placements);
 }
 
 function mergeBattleRoyalePlacements(teamIds: string[], placements: BattleRoyalePlacement[]) {
   const placementsByTeamId = new Map(placements.map((placement) => [placement.teamId, placement]));
-  return teamIds.map((teamId, index) => (
+  return teamIds.map((teamId) => (
     placementsByTeamId.get(teamId) ?? {
       teamId,
-      placement: index + 1,
+      placement: 0,
       kills: 0,
       bonusPoints: 0,
       penaltyPoints: 0
@@ -316,16 +321,28 @@ function mergeBattleRoyalePlacements(teamIds: string[], placements: BattleRoyale
   ));
 }
 
-function hasEnteredBattleRoyaleResult(teamIds: string[], placements: BattleRoyalePlacement[]) {
+function hasEnteredBattleRoyaleResult(placements: BattleRoyalePlacement[]) {
   if (!placements.length) return false;
-  const defaultPlacementByTeamId = new Map(teamIds.map((teamId, index) => [teamId, index + 1]));
   return placements.some((placement) => {
-    const defaultPlacement = defaultPlacementByTeamId.get(placement.teamId);
     return (
-      placement.placement !== defaultPlacement ||
+      placement.placement > 0 ||
       placement.kills > 0 ||
       Boolean(placement.bonusPoints) ||
       Boolean(placement.penaltyPoints)
+    );
+  });
+}
+
+function hasLegacyInitialBattleRoyalePlacements(teamIds: string[], placements: BattleRoyalePlacement[]) {
+  if (placements.length !== teamIds.length) return false;
+  const placementByTeamId = new Map(placements.map((placement) => [placement.teamId, placement]));
+  return teamIds.every((teamId, index) => {
+    const placement = placementByTeamId.get(teamId);
+    return (
+      placement?.placement === index + 1 &&
+      placement.kills === 0 &&
+      !placement.bonusPoints &&
+      !placement.penaltyPoints
     );
   });
 }
