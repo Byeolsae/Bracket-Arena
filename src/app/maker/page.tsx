@@ -7,7 +7,6 @@ import { ChevronDown, ChevronRight, Folder, Info, Play, Printer, Settings2, Shuf
 import { PlacementSummary, type PlacementSummaryEntry } from "@/components/tournament/PlacementSummary";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import { nextPowerOfTwo } from "@/lib/core/bye";
-import { useUiStore, type AppLanguage } from "@/store/uiStore";
 import { createGroupStage, calculateGroupStandings } from "@/lib/core/group";
 import {
   createGroupTripleEliminationStage,
@@ -414,7 +413,6 @@ function createFixedGroupPlayoffSeeding(stage: GroupStage, teams: Team[]): Fixed
 export default function MakerPage() {
   const teams = useTeamStore((state) => state.teams);
   const folders = useTeamStore((state) => state.folders);
-  const language = useUiStore((state) => state.language);
   const {
     tournament,
     doubleElimination,
@@ -825,7 +823,6 @@ export default function MakerPage() {
       <ActiveStageView
         activeStage={activeStage}
         selectedFormat={selectedFormat}
-        language={language}
         teams={selectedTeams}
         tournament={tournament}
         doubleElimination={doubleElimination}
@@ -1766,7 +1763,6 @@ function TeamSelectRow({
 function ActiveStageView({
   activeStage,
   selectedFormat,
-  language,
   teams,
   tournament,
   doubleElimination,
@@ -1790,7 +1786,6 @@ function ActiveStageView({
 }: {
   activeStage: ActiveStage | null;
   selectedFormat: StageFormat;
-  language: AppLanguage;
   teams: Team[];
   tournament?: Tournament | null;
   doubleElimination?: DoubleEliminationBracket | null;
@@ -1869,7 +1864,6 @@ function ActiveStageView({
   const summary = buildPlacementSummary({
     activeStage,
     format,
-    language,
     teams,
     tournament,
     doubleElimination,
@@ -1943,7 +1937,6 @@ type SeedSummaryItem = {
 type PlacementSummarySource = {
   activeStage: ActiveStage;
   format: StageFormat;
-  language: AppLanguage;
   teams: Team[];
   tournament?: Tournament | null;
   doubleElimination?: DoubleEliminationBracket | null;
@@ -1967,32 +1960,30 @@ function buildPlacementSummary(source: PlacementSummarySource): PlacementSummary
   const limitedTeams = seedMode ? rankedTeams : rankedTeams.slice(0, 3);
   const entries = limitedTeams.map((team, index): PlacementSummaryEntry => {
     const seedItem = seedMode ? seedItems[index] : undefined;
-    const finalLabels = getFinalPlacementLabels(source.language);
+    const finalLabels = getFinalPlacementLabels();
     const finalTones: PlacementSummaryEntry["tone"][] = ["gold", "silver", "bronze"];
     return {
       label: seedMode
-        ? seedItem?.label ?? getSeedLabel(index + 1, source.language)
+        ? seedItem?.label ?? getSeedLabel(index + 1)
         : finalLabels[index] ?? `${index + 1}`,
       team,
       tone: seedMode ? "seed" : finalTones[index] ?? "rank",
-      description: seedMode ? seedItem?.description ?? getMainStageSeedText(source.language) : team.name
+      description: seedMode ? seedItem?.description ?? getMainStageSeedText() : team.name
     };
   });
 
   return {
-    eyebrow: seedMode ? getSeedingEyebrow(source.language) : getResultEyebrow(source.language),
-    title: seedMode ? getSeedRankingTitle(source.language) : getFinalRankingTitle(source.language),
-    subtitle: seedMode ? getNextStageSeedText(source.language) : getUpdatedResultsText(source.language),
+    eyebrow: seedMode ? getSeedingEyebrow() : getResultEyebrow(),
+    title: seedMode ? getSeedRankingTitle() : getFinalRankingTitle(),
+    subtitle: seedMode ? getNextStageSeedText() : getUpdatedResultsText(),
     entries,
     variant: seedMode ? "seed" : "final"
   };
 }
 
 function getSeedSummaryItems(source: PlacementSummarySource): SeedSummaryItem[] {
-  const groupSeedLabel = (groupName: string, seed: number) =>
-    source.language === "ja" ? `${groupName} シード${seed}` : source.language === "ko" ? `${groupName} ${seed}시드` : `${groupName} Seed ${seed}`;
-  const groupSeedDescription = (groupName: string) =>
-    source.language === "ja" ? `${groupName} 本戦シード基準` : source.language === "ko" ? `${groupName} 본선 배정 기준` : `${groupName} main stage seed`;
+  const groupSeedLabel = (groupName: string, seed: number) => `${groupName} ${seed}시드`;
+  const groupSeedDescription = (groupName: string) => `${groupName} 본선 배정 기준`;
 
   if (source.format === "group" && source.groupStage) {
     if (!hasAnyLeagueResult(source.groupStage.matches)) return [];
@@ -2031,8 +2022,8 @@ function getSeedSummaryItems(source: PlacementSummarySource): SeedSummaryItem[] 
         return team
           ? {
               team,
-              label: source.language === "ja" ? `ワイルドカードシード${index + 1}` : source.language === "ko" ? `와일드카드 ${index + 1}시드` : `Wildcard Seed ${index + 1}`,
-              description: source.language === "ja" ? "ワイルドカード本戦シード基準" : source.language === "ko" ? "와일드카드 본선 배정 기준" : "Wildcard main stage seed"
+              label: `와일드카드 ${index + 1}시드`,
+              description: "와일드카드 본선 배정 기준"
             }
           : undefined;
       })
@@ -2103,63 +2094,45 @@ function getSeedSummaryItems(source: PlacementSummarySource): SeedSummaryItem[] 
 
   return getSeedRankedTeams(source).map((team, index) => ({
     team,
-    label: getSeedLabel(index + 1, source.language),
-    description: getMainStageSeedText(source.language)
+    label: getSeedLabel(index + 1),
+    description: getMainStageSeedText()
   }));
 }
 
-function getFinalPlacementLabels(language: AppLanguage) {
-  if (language === "ja") return ["優勝", "準優勝", "3位"];
-  if (language === "ko") return ["1위", "2위", "3위"];
-  return ["Champion", "Runner Up", "Third Place"];
+function getFinalPlacementLabels() {
+  return ["1위", "2위", "3위"];
 }
 
-function getSeedLabel(seed: number, language: AppLanguage) {
-  if (language === "ja") return `シード${seed}`;
-  if (language === "ko") return `${seed}시드`;
-  return `Seed ${seed}`;
+function getSeedLabel(seed: number) {
+  return `${seed}시드`;
 }
 
-function getMainStageSeedText(language: AppLanguage) {
-  if (language === "ja") return "本戦シード";
-  if (language === "ko") return "본선 시드";
-  return "Main stage seed";
+function getMainStageSeedText() {
+  return "본선 시드";
 }
 
-function getSeedingEyebrow(language: AppLanguage) {
-  if (language === "ja") return "シード";
-  if (language === "ko") return "시드";
-  return "SEEDING";
+function getSeedingEyebrow() {
+  return "시드";
 }
 
-function getResultEyebrow(language: AppLanguage) {
-  if (language === "ja") return "結果";
-  if (language === "ko") return "결과";
-  return "RESULT";
+function getResultEyebrow() {
+  return "결과";
 }
 
-function getSeedRankingTitle(language: AppLanguage) {
-  if (language === "ja") return "シード順位";
-  if (language === "ko") return "시드 순위";
-  return "Seed Ranking";
+function getSeedRankingTitle() {
+  return "시드 순위";
 }
 
-function getFinalRankingTitle(language: AppLanguage) {
-  if (language === "ja") return "最終順位";
-  if (language === "ko") return "최종 순위";
-  return "Final Ranking";
+function getFinalRankingTitle() {
+  return "최종 순위";
 }
 
-function getNextStageSeedText(language: AppLanguage) {
-  if (language === "ja") return "次ステージのシード基準";
-  if (language === "ko") return "다음 Stage 배정 기준";
-  return "Used for next stage seeding";
+function getNextStageSeedText() {
+  return "다음 Stage 배정 기준";
 }
 
-function getUpdatedResultsText(language: AppLanguage) {
-  if (language === "ja") return "入力結果から自動整理";
-  if (language === "ko") return "결과 입력 후 자동 정리";
-  return "Updated from entered results";
+function getUpdatedResultsText() {
+  return "결과 입력 후 자동 정리";
 }
 
 function getSeedRankedTeams(source: PlacementSummarySource): Team[] {

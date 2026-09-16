@@ -137,16 +137,6 @@ body {
     @apply bg-panel text-ink;
   }
 
-  .language-select {
-    color: hsl(var(--ink));
-    background-color: transparent;
-  }
-
-  .language-select option {
-    color: hsl(var(--ink));
-    background-color: hsl(var(--panel));
-  }
-
   .bracket-board {
     @apply overflow-hidden rounded-md border border-line bg-[radial-gradient(circle_at_62%_42%,rgba(239,68,68,0.16),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.055),transparent_35%),hsl(var(--arena))] shadow-panel;
   }

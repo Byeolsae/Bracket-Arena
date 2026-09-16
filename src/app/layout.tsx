@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { HeaderNav } from "@/components/navigation/HeaderNav";
-import { LanguageRuntimeTranslator } from "@/components/theme/LanguageRuntimeTranslator";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,7 +15,6 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <LanguageRuntimeTranslator />
         <header className="border-b border-line bg-arena/95">
           <HeaderNav />
         </header>
