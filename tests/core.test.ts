@@ -1196,6 +1196,30 @@ test("battle royale standings combine placement points and kill points", () => {
   assert.equal(standings[1].totalPoints, 10);
 });
 
+test("battle royale standings allow kill points while placement is unset", () => {
+  const roster = teams(24);
+  let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
+  const firstRound = stage.rounds[0];
+
+  stage = applyBattleRoyaleResult(
+    stage,
+    firstRound.id,
+    firstRound.teamIds.map((teamId) => ({
+      teamId,
+      placement: 0,
+      kills: teamId === "team-1" ? 7 : 0,
+      bonusPoints: 0,
+      penaltyPoints: 0
+    }))
+  );
+
+  const standings = calculateBattleRoyaleStandings(stage, roster);
+  assert.equal(standings[0].teamId, "team-1");
+  assert.equal(standings[0].placementPoints, 0);
+  assert.equal(standings[0].killPoints, 7);
+  assert.equal(standings[0].totalPoints, 7);
+});
+
 test("battle royale standings rank by total points", () => {
   const roster = teams(24);
   let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });

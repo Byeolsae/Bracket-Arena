@@ -593,17 +593,22 @@ function LobbyNumberCell({
   min,
   max,
   winner,
+  label = "킬 입력",
   onChange
 }: {
   value: number;
   min: number;
   max?: number;
   winner?: boolean;
+  label?: string;
   onChange: (value: number) => void;
 }) {
   return (
     <input
       type="number"
+      aria-label={label}
+      title={label}
+      inputMode="numeric"
       min={min}
       max={max}
       value={value}
