@@ -252,7 +252,7 @@ export function calculateBattleRoyaleStandings(
       const killPoints = getBattleRoyaleKillPoints(stage.options, placement.kills);
       standing.placementPoints += placementPoints;
       standing.killPoints += killPoints;
-      standing.totalPoints += placementPoints + killPoints;
+      standing.totalPoints = 0;
       standing.bonusPoints += placement.bonusPoints ?? 0;
       standing.penaltyPoints += placement.penaltyPoints ?? 0;
     });
