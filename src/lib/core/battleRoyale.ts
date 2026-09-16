@@ -34,6 +34,11 @@ export const BATTLE_ROYALE_GROUP_SIZE = 8;
 export const BATTLE_ROYALE_GROUP_NAMES = ["A조", "B조", "C조"];
 export const BATTLE_ROYALE_ALLOWED_MATCH_COUNTS = [5, 6] as const;
 
+export type BattleRoyaleGroupStanding = {
+  groupName: string;
+  standings: BattleRoyaleStanding[];
+};
+
 export function generateBattleRoyaleRounds(
   teams: Team[],
   options: Partial<BattleRoyaleOptions> = {}
@@ -251,6 +256,17 @@ export function calculateBattleRoyaleStandings(
   return rankBattleRoyaleStandings([...table.values()]);
 }
 
+export function calculateBattleRoyaleGroupStandings(
+  stage: BattleRoyaleStage,
+  teams: Team[]
+): BattleRoyaleGroupStanding[] {
+  const groups = getBattleRoyaleStandingGroups(stage, teams);
+  return groups.map((group) => ({
+    groupName: group.groupName,
+    standings: calculateBattleRoyaleStandings(stage, group.teams)
+  }));
+}
+
 export function rankBattleRoyaleStandings(standings: BattleRoyaleStanding[]) {
   return [...standings]
     .sort((left, right) =>
@@ -261,6 +277,26 @@ export function rankBattleRoyaleStandings(standings: BattleRoyaleStanding[]) {
       left.teamId.localeCompare(right.teamId)
     )
     .map((standing, index) => ({ ...standing, rank: index + 1 }));
+}
+
+function getBattleRoyaleStandingGroups(stage: BattleRoyaleStage, teams: Team[]) {
+  if (stage.options.stageMode === "qualifier") {
+    const groupNames = stage.options.groupNames?.length ? stage.options.groupNames : BATTLE_ROYALE_GROUP_NAMES;
+    return Array.from({ length: BATTLE_ROYALE_GROUP_COUNT }, (_, groupIndex) => {
+      const start = groupIndex * BATTLE_ROYALE_GROUP_SIZE;
+      return {
+        groupName: groupNames[groupIndex] ?? `${String.fromCharCode(65 + groupIndex)}조`,
+        teams: teams.slice(start, start + BATTLE_ROYALE_GROUP_SIZE)
+      };
+    }).filter((group) => group.teams.length > 0);
+  }
+
+  return [
+    {
+      groupName: stage.options.stageMode === "final" ? "결승 로비" : "통합",
+      teams
+    }
+  ];
 }
 
 export function isBattleRoyaleRoundComplete(round: BattleRoyaleStage["rounds"][number]) {

@@ -12,6 +12,7 @@ import { getTeamInitial } from "../src/lib/core/team";
 import { buildSeedOrder } from "../src/lib/core/bye";
 import {
   applyBattleRoyaleResult,
+  calculateBattleRoyaleGroupStandings,
   calculateBattleRoyaleStandings,
   generateBattleRoyaleRounds
 } from "../src/lib/core/battleRoyale";
@@ -1303,6 +1304,33 @@ test("battle royale group standings rank by total points within each scope", () 
   assert.equal(cGroupStandings[0].teamId, "team-24");
   assert.equal(cGroupStandings[0].rank, 1);
 });
+
+for (const matchCount of [5, 6]) {
+  test(`battle royale qualifier group standings aggregate ${matchCount * 3} lobbies`, () => {
+    const roster = teams(24);
+    let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: matchCount });
+
+    assert.equal(stage.rounds.length, matchCount * 3);
+
+    stage = stage.rounds.reduce(
+      (currentStage, round) => applyBattleRoyaleResult(currentStage, round.id, round.placements),
+      stage
+    );
+
+    const groupStandings = calculateBattleRoyaleGroupStandings(stage, roster);
+    assert.deepEqual(groupStandings.map((group) => group.groupName), ["A조", "B조", "C조"]);
+    assert.equal(groupStandings.every((group) => group.standings.length === 8), true);
+
+    for (const group of groupStandings) {
+      assert.equal(group.standings.every((standing) => standing.roundsPlayed === matchCount * 2), true);
+    }
+
+    assert.equal(groupStandings[0].standings[0].teamId, "team-1");
+    assert.equal(groupStandings[0].standings[0].totalPoints, matchCount * 20);
+    assert.equal(groupStandings[1].standings[0].teamId, "team-9");
+    assert.equal(groupStandings[1].standings[0].totalPoints, matchCount * 10);
+  });
+}
 
 test("battle royale standings count entered legacy rounds without complete flags", () => {
   const roster = teams(24);

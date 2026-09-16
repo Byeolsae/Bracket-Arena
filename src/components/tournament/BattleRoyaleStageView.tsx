@@ -6,6 +6,7 @@ import { Dices } from "lucide-react";
 import type { BattleRoyalePlacement, BattleRoyaleStage, Team } from "@/lib/core/models";
 import {
   applyBattleRoyaleResult,
+  calculateBattleRoyaleGroupStandings,
   getBattleRoyaleKillPoints,
   getBattleRoyalePlacementPoints,
   hydrateBattleRoyaleStage,
@@ -25,6 +26,10 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
   const localStageRef = useRef(localStage);
   const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
   const chickenCounts = useMemo(() => getChickenCounts(localStage), [localStage]);
+  const groupStandings = useMemo(
+    () => calculateBattleRoyaleGroupStandings(localStage, teams),
+    [localStage, teams]
+  );
   const isQualifier = localStage.options.stageMode === "qualifier";
 
   useEffect(() => {
@@ -113,6 +118,86 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
         onAutoFillRound={autoFillRound}
         onUpdatePlacement={updateRoundPlacement}
       />
+
+      <BattleRoyaleGroupStandings
+        groups={groupStandings}
+        teamsById={teamsById}
+        chickenCounts={chickenCounts}
+        isQualifier={isQualifier}
+      />
+    </section>
+  );
+}
+
+type BattleRoyaleGroupStandingsProps = {
+  groups: ReturnType<typeof calculateBattleRoyaleGroupStandings>;
+  teamsById: Map<string, Team>;
+  chickenCounts: Map<string, number>;
+  isQualifier: boolean;
+};
+
+function BattleRoyaleGroupStandings({
+  groups,
+  teamsById,
+  chickenCounts,
+  isQualifier
+}: BattleRoyaleGroupStandingsProps) {
+  if (!groups.length) return null;
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <p className="section-kicker">{isQualifier ? "조별 통합" : "통합 점수"}</p>
+        <h2 className="text-xl font-black uppercase tracking-wide text-ink">
+          {isQualifier ? "A/B/C 조별 통합 점수 테이블" : "통합 점수 테이블"}
+        </h2>
+        <p className="mt-1 text-sm font-semibold text-muted">
+          완료된 로비 경기의 순위점수와 킬점수를 조별로 합산합니다.
+        </p>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        {groups.map((group) => (
+          <section key={group.groupName} className="overflow-hidden rounded-md border border-line bg-panel">
+            <div className="border-b border-line bg-arena px-4 py-3">
+              <h3 className="text-base font-black uppercase text-ink">{group.groupName} 점수 테이블</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[620px] border-collapse text-sm">
+                <thead className="bg-arena text-xs uppercase text-slate-400">
+                  <tr>
+                    {["순위", "팀", "경기", "치킨", "순위점수", "킬점수", "총합점수"].map((label) => (
+                      <th key={label} className="px-3 py-2 text-left font-black">{label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.standings.map((standing) => {
+                    const team = teamsById.get(standing.teamId);
+                    const chickenCount = chickenCounts.get(standing.teamId) ?? 0;
+                    return (
+                      <tr key={standing.teamId} className="border-t border-line text-ink">
+                        <td className="px-3 py-3 font-black text-cyan">#{standing.rank}</td>
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-2">
+                            <TeamLogo team={team} size="sm" highlighted={chickenCount > 0} />
+                            <span className="font-black uppercase">{team?.shortName || team?.name || "미정"}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 font-bold">{standing.roundsPlayed}</td>
+                        <td className="px-3 py-3 font-bold text-lime">{chickenCount}</td>
+                        <td className="px-3 py-3 font-bold text-gold">{standing.placementPoints}</td>
+                        <td className="px-3 py-3 font-bold text-cyan">{standing.killPoints}</td>
+                        <td className="px-3 py-3 font-black text-lime">{standing.totalPoints}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ))}
+      </div>
     </section>
   );
 }
