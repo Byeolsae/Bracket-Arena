@@ -219,7 +219,7 @@ export function applyBattleRoyaleResult(
   return {
     ...stage,
     rounds: stage.rounds.map((round) =>
-      round.id === roundId ? { ...round, placements, isComplete: true } : round
+      round.id === roundId ? { ...round, placements, isComplete: hasEnteredBattleRoyaleResult(placements) } : round
     )
   };
 }

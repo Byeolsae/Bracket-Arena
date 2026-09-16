@@ -1220,6 +1220,35 @@ test("battle royale standings allow kill points while placement is unset", () =>
   assert.equal(standings[0].totalPoints, 0);
 });
 
+test("battle royale standings update placement and kill points independently while total is disabled", () => {
+  const roster = teams(24);
+  let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
+  const firstRound = stage.rounds[0];
+
+  stage = applyBattleRoyaleResult(
+    stage,
+    firstRound.id,
+    firstRound.teamIds.map((teamId) => ({
+      teamId,
+      placement: teamId === "team-1" ? 1 : 0,
+      kills: teamId === "team-2" ? 9 : 0,
+      bonusPoints: 0,
+      penaltyPoints: 0
+    }))
+  );
+
+  const standings = calculateBattleRoyaleStandings(stage, roster);
+  const placementStanding = standings.find((standing) => standing.teamId === "team-1");
+  const killStanding = standings.find((standing) => standing.teamId === "team-2");
+
+  assert.equal(placementStanding?.placementPoints, 10);
+  assert.equal(placementStanding?.killPoints, 0);
+  assert.equal(placementStanding?.totalPoints, 0);
+  assert.equal(killStanding?.placementPoints, 0);
+  assert.equal(killStanding?.killPoints, 9);
+  assert.equal(killStanding?.totalPoints, 0);
+});
+
 test("battle royale standings rank by placement points before kill points while total is disabled", () => {
   const roster = teams(24);
   let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
