@@ -226,6 +226,7 @@ export function calculateBattleRoyaleStandings(
       roundsPlayed: 0,
       placementPoints: 0,
       killPoints: 0,
+      totalPoints: 0,
       bonusPoints: 0,
       penaltyPoints: 0
     })
@@ -237,8 +238,11 @@ export function calculateBattleRoyaleStandings(
       const standing = table.get(placement.teamId);
       if (!standing) return;
       standing.roundsPlayed += 1;
-      standing.placementPoints += getBattleRoyalePlacementPoints(stage.options, placement.placement);
-      standing.killPoints += getBattleRoyaleKillPoints(stage.options, placement.kills);
+      const placementPoints = getBattleRoyalePlacementPoints(stage.options, placement.placement);
+      const killPoints = getBattleRoyaleKillPoints(stage.options, placement.kills);
+      standing.placementPoints += placementPoints;
+      standing.killPoints += killPoints;
+      standing.totalPoints += placementPoints + killPoints;
       standing.bonusPoints += placement.bonusPoints ?? 0;
       standing.penaltyPoints += placement.penaltyPoints ?? 0;
     });
@@ -250,7 +254,9 @@ export function calculateBattleRoyaleStandings(
 export function rankBattleRoyaleStandings(standings: BattleRoyaleStanding[]) {
   return [...standings]
     .sort((left, right) =>
+      right.totalPoints - left.totalPoints ||
       right.placementPoints - left.placementPoints ||
+      right.killPoints - left.killPoints ||
       left.rank - right.rank ||
       left.teamId.localeCompare(right.teamId)
     )

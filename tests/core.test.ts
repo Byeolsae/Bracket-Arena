@@ -1161,9 +1161,10 @@ test("battle royale standings only count completed rounds", () => {
   assert.equal(standings.find((standing) => standing.teamId === "team-1")?.placementPoints, 10);
   assert.equal(standings.find((standing) => standing.teamId === "team-16")?.placementPoints, 0);
   assert.equal(standings.find((standing) => standing.teamId === "team-16")?.killPoints, 50);
+  assert.equal(standings.find((standing) => standing.teamId === "team-16")?.totalPoints, 50);
 });
 
-test("battle royale standings use placement points only", () => {
+test("battle royale standings combine placement points and kill points", () => {
   const roster = teams(24);
   let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
   const firstRound = stage.rounds[0];
@@ -1181,15 +1182,17 @@ test("battle royale standings use placement points only", () => {
   );
 
   const standings = calculateBattleRoyaleStandings(stage, roster);
-  assert.equal(standings[0].teamId, "team-2");
-  assert.equal(standings[0].placementPoints, 10);
-  assert.equal(standings[0].killPoints, 0);
-  assert.equal(standings[1].teamId, "team-1");
-  assert.equal(standings[1].placementPoints, 6);
-  assert.equal(standings[1].killPoints, 50);
+  assert.equal(standings[0].teamId, "team-1");
+  assert.equal(standings[0].placementPoints, 6);
+  assert.equal(standings[0].killPoints, 50);
+  assert.equal(standings[0].totalPoints, 56);
+  assert.equal(standings[1].teamId, "team-2");
+  assert.equal(standings[1].placementPoints, 10);
+  assert.equal(standings[1].killPoints, 0);
+  assert.equal(standings[1].totalPoints, 10);
 });
 
-test("battle royale standings track kill points without changing placement-point order", () => {
+test("battle royale standings rank by total points", () => {
   const roster = teams(24);
   let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
   const firstRound = stage.rounds[0];
@@ -1207,12 +1210,14 @@ test("battle royale standings track kill points without changing placement-point
   );
 
   const standings = calculateBattleRoyaleStandings(stage, roster);
-  assert.equal(standings[0].teamId, "team-1");
-  assert.equal(standings[1].teamId, "team-2");
-  assert.equal(standings[1].killPoints, 20);
+  assert.equal(standings[0].teamId, "team-2");
+  assert.equal(standings[0].killPoints, 20);
+  assert.equal(standings[0].totalPoints, 26);
+  assert.equal(standings[1].teamId, "team-1");
+  assert.equal(standings[1].totalPoints, 10);
 });
 
-test("battle royale group standings keep group order", () => {
+test("battle royale group standings rank by total points within each scope", () => {
   const roster = teams(24);
   let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
 
@@ -1246,11 +1251,13 @@ test("battle royale group standings keep group order", () => {
   const bGroupStandings = calculateBattleRoyaleStandings(stage, roster.slice(8, 16));
   const cGroupStandings = calculateBattleRoyaleStandings(stage, roster.slice(16, 24));
 
-  assert.equal(overallStandings[0].teamId, "team-1");
-  assert.equal(overallStandings[1].teamId, "team-2");
-  assert.equal(bGroupStandings[0].teamId, "team-9");
+  assert.equal(overallStandings[0].teamId, "team-16");
+  assert.equal(overallStandings[0].totalPoints, 50);
+  assert.equal(overallStandings[1].teamId, "team-24");
+  assert.equal(overallStandings[1].totalPoints, 40);
+  assert.equal(bGroupStandings[0].teamId, "team-16");
   assert.equal(bGroupStandings[0].rank, 1);
-  assert.equal(cGroupStandings[0].teamId, "team-17");
+  assert.equal(cGroupStandings[0].teamId, "team-24");
   assert.equal(cGroupStandings[0].rank, 1);
 });
 

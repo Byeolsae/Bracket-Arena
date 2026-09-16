@@ -325,6 +325,7 @@ export type BattleRoyaleStanding = {
   roundsPlayed: number;
   placementPoints: number;
   killPoints: number;
+  totalPoints: number;
   bonusPoints: number;
   penaltyPoints: number;
 };
