@@ -6,6 +6,7 @@ import { Dices } from "lucide-react";
 import type { BattleRoyalePlacement, BattleRoyaleStage, Team } from "@/lib/core/models";
 import {
   applyBattleRoyaleResult,
+  getBattleRoyalePlacementPoints,
   hydrateBattleRoyaleStage,
   isBattleRoyaleRoundComplete
 } from "@/lib/core/battleRoyale";
@@ -106,6 +107,7 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
         rounds={localStage.rounds}
         teamsById={teamsById}
         chickenCounts={chickenCounts}
+        options={localStage.options}
         stageMode={localStage.options.stageMode ?? "standard"}
         onAutoFillRound={autoFillRound}
         onUpdatePlacement={updateRoundPlacement}
@@ -118,6 +120,7 @@ type BattleRoyaleLobbyTablesProps = {
   rounds: BattleRoyaleStage["rounds"];
   teamsById: Map<string, Team>;
   chickenCounts: Map<string, number>;
+  options: BattleRoyaleStage["options"];
   stageMode: BattleRoyaleStage["options"]["stageMode"];
   onAutoFillRound: (roundId: string) => void;
   onUpdatePlacement: (roundId: string, teamId: string, patch: Partial<BattleRoyalePlacement>) => void;
@@ -127,6 +130,7 @@ function BattleRoyaleLobbyTables({
   rounds,
   teamsById,
   chickenCounts,
+  options,
   stageMode,
   onAutoFillRound,
   onUpdatePlacement
@@ -182,12 +186,12 @@ function BattleRoyaleLobbyTables({
           </div>
 
           <div className="overflow-x-auto rounded-md border border-line bg-panel">
-            <table className="w-full min-w-[1440px] border-collapse text-sm">
+            <table className="w-full min-w-[1680px] border-collapse text-sm">
               <thead className="bg-arena text-xs uppercase text-slate-400">
                 <tr>
                   <th className="sticky left-0 z-10 min-w-[220px] bg-arena px-3 py-3 text-left font-black">팀</th>
                   {lobby.rounds.map((round, index) => (
-                    <th key={round.id} className="border-l border-line px-3 py-3 text-center font-black" colSpan={2}>
+                    <th key={round.id} className="border-l border-line px-3 py-3 text-center font-black" colSpan={3}>
                       {index + 1}경기
                     </th>
                   ))}
@@ -196,7 +200,8 @@ function BattleRoyaleLobbyTables({
                   <th className="sticky left-0 z-10 bg-arena px-3 py-2 text-left font-black text-slate-500">로비 참가팀</th>
                   {lobby.rounds.flatMap((round) => [
                     <th key={`${round.id}-placement`} className="border-l border-line px-2 py-2 text-center font-black">순위</th>,
-                    <th key={`${round.id}-kills`} className="px-2 py-2 text-center font-black">킬</th>
+                    <th key={`${round.id}-kills`} className="px-2 py-2 text-center font-black">킬</th>,
+                    <th key={`${round.id}-placement-points`} className="px-2 py-2 text-center font-black">순위점수</th>
                   ])}
                 </tr>
               </thead>
@@ -218,6 +223,7 @@ function BattleRoyaleLobbyTables({
                       {lobby.rounds.flatMap((round) => {
                         const placement = getRoundPlacement(round, teamId);
                         const isMatchWinner = isBattleRoyaleRoundComplete(round) && placement.placement === 1;
+                        const placementPoints = getBattleRoyalePlacementPoints(options, placement.placement);
                         return [
                           <td
                             key={`${round.id}-${teamId}-placement`}
@@ -231,13 +237,14 @@ function BattleRoyaleLobbyTables({
                             <PlacementSelect
                               value={placement.placement}
                               max={round.teamIds.length}
+                              options={options}
                               winner={isMatchWinner}
                               onChange={(nextPlacement) => onUpdatePlacement(round.id, teamId, { placement: nextPlacement })}
                             />
                           </td>,
                           <td
                             key={`${round.id}-${teamId}-kills`}
-                            className={clsx("px-2 py-2", isMatchWinner && "border-y border-r border-lime/70 text-lime")}
+                            className={clsx("px-2 py-2", isMatchWinner && "border-y border-lime/70 text-lime")}
                           >
                             <LobbyNumberCell
                               value={placement.kills}
@@ -245,6 +252,12 @@ function BattleRoyaleLobbyTables({
                               winner={isMatchWinner}
                               onChange={(kills) => onUpdatePlacement(round.id, teamId, { kills })}
                             />
+                          </td>,
+                          <td
+                            key={`${round.id}-${teamId}-placement-points`}
+                            className={clsx("px-2 py-2", isMatchWinner && "border-y border-r border-lime/70 text-lime")}
+                          >
+                            <LobbyPlacementPointCell value={placementPoints} winner={isMatchWinner} />
                           </td>
                         ];
                       })}
@@ -311,11 +324,13 @@ function swapPlacement(
 function PlacementSelect({
   value,
   max,
+  options,
   winner,
   onChange
 }: {
   value: number;
   max: number;
+  options: BattleRoyaleStage["options"];
   winner?: boolean;
   onChange: (value: number) => void;
 }) {
@@ -330,10 +345,23 @@ function PlacementSelect({
     >
       {Array.from({ length: max }, (_, index) => index + 1).map((placement) => (
         <option key={placement} value={placement}>
-          {placement}등
+          {placement}등 ({getBattleRoyalePlacementPoints(options, placement)}점)
         </option>
       ))}
     </select>
+  );
+}
+
+function LobbyPlacementPointCell({ value, winner }: { value: number; winner?: boolean }) {
+  return (
+    <div
+      className={clsx(
+        "flex h-8 w-16 items-center justify-center rounded-md border bg-field px-2 text-center text-xs font-black",
+        winner ? "border-line text-lime" : "border-line text-gold"
+      )}
+    >
+      {value}
+    </div>
   );
 }
 

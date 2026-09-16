@@ -7,10 +7,22 @@ import type {
   Team
 } from "./models";
 
+const defaultBattleRoyalePlacementPoints: Record<number, number> = {
+  1: 10,
+  2: 6,
+  3: 5,
+  4: 4,
+  5: 3,
+  6: 2,
+  7: 1,
+  8: 1
+};
+
 const defaultBattleRoyaleOptions: BattleRoyaleOptions = {
   roundCount: 5,
   teamsPerRound: 16,
   advanceCount: 16,
+  placementPoints: defaultBattleRoyalePlacementPoints,
   stageMode: "standard"
 };
 
@@ -143,6 +155,13 @@ export function normalizeBattleRoyaleMatchCount(value: number | undefined) {
   return value === 6 ? 6 : 5;
 }
 
+export function getBattleRoyalePlacementPoints(
+  options: Pick<BattleRoyaleOptions, "placementPoints"> | undefined,
+  placement: number
+) {
+  return (options?.placementPoints ?? defaultBattleRoyalePlacementPoints)[placement] ?? 0;
+}
+
 export function createInitialBattleRoyalePlacements(teamIds: string[]): BattleRoyalePlacement[] {
   return teamIds.map((teamId, index) => ({
     teamId,
@@ -197,6 +216,7 @@ export function calculateBattleRoyaleStandings(
       rank: index + 1,
       teamId: team.id,
       roundsPlayed: 0,
+      placementPoints: 0,
       bonusPoints: 0,
       penaltyPoints: 0
     })
@@ -208,6 +228,7 @@ export function calculateBattleRoyaleStandings(
       const standing = table.get(placement.teamId);
       if (!standing) return;
       standing.roundsPlayed += 1;
+      standing.placementPoints += getBattleRoyalePlacementPoints(stage.options, placement.placement);
       standing.bonusPoints += placement.bonusPoints ?? 0;
       standing.penaltyPoints += placement.penaltyPoints ?? 0;
     });
@@ -218,7 +239,11 @@ export function calculateBattleRoyaleStandings(
 
 export function rankBattleRoyaleStandings(standings: BattleRoyaleStanding[]) {
   return [...standings]
-    .sort((left, right) => left.rank - right.rank || left.teamId.localeCompare(right.teamId))
+    .sort((left, right) =>
+      right.placementPoints - left.placementPoints ||
+      left.rank - right.rank ||
+      left.teamId.localeCompare(right.teamId)
+    )
     .map((standing, index) => ({ ...standing, rank: index + 1 }));
 }
 
