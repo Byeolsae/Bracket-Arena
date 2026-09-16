@@ -1458,6 +1458,39 @@ test("battle royale group standings aggregate the provided six-match fixture", (
   );
 });
 
+test("battle royale overall standings select the top 16 from the provided fixture", () => {
+  const roster = battleRoyaleLabelTeams();
+  const stage = applyBattleRoyaleFixture(
+    generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 6 })
+  );
+  const standings = calculateBattleRoyaleStandings(stage, roster);
+
+  assert.deepEqual(
+    standings.slice(0, 16).map((standing) => ({
+      teamId: standing.teamId,
+      totalPoints: standing.totalPoints
+    })),
+    [
+      { teamId: "C5", totalPoints: 82 },
+      { teamId: "A1", totalPoints: 72 },
+      { teamId: "B2", totalPoints: 68 },
+      { teamId: "B3", totalPoints: 68 },
+      { teamId: "C2", totalPoints: 63 },
+      { teamId: "B8", totalPoints: 62 },
+      { teamId: "A7", totalPoints: 62 },
+      { teamId: "A3", totalPoints: 57 },
+      { teamId: "A8", totalPoints: 57 },
+      { teamId: "C7", totalPoints: 50 },
+      { teamId: "A6", totalPoints: 48 },
+      { teamId: "A5", totalPoints: 46 },
+      { teamId: "B6", totalPoints: 44 },
+      { teamId: "C8", totalPoints: 43 },
+      { teamId: "B1", totalPoints: 42 },
+      { teamId: "B4", totalPoints: 40 }
+    ]
+  );
+});
+
 test("battle royale standings count entered legacy rounds without complete flags", () => {
   const roster = teams(24);
   const stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });

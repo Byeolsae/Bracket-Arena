@@ -7,6 +7,7 @@ import type { BattleRoyalePlacement, BattleRoyaleStage, Team } from "@/lib/core/
 import {
   applyBattleRoyaleResult,
   calculateBattleRoyaleGroupStandings,
+  calculateBattleRoyaleStandings,
   getBattleRoyaleKillPoints,
   getBattleRoyalePlacementPoints,
   hydrateBattleRoyaleStage,
@@ -28,6 +29,10 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
   const chickenCounts = useMemo(() => getChickenCounts(localStage), [localStage]);
   const groupStandings = useMemo(
     () => calculateBattleRoyaleGroupStandings(localStage, teams),
+    [localStage, teams]
+  );
+  const overallStandings = useMemo(
+    () => calculateBattleRoyaleStandings(localStage, teams),
     [localStage, teams]
   );
   const isQualifier = localStage.options.stageMode === "qualifier";
@@ -125,6 +130,72 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
         chickenCounts={chickenCounts}
         isQualifier={isQualifier}
       />
+
+      <BattleRoyaleOverallStandings
+        standings={overallStandings}
+        teamsById={teamsById}
+        chickenCounts={chickenCounts}
+        advanceCount={localStage.options.advanceCount}
+        isQualifier={isQualifier}
+      />
+    </section>
+  );
+}
+
+type BattleRoyaleOverallStandingsProps = {
+  standings: ReturnType<typeof calculateBattleRoyaleStandings>;
+  teamsById: Map<string, Team>;
+  chickenCounts: Map<string, number>;
+  advanceCount: number;
+  isQualifier: boolean;
+};
+
+function BattleRoyaleOverallStandings({
+  standings,
+  teamsById,
+  chickenCounts,
+  advanceCount,
+  isQualifier
+}: BattleRoyaleOverallStandingsProps) {
+  const advancingCount = isQualifier ? advanceCount : 0;
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <p className="section-kicker">전체 통합</p>
+        <h2 className="text-xl font-black uppercase tracking-wide text-ink">
+          {isQualifier ? "24팀 전체 통합 점수 테이블" : "결승 통합 점수 테이블"}
+        </h2>
+        <p className="mt-1 text-sm font-semibold text-muted">
+          {isQualifier
+            ? `전체 통합 순위 상위 ${advancingCount}팀이 배틀로얄 본선으로 올라갑니다.`
+            : "모든 결승 로비 경기의 점수를 합산합니다."}
+        </p>
+      </div>
+
+      <div className="overflow-x-auto rounded-md border border-line bg-panel">
+        <table className="w-full min-w-[860px] border-collapse text-sm">
+          <thead className="bg-arena text-xs uppercase text-slate-400">
+            <tr>
+              {["순위", "팀", "상태", "경기", "치킨", "순위점수", "킬점수", "총합점수"].map((label) => (
+                <th key={label} className="px-3 py-2 text-left font-black">{label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {standings.map((standing) => (
+              <BattleRoyaleStandingRow
+                key={standing.teamId}
+                standing={standing}
+                team={teamsById.get(standing.teamId)}
+                chickenCount={chickenCounts.get(standing.teamId) ?? 0}
+                isAdvancing={advancingCount > 0 && standing.rank <= advancingCount}
+                showStatus
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }
@@ -172,26 +243,14 @@ function BattleRoyaleGroupStandings({
                   </tr>
                 </thead>
                 <tbody>
-                  {group.standings.map((standing) => {
-                    const team = teamsById.get(standing.teamId);
-                    const chickenCount = chickenCounts.get(standing.teamId) ?? 0;
-                    return (
-                      <tr key={standing.teamId} className="border-t border-line text-ink">
-                        <td className="px-3 py-3 font-black text-cyan">#{standing.rank}</td>
-                        <td className="px-3 py-3">
-                          <div className="flex items-center gap-2">
-                            <TeamLogo team={team} size="sm" highlighted={chickenCount > 0} />
-                            <span className="font-black uppercase">{team?.shortName || team?.name || "미정"}</span>
-                          </div>
-                        </td>
-                        <td className="px-3 py-3 font-bold">{standing.roundsPlayed}</td>
-                        <td className="px-3 py-3 font-bold text-lime">{chickenCount}</td>
-                        <td className="px-3 py-3 font-bold text-gold">{standing.placementPoints}</td>
-                        <td className="px-3 py-3 font-bold text-cyan">{standing.killPoints}</td>
-                        <td className="px-3 py-3 font-black text-lime">{standing.totalPoints}</td>
-                      </tr>
-                    );
-                  })}
+                  {group.standings.map((standing) => (
+                    <BattleRoyaleStandingRow
+                      key={standing.teamId}
+                      standing={standing}
+                      team={teamsById.get(standing.teamId)}
+                      chickenCount={chickenCounts.get(standing.teamId) ?? 0}
+                    />
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -199,6 +258,48 @@ function BattleRoyaleGroupStandings({
         ))}
       </div>
     </section>
+  );
+}
+
+type BattleRoyaleStandingRowProps = {
+  standing: ReturnType<typeof calculateBattleRoyaleStandings>[number];
+  team?: Team;
+  chickenCount: number;
+  isAdvancing?: boolean;
+  showStatus?: boolean;
+};
+
+function BattleRoyaleStandingRow({
+  standing,
+  team,
+  chickenCount,
+  isAdvancing,
+  showStatus
+}: BattleRoyaleStandingRowProps) {
+  return (
+    <tr className={clsx("border-t border-line text-ink", isAdvancing && "bg-cyan/10")}>
+      <td className="px-3 py-3 font-black text-cyan">#{standing.rank}</td>
+      <td className="px-3 py-3">
+        <div className="flex items-center gap-2">
+          <TeamLogo team={team} size="sm" highlighted={chickenCount > 0} />
+          <span className="font-black uppercase">{team?.shortName || team?.name || "미정"}</span>
+        </div>
+      </td>
+      {showStatus ? (
+        <td className="px-3 py-3">
+          {isAdvancing ? (
+            <span className="rounded border border-cyan/50 bg-cyan/10 px-2 py-1 text-[10px] font-black uppercase text-cyan">본선</span>
+          ) : (
+            <span className="rounded border border-line bg-field px-2 py-1 text-[10px] font-black uppercase text-muted">탈락</span>
+          )}
+        </td>
+      ) : null}
+      <td className="px-3 py-3 font-bold">{standing.roundsPlayed}</td>
+      <td className="px-3 py-3 font-bold text-lime">{chickenCount}</td>
+      <td className="px-3 py-3 font-bold text-gold">{standing.placementPoints}</td>
+      <td className="px-3 py-3 font-bold text-cyan">{standing.killPoints}</td>
+      <td className="px-3 py-3 font-black text-lime">{standing.totalPoints}</td>
+    </tr>
   );
 }
 
