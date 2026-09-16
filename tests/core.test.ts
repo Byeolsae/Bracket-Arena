@@ -1165,10 +1165,10 @@ test("battle royale standings only count completed rounds", () => {
   assert.equal(standings.find((standing) => standing.teamId === "team-1")?.placementPoints, 10);
   assert.equal(standings.find((standing) => standing.teamId === "team-16")?.placementPoints, 0);
   assert.equal(standings.find((standing) => standing.teamId === "team-16")?.killPoints, 50);
-  assert.equal(standings.find((standing) => standing.teamId === "team-16")?.totalPoints, 0);
+  assert.equal(standings.find((standing) => standing.teamId === "team-16")?.totalPoints, 50);
 });
 
-test("battle royale standings track placement points and kill points separately", () => {
+test("battle royale standings combine placement points and kill points", () => {
   const roster = teams(24);
   let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
   const firstRound = stage.rounds[0];
@@ -1186,14 +1186,14 @@ test("battle royale standings track placement points and kill points separately"
   );
 
   const standings = calculateBattleRoyaleStandings(stage, roster);
-  assert.equal(standings[0].teamId, "team-2");
-  assert.equal(standings[0].placementPoints, 10);
-  assert.equal(standings[0].killPoints, 0);
-  assert.equal(standings[0].totalPoints, 0);
-  assert.equal(standings[1].teamId, "team-1");
-  assert.equal(standings[1].placementPoints, 6);
-  assert.equal(standings[1].killPoints, 50);
-  assert.equal(standings[1].totalPoints, 0);
+  assert.equal(standings[0].teamId, "team-1");
+  assert.equal(standings[0].placementPoints, 6);
+  assert.equal(standings[0].killPoints, 50);
+  assert.equal(standings[0].totalPoints, 56);
+  assert.equal(standings[1].teamId, "team-2");
+  assert.equal(standings[1].placementPoints, 10);
+  assert.equal(standings[1].killPoints, 0);
+  assert.equal(standings[1].totalPoints, 10);
 });
 
 test("battle royale standings allow kill points while placement is unset", () => {
@@ -1217,10 +1217,10 @@ test("battle royale standings allow kill points while placement is unset", () =>
   assert.equal(standings[0].teamId, "team-1");
   assert.equal(standings[0].placementPoints, 0);
   assert.equal(standings[0].killPoints, 7);
-  assert.equal(standings[0].totalPoints, 0);
+  assert.equal(standings[0].totalPoints, 7);
 });
 
-test("battle royale standings update placement and kill points independently while total is disabled", () => {
+test("battle royale standings update placement, kill, and total points independently", () => {
   const roster = teams(24);
   let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
   const firstRound = stage.rounds[0];
@@ -1243,10 +1243,10 @@ test("battle royale standings update placement and kill points independently whi
 
   assert.equal(placementStanding?.placementPoints, 10);
   assert.equal(placementStanding?.killPoints, 0);
-  assert.equal(placementStanding?.totalPoints, 0);
+  assert.equal(placementStanding?.totalPoints, 10);
   assert.equal(killStanding?.placementPoints, 0);
   assert.equal(killStanding?.killPoints, 9);
-  assert.equal(killStanding?.totalPoints, 0);
+  assert.equal(killStanding?.totalPoints, 9);
 });
 
 test("battle royale scoring falls back when saved score settings are empty", () => {
@@ -1278,10 +1278,10 @@ test("battle royale scoring falls back when saved score settings are empty", () 
   assert.equal(standing.teamId, "team-1");
   assert.equal(standing.placementPoints, 10);
   assert.equal(standing.killPoints, 7);
-  assert.equal(standing.totalPoints, 0);
+  assert.equal(standing.totalPoints, 17);
 });
 
-test("battle royale standings rank by placement points before kill points while total is disabled", () => {
+test("battle royale standings rank by total points before point breakdowns", () => {
   const roster = teams(24);
   let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
   const firstRound = stage.rounds[0];
@@ -1299,24 +1299,24 @@ test("battle royale standings rank by placement points before kill points while 
   );
 
   const standings = calculateBattleRoyaleStandings(stage, roster);
-  assert.equal(standings[0].teamId, "team-1");
-  assert.equal(standings[0].placementPoints, 10);
-  assert.equal(standings[0].totalPoints, 0);
-  assert.equal(standings[1].teamId, "team-2");
-  assert.equal(standings[1].killPoints, 20);
-  assert.equal(standings[1].totalPoints, 0);
+  assert.equal(standings[0].teamId, "team-2");
+  assert.equal(standings[0].killPoints, 20);
+  assert.equal(standings[0].totalPoints, 26);
+  assert.equal(standings[1].teamId, "team-1");
+  assert.equal(standings[1].placementPoints, 10);
+  assert.equal(standings[1].totalPoints, 10);
 });
 
-test("battle royale standings keep total points disabled for the sample placement and kills", () => {
+test("battle royale standings sum total points for the sample placement and kills", () => {
   const roster = teams(24);
   let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
   const firstRound = stage.rounds[0];
   const sampleResults = new Map([
-    ["team-1", { placement: 1, kills: 5, totalPoints: 0 }],
-    ["team-2", { placement: 2, kills: 4, totalPoints: 0 }],
-    ["team-3", { placement: 3, kills: 7, totalPoints: 0 }],
-    ["team-4", { placement: 4, kills: 2, totalPoints: 0 }],
-    ["team-5", { placement: 5, kills: 11, totalPoints: 0 }]
+    ["team-1", { placement: 1, kills: 5 }],
+    ["team-2", { placement: 2, kills: 4 }],
+    ["team-3", { placement: 3, kills: 7 }],
+    ["team-4", { placement: 4, kills: 2 }],
+    ["team-5", { placement: 5, kills: 11 }]
   ]);
 
   stage = applyBattleRoyaleResult(
@@ -1343,11 +1343,11 @@ test("battle royale standings keep total points disabled for the sample placemen
       totalPoints: standing.totalPoints
     })),
     [
-      { teamId: "team-1", placementPoints: 10, killPoints: 5, totalPoints: 0 },
-      { teamId: "team-2", placementPoints: 6, killPoints: 4, totalPoints: 0 },
-      { teamId: "team-3", placementPoints: 5, killPoints: 7, totalPoints: 0 },
-      { teamId: "team-4", placementPoints: 4, killPoints: 2, totalPoints: 0 },
-      { teamId: "team-5", placementPoints: 3, killPoints: 11, totalPoints: 0 }
+      { teamId: "team-1", placementPoints: 10, killPoints: 5, totalPoints: 15 },
+      { teamId: "team-5", placementPoints: 3, killPoints: 11, totalPoints: 14 },
+      { teamId: "team-3", placementPoints: 5, killPoints: 7, totalPoints: 12 },
+      { teamId: "team-2", placementPoints: 6, killPoints: 4, totalPoints: 10 },
+      { teamId: "team-4", placementPoints: 4, killPoints: 2, totalPoints: 6 }
     ]
   );
 });
@@ -1416,7 +1416,7 @@ function applyBattleRoyaleFixture(stage: ReturnType<typeof generateBattleRoyaleR
     }, stage);
 }
 
-test("battle royale group standings rank by placement points while total is disabled", () => {
+test("battle royale group standings rank by total points", () => {
   const roster = teams(24);
   let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
 
@@ -1450,9 +1450,9 @@ test("battle royale group standings rank by placement points while total is disa
   const bGroupStandings = calculateBattleRoyaleStandings(stage, roster.slice(8, 16));
   const cGroupStandings = calculateBattleRoyaleStandings(stage, roster.slice(16, 24));
 
-  assert.equal(overallStandings[0].teamId, "team-1");
-  assert.equal(overallStandings[0].placementPoints, 20);
-  assert.equal(overallStandings[0].totalPoints, 0);
+  assert.equal(overallStandings[0].teamId, "team-16");
+  assert.equal(overallStandings[0].killPoints, 50);
+  assert.equal(overallStandings[0].totalPoints, 50);
   assert.equal(overallStandings.find((standing) => standing.teamId === "team-16")?.killPoints, 50);
   assert.equal(bGroupStandings[0].teamId, "team-16");
   assert.equal(bGroupStandings[0].rank, 1);
@@ -1492,10 +1492,10 @@ for (const matchCount of [5, 6]) {
 
     assert.equal(groupStandings[0].standings[0].teamId, "team-1");
     assert.equal(groupStandings[0].standings[0].placementPoints, matchCount * 20);
-    assert.equal(groupStandings[0].standings[0].totalPoints, 0);
+    assert.equal(groupStandings[0].standings[0].totalPoints, matchCount * 20);
     assert.equal(groupStandings[1].standings[0].teamId, "team-9");
     assert.equal(groupStandings[1].standings[0].placementPoints, matchCount * 10);
-    assert.equal(groupStandings[1].standings[0].totalPoints, 0);
+    assert.equal(groupStandings[1].standings[0].totalPoints, matchCount * 10);
   });
 }
 
@@ -1521,40 +1521,40 @@ test("battle royale group standings aggregate the provided six-match fixture", (
       {
         groupName: "A조",
         standings: [
-          { teamId: "A1", roundsPlayed: 12, killPoints: 37, placementPoints: 35, totalPoints: 0 },
-          { teamId: "A7", roundsPlayed: 12, killPoints: 33, placementPoints: 29, totalPoints: 0 },
-          { teamId: "A3", roundsPlayed: 12, killPoints: 29, placementPoints: 28, totalPoints: 0 },
-          { teamId: "A8", roundsPlayed: 12, killPoints: 30, placementPoints: 27, totalPoints: 0 },
-          { teamId: "A6", roundsPlayed: 12, killPoints: 23, placementPoints: 25, totalPoints: 0 },
-          { teamId: "A5", roundsPlayed: 12, killPoints: 25, placementPoints: 21, totalPoints: 0 },
-          { teamId: "A2", roundsPlayed: 12, killPoints: 22, placementPoints: 16, totalPoints: 0 },
-          { teamId: "A4", roundsPlayed: 12, killPoints: 13, placementPoints: 11, totalPoints: 0 }
+          { teamId: "A1", roundsPlayed: 12, killPoints: 37, placementPoints: 35, totalPoints: 72 },
+          { teamId: "A7", roundsPlayed: 12, killPoints: 33, placementPoints: 29, totalPoints: 62 },
+          { teamId: "A3", roundsPlayed: 12, killPoints: 29, placementPoints: 28, totalPoints: 57 },
+          { teamId: "A8", roundsPlayed: 12, killPoints: 30, placementPoints: 27, totalPoints: 57 },
+          { teamId: "A6", roundsPlayed: 12, killPoints: 23, placementPoints: 25, totalPoints: 48 },
+          { teamId: "A5", roundsPlayed: 12, killPoints: 25, placementPoints: 21, totalPoints: 46 },
+          { teamId: "A2", roundsPlayed: 12, killPoints: 22, placementPoints: 16, totalPoints: 38 },
+          { teamId: "A4", roundsPlayed: 12, killPoints: 13, placementPoints: 11, totalPoints: 24 }
         ]
       },
       {
         groupName: "B조",
         standings: [
-          { teamId: "B2", roundsPlayed: 12, killPoints: 33, placementPoints: 35, totalPoints: 0 },
-          { teamId: "B3", roundsPlayed: 12, killPoints: 36, placementPoints: 32, totalPoints: 0 },
-          { teamId: "B8", roundsPlayed: 12, killPoints: 30, placementPoints: 32, totalPoints: 0 },
-          { teamId: "B6", roundsPlayed: 12, killPoints: 22, placementPoints: 22, totalPoints: 0 },
-          { teamId: "B4", roundsPlayed: 12, killPoints: 20, placementPoints: 20, totalPoints: 0 },
-          { teamId: "B1", roundsPlayed: 12, killPoints: 23, placementPoints: 19, totalPoints: 0 },
-          { teamId: "B5", roundsPlayed: 12, killPoints: 19, placementPoints: 16, totalPoints: 0 },
-          { teamId: "B7", roundsPlayed: 12, killPoints: 19, placementPoints: 16, totalPoints: 0 }
+          { teamId: "B2", roundsPlayed: 12, killPoints: 33, placementPoints: 35, totalPoints: 68 },
+          { teamId: "B3", roundsPlayed: 12, killPoints: 36, placementPoints: 32, totalPoints: 68 },
+          { teamId: "B8", roundsPlayed: 12, killPoints: 30, placementPoints: 32, totalPoints: 62 },
+          { teamId: "B6", roundsPlayed: 12, killPoints: 22, placementPoints: 22, totalPoints: 44 },
+          { teamId: "B1", roundsPlayed: 12, killPoints: 23, placementPoints: 19, totalPoints: 42 },
+          { teamId: "B4", roundsPlayed: 12, killPoints: 20, placementPoints: 20, totalPoints: 40 },
+          { teamId: "B5", roundsPlayed: 12, killPoints: 19, placementPoints: 16, totalPoints: 35 },
+          { teamId: "B7", roundsPlayed: 12, killPoints: 19, placementPoints: 16, totalPoints: 35 }
         ]
       },
       {
         groupName: "C조",
         standings: [
-          { teamId: "C5", roundsPlayed: 12, killPoints: 39, placementPoints: 43, totalPoints: 0 },
-          { teamId: "C2", roundsPlayed: 12, killPoints: 28, placementPoints: 35, totalPoints: 0 },
-          { teamId: "C7", roundsPlayed: 12, killPoints: 25, placementPoints: 25, totalPoints: 0 },
-          { teamId: "C8", roundsPlayed: 12, killPoints: 23, placementPoints: 20, totalPoints: 0 },
-          { teamId: "C1", roundsPlayed: 12, killPoints: 21, placementPoints: 19, totalPoints: 0 },
-          { teamId: "C6", roundsPlayed: 12, killPoints: 20, placementPoints: 19, totalPoints: 0 },
-          { teamId: "C4", roundsPlayed: 12, killPoints: 17, placementPoints: 16, totalPoints: 0 },
-          { teamId: "C3", roundsPlayed: 12, killPoints: 18, placementPoints: 15, totalPoints: 0 }
+          { teamId: "C5", roundsPlayed: 12, killPoints: 39, placementPoints: 43, totalPoints: 82 },
+          { teamId: "C2", roundsPlayed: 12, killPoints: 28, placementPoints: 35, totalPoints: 63 },
+          { teamId: "C7", roundsPlayed: 12, killPoints: 25, placementPoints: 25, totalPoints: 50 },
+          { teamId: "C8", roundsPlayed: 12, killPoints: 23, placementPoints: 20, totalPoints: 43 },
+          { teamId: "C1", roundsPlayed: 12, killPoints: 21, placementPoints: 19, totalPoints: 40 },
+          { teamId: "C6", roundsPlayed: 12, killPoints: 20, placementPoints: 19, totalPoints: 39 },
+          { teamId: "C4", roundsPlayed: 12, killPoints: 17, placementPoints: 16, totalPoints: 33 },
+          { teamId: "C3", roundsPlayed: 12, killPoints: 18, placementPoints: 15, totalPoints: 33 }
         ]
       }
     ]
@@ -1574,22 +1574,22 @@ test("battle royale overall standings select the top 16 from the provided fixtur
       totalPoints: standing.totalPoints
     })),
     [
-      { teamId: "C5", totalPoints: 0 },
-      { teamId: "A1", totalPoints: 0 },
-      { teamId: "B2", totalPoints: 0 },
-      { teamId: "C2", totalPoints: 0 },
-      { teamId: "B3", totalPoints: 0 },
-      { teamId: "B8", totalPoints: 0 },
-      { teamId: "A7", totalPoints: 0 },
-      { teamId: "A3", totalPoints: 0 },
-      { teamId: "A8", totalPoints: 0 },
-      { teamId: "C7", totalPoints: 0 },
-      { teamId: "A6", totalPoints: 0 },
-      { teamId: "B6", totalPoints: 0 },
-      { teamId: "A5", totalPoints: 0 },
-      { teamId: "C8", totalPoints: 0 },
-      { teamId: "B4", totalPoints: 0 },
-      { teamId: "B1", totalPoints: 0 }
+      { teamId: "C5", totalPoints: 82 },
+      { teamId: "A1", totalPoints: 72 },
+      { teamId: "B2", totalPoints: 68 },
+      { teamId: "B3", totalPoints: 68 },
+      { teamId: "C2", totalPoints: 63 },
+      { teamId: "B8", totalPoints: 62 },
+      { teamId: "A7", totalPoints: 62 },
+      { teamId: "A3", totalPoints: 57 },
+      { teamId: "A8", totalPoints: 57 },
+      { teamId: "C7", totalPoints: 50 },
+      { teamId: "A6", totalPoints: 48 },
+      { teamId: "A5", totalPoints: 46 },
+      { teamId: "B6", totalPoints: 44 },
+      { teamId: "C8", totalPoints: 43 },
+      { teamId: "B1", totalPoints: 42 },
+      { teamId: "B4", totalPoints: 40 }
     ]
   );
 });

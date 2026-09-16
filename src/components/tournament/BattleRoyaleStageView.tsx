@@ -8,6 +8,8 @@ import {
   applyBattleRoyaleResult,
   calculateBattleRoyaleGroupStandings,
   calculateBattleRoyaleStandings,
+  getBattleRoyaleKillPoints,
+  getBattleRoyalePlacementPoints,
   hydrateBattleRoyaleStage,
   isBattleRoyaleRoundComplete
 } from "@/lib/core/battleRoyale";
@@ -130,6 +132,7 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
         rounds={localStage.rounds}
         teamsById={teamsById}
         chickenCounts={chickenCounts}
+        options={localStage.options}
         stageMode={localStage.options.stageMode ?? "standard"}
         onAutoFillRound={autoFillRound}
         onUpdatePlacement={updateRoundPlacement}
@@ -316,6 +319,7 @@ type BattleRoyaleLobbyTablesProps = {
   rounds: BattleRoyaleStage["rounds"];
   teamsById: Map<string, Team>;
   chickenCounts: Map<string, number>;
+  options: BattleRoyaleStage["options"];
   stageMode: BattleRoyaleStage["options"]["stageMode"];
   onAutoFillRound: (roundId: string) => void;
   onUpdatePlacement: (roundId: string, teamId: string, patch: Partial<BattleRoyalePlacement>) => void;
@@ -325,6 +329,7 @@ function BattleRoyaleLobbyTables({
   rounds,
   teamsById,
   chickenCounts,
+  options,
   stageMode,
   onAutoFillRound,
   onUpdatePlacement
@@ -417,7 +422,11 @@ function BattleRoyaleLobbyTables({
                       {lobby.rounds.flatMap((round) => {
                         const placement = getRoundPlacement(round, teamId);
                         const isMatchWinner = isBattleRoyaleRoundComplete(round) && placement.placement === 1;
-                        const totalPoints = 0;
+                        const totalPoints =
+                          getBattleRoyalePlacementPoints(options, placement.placement) +
+                          getBattleRoyaleKillPoints(options, placement.kills) +
+                          (placement.bonusPoints ?? 0) -
+                          (placement.penaltyPoints ?? 0);
                         return [
                           <td
                             key={`${round.id}-${teamId}-placement`}
