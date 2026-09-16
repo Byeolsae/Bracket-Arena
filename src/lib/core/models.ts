@@ -290,54 +290,6 @@ export type GroupTripleEliminationStage = {
   warnings: string[];
 };
 
-export type BattleRoyalePlacement = {
-  teamId: string;
-  placement: number;
-  kills: number;
-  bonusPoints?: number;
-  penaltyPoints?: number;
-};
-
-export type BattleRoyaleRound = {
-  id: string;
-  round: number;
-  groupName?: string;
-  teamIds: string[];
-  placements: BattleRoyalePlacement[];
-  isComplete?: boolean;
-};
-
-export type BattleRoyaleOptions = {
-  roundCount: number;
-  teamsPerRound: number;
-  advanceCount: number;
-  placementPoints: Record<number, number>;
-  killPoint: number;
-  stageMode?: "standard" | "qualifier" | "final";
-  groupCount?: number;
-  groupNames?: string[];
-  matchesPerPair?: number;
-};
-
-export type BattleRoyaleStanding = {
-  rank: number;
-  teamId: string;
-  roundsPlayed: number;
-  placementPoints: number;
-  killPoints: number;
-  totalPoints: number;
-  bonusPoints: number;
-  penaltyPoints: number;
-};
-
-export type BattleRoyaleStage = {
-  id: string;
-  type: "battle_royale";
-  rounds: BattleRoyaleRound[];
-  options: BattleRoyaleOptions;
-  warnings: string[];
-};
-
 export type TripleEliminationStage = {
   id: string;
   format: "triple-elimination";
@@ -399,7 +351,6 @@ export type StageType =
   | "double_elimination"
   | "swiss"
   | "triple_elimination"
-  | "battle_royale"
   | "stepladder";
 
 export type AdvancementRule = {

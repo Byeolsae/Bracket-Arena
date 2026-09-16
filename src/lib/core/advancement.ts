@@ -1,6 +1,5 @@
 import type {
   AdvancementRule,
-  BattleRoyaleStage,
   GroupStage,
   LeagueStage,
   LeagueStanding,
@@ -9,7 +8,6 @@ import type {
   Tournament
 } from "./models";
 import { createSingleEliminationTournament } from "./singleElimination";
-import { calculateBattleRoyaleStandings } from "./battleRoyale";
 import { calculateGroupStandings, getGroupAdvancingTeams } from "./group";
 import { calculateLeagueStandings, getLeagueAdvancingTeams } from "./league";
 import { getSwissAdvancingTeams, getRankedSwissRecords } from "./swiss";
@@ -18,8 +16,7 @@ export type StageWithResults =
   | Tournament
   | LeagueStage
   | GroupStage
-  | SwissStage
-  | BattleRoyaleStage;
+  | SwissStage;
 
 export function getAdvancingTeams(
   standings: LeagueStanding[],
@@ -74,10 +71,6 @@ export function getStageResults(stage: StageWithResults, teams: Team[]) {
     return getRankedSwissRecords(stage);
   }
 
-  if ("type" in stage && stage.type === "battle_royale") {
-    return calculateBattleRoyaleStandings(stage, teams);
-  }
-
   if ("matches" in stage) {
     return stage.matches;
   }
@@ -105,27 +98,6 @@ export function getStageAdvancingTeams(
 
   if ("config" in stage && "records" in stage) {
     return getSwissAdvancingTeams(stage, teams);
-  }
-
-  if ("type" in stage && stage.type === "battle_royale") {
-    const standings = calculateBattleRoyaleStandings(stage, teams);
-    return getAdvancingTeams(
-      standings.map((standing) => ({
-        rank: standing.rank,
-        teamId: standing.teamId,
-        played: standing.roundsPlayed,
-        wins: 0,
-        draws: 0,
-        losses: 0,
-        goalsFor: 0,
-        goalsAgainst: 0,
-        goalDifference: 0,
-        points: 0,
-        seed: standing.rank
-      })),
-      teams,
-      rule.count
-    );
   }
 
   if ("championId" in stage && stage.championId) {

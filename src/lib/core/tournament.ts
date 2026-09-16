@@ -8,7 +8,6 @@ import { createSwissStage } from "./swiss";
 import { createSingleEliminationTournament } from "./singleElimination";
 import { createDoubleEliminationBracket } from "./doubleElimination";
 import { generateTripleEliminationBracket } from "./tripleElimination";
-import { generateBattleRoyaleRounds } from "./battleRoyale";
 import { createStepladderBracket } from "./stepladder";
 
 export function createDefaultStructure(): TournamentStructure {
@@ -161,6 +160,5 @@ function createStageInstance(type: StageType, teams: Team[], name: string) {
   if (type === "single_elimination") return createSingleEliminationTournament(teams, name);
   if (type === "double_elimination") return createDoubleEliminationBracket(teams);
   if (type === "triple_elimination") return generateTripleEliminationBracket(teams);
-  if (type === "battle_royale") return generateBattleRoyaleRounds(teams);
   return createStepladderBracket(teams);
 }

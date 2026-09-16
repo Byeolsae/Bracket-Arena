@@ -8,13 +8,6 @@ import { PlacementSummary, type PlacementSummaryEntry } from "@/components/tourn
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import { nextPowerOfTwo } from "@/lib/core/bye";
 import { useUiStore, type AppLanguage } from "@/store/uiStore";
-import {
-  BATTLE_ROYALE_FINAL_TEAM_COUNT,
-  BATTLE_ROYALE_QUALIFIER_TEAM_COUNT,
-  generateBattleRoyaleRounds,
-  normalizeBattleRoyaleMatchCount,
-  calculateBattleRoyaleStandings
-} from "@/lib/core/battleRoyale";
 import { createGroupStage, calculateGroupStandings } from "@/lib/core/group";
 import {
   createGroupTripleEliminationStage,
@@ -32,7 +25,6 @@ import {
   MAX_TRIPLE_ELIMINATION_TEAMS
 } from "@/lib/core/eliminationSizing";
 import type {
-  BattleRoyaleStage,
   BracketStageMatch,
   DoubleEliminationBracket,
   GroupDoubleEliminationStage,
@@ -49,10 +41,6 @@ import type {
 import { useTeamStore } from "@/store/teamStore";
 import { useTournamentStore } from "@/store/tournamentStore";
 
-const BattleRoyaleStageView = dynamic(
-  () => import("@/components/tournament/BattleRoyaleStageView").then((mod) => mod.BattleRoyaleStageView),
-  { ssr: false }
-);
 const BracketView = dynamic(
   () => import("@/components/bracket/BracketView").then((mod) => mod.BracketView),
   { ssr: false }
@@ -177,6 +165,12 @@ const ELIMINATION_TEAM_LIMITS: Partial<Record<StageFormat, number>> = {
   group_triple_elimination: 8
 };
 const DOUBLE_ELIMINATION_ALLOWED_TEAM_COUNTS = [4, 8, 16];
+const BATTLE_ROYALE_QUALIFIER_TEAM_COUNT = 24;
+const BATTLE_ROYALE_FINAL_TEAM_COUNT = 16;
+
+function normalizeBattleRoyaleMatchCount(value: number | undefined) {
+  return value === 6 ? 6 : 5;
+}
 
 function isGroupFormat(format: StageFormat) {
   return (
@@ -242,8 +236,7 @@ function getProjectedAdvancingCount(
   selectedTeamCount: number,
   groupCount: number,
   leagueAdvanceCount: number,
-  groupAdvanceCount: number,
-  battleAdvanceCount: number
+  groupAdvanceCount: number
 ) {
   if (selectedTeamCount <= 0) return 0;
 
@@ -447,14 +440,11 @@ export default function MakerPage() {
   const [teamGroupAssignments, setTeamGroupAssignments] = useState<Record<string, number>>({});
   const [groupAdvanceCount, setGroupAdvanceCount] = useState(2);
   const [battleRoundCount, setBattleRoundCount] = useState(5);
-  const [battleTeamsPerRound, setBattleTeamsPerRound] = useState(16);
-  const [battleAdvanceCount, setBattleAdvanceCount] = useState(16);
   const [leagueStage, setLeagueStage] = useState<LeagueStage>();
   const [groupStage, setGroupStage] = useState<GroupStage>();
   const [groupDoubleStage, setGroupDoubleStage] = useState<GroupDoubleEliminationStage>();
   const [groupTripleStage, setGroupTripleStage] = useState<GroupTripleEliminationStage>();
   const [swissStage, setSwissStage] = useState<SwissStage>();
-  const [battleRoyaleStage, setBattleRoyaleStage] = useState<BattleRoyaleStage>();
   const [tripleStage, setTripleStage] = useState<TripleEliminationStage>();
   const [creationNotice, setCreationNotice] = useState<string>();
 
@@ -512,12 +502,10 @@ export default function MakerPage() {
             selectedTeamIds.length,
             groupCount,
             leagueAdvanceCount,
-            groupAdvanceCount,
-            battleAdvanceCount
+            groupAdvanceCount
           )
         : selectedTeamIds.length,
     [
-      battleAdvanceCount,
       groupAdvanceCount,
       groupCount,
       leagueAdvanceCount,
@@ -575,8 +563,7 @@ export default function MakerPage() {
       selectedTeamIds.length,
       groupCount,
       leagueAdvanceCount,
-      groupAdvanceCount,
-      battleAdvanceCount
+      groupAdvanceCount
     );
     const enabledFinals = allowedFinals.filter((option) => !getFinalFormatDisabledReason(option, projectedCount));
     const nextFinal = enabledFinals[0] ?? allowedFinals[0];
@@ -663,10 +650,7 @@ export default function MakerPage() {
   }
 
   function getCurrentAdvancingTeams(): Team[] {
-    const advanceCount =
-      activeStage?.format === "battle_royale"
-        ? BATTLE_ROYALE_FINAL_TEAM_COUNT
-        : leagueAdvanceCount;
+    const advanceCount = leagueAdvanceCount;
     const rule = {
       id: "maker-auto-advance",
       mode: "overall_top_n" as const,
@@ -682,7 +666,6 @@ export default function MakerPage() {
       return getGroupTripleEliminationAdvancingTeams(groupTripleStage, selectedTeams).map((team, index) => ({ ...team, defaultSeed: index + 1 }));
     }
     if (activeStage?.format === "swiss" && swissStage) return getStageAdvancingTeams(swissStage, selectedTeams, rule);
-    if (activeStage?.format === "battle_royale" && battleRoyaleStage) return getStageAdvancingTeams(battleRoyaleStage, selectedTeams, rule);
     if (activeStage?.format === "single" && tournament?.championId) {
       const champion = selectedTeams.find((team) => team.id === tournament.championId);
       return champion ? [{ ...champion, defaultSeed: 1 }] : [];
@@ -724,6 +707,10 @@ export default function MakerPage() {
     }
     if (limitMessage) {
       setCreationNotice(limitMessage);
+      return;
+    }
+    if (format === "battle_royale") {
+      setCreationNotice("배틀로얄 생성/점수 로직은 제거되었습니다. 브래킷 시작 설정만 남아 있습니다.");
       return;
     }
     setCreationNotice(undefined);
@@ -802,18 +789,7 @@ export default function MakerPage() {
       );
     }
 
-    const battleRoyaleTeams =
-      role === "qualifier"
-        ? orderBattleRoyaleQualifierTeams(stageTeams, teamGroupAssignments)
-        : stageTeams;
-    return setBattleRoyaleStage(
-      generateBattleRoyaleRounds(battleRoyaleTeams, {
-        stageMode: role === "qualifier" ? "qualifier" : "final",
-        roundCount: normalizeBattleRoyaleMatchCount(battleRoundCount),
-        teamsPerRound: role === "qualifier" ? 16 : BATTLE_ROYALE_FINAL_TEAM_COUNT,
-        advanceCount: role === "qualifier" ? BATTLE_ROYALE_FINAL_TEAM_COUNT : 0
-      })
-    );
+    return undefined;
   }
 
   return (
@@ -859,14 +835,12 @@ export default function MakerPage() {
         groupDoubleStage={groupDoubleStage}
         groupTripleStage={groupTripleStage}
         swissStage={swissStage}
-        battleRoyaleStage={battleRoyaleStage}
         tripleStage={tripleStage}
         setLeagueStage={setLeagueStage}
         setGroupStage={setGroupStage}
         setGroupDoubleStage={setGroupDoubleStage}
         setGroupTripleStage={setGroupTripleStage}
         setSwissStage={setSwissStage}
-        setBattleRoyaleStage={setBattleRoyaleStage}
         setTripleStage={setTripleStage}
         setMatchResult={setMatchResult}
         setDoubleResult={setDoubleResult}
@@ -875,18 +849,6 @@ export default function MakerPage() {
       />
     </main>
   );
-}
-
-function orderBattleRoyaleQualifierTeams(teams: Team[], assignments: Record<string, number>) {
-  const hasAssignments = teams.some((team) => typeof assignments[team.id] === "number");
-  if (!hasAssignments) return teams;
-
-  return [...teams].sort((left, right) => {
-    const leftGroup = assignments[left.id] ?? 0;
-    const rightGroup = assignments[right.id] ?? 0;
-    if (leftGroup !== rightGroup) return leftGroup - rightGroup;
-    return teams.indexOf(left) - teams.indexOf(right);
-  });
 }
 
 function TournamentSetup({
@@ -1112,11 +1074,7 @@ function FilteredStageOptionsPanel({
   groupAdvanceCount,
   setGroupAdvanceCount,
   battleRoundCount,
-  setBattleRoundCount,
-  battleTeamsPerRound,
-  setBattleTeamsPerRound,
-  battleAdvanceCount,
-  setBattleAdvanceCount
+  setBattleRoundCount
 }: {
   formats: StageFormat[];
   selectedTeamCount: number;
@@ -1130,10 +1088,6 @@ function FilteredStageOptionsPanel({
   setGroupAdvanceCount: (value: number) => void;
   battleRoundCount: number;
   setBattleRoundCount: (value: number) => void;
-  battleTeamsPerRound: number;
-  setBattleTeamsPerRound: (value: number) => void;
-  battleAdvanceCount: number;
-  setBattleAdvanceCount: (value: number) => void;
 }) {
   const needsLeague = formats.includes("league");
   const needsSwiss = formats.includes("swiss");
@@ -1822,14 +1776,12 @@ function ActiveStageView({
   groupDoubleStage,
   groupTripleStage,
   swissStage,
-  battleRoyaleStage,
   tripleStage,
   setLeagueStage,
   setGroupStage,
   setGroupDoubleStage,
   setGroupTripleStage,
   setSwissStage,
-  setBattleRoyaleStage,
   setTripleStage,
   setMatchResult,
   setDoubleResult,
@@ -1848,14 +1800,12 @@ function ActiveStageView({
   groupDoubleStage?: GroupDoubleEliminationStage;
   groupTripleStage?: GroupTripleEliminationStage;
   swissStage?: SwissStage;
-  battleRoyaleStage?: BattleRoyaleStage;
   tripleStage?: TripleEliminationStage;
   setLeagueStage: (stage: LeagueStage) => void;
   setGroupStage: (stage: GroupStage) => void;
   setGroupDoubleStage: (stage: GroupDoubleEliminationStage) => void;
   setGroupTripleStage: (stage: GroupTripleEliminationStage) => void;
   setSwissStage: (stage: SwissStage) => void;
-  setBattleRoyaleStage: (stage: BattleRoyaleStage) => void;
   setTripleStage: (stage: TripleEliminationStage) => void;
   setMatchResult: (matchId: string, result: { scoreA?: number; scoreB?: number; winnerId: string }) => void;
   setDoubleResult: (matchId: string, result: { scoreA?: number; scoreB?: number; winnerId: string }) => void;
@@ -1906,8 +1856,6 @@ function ActiveStageView({
     view = <GroupDoubleEliminationView stage={groupTripleStage} teams={teams} onChange={(stage) => setGroupTripleStage(stage as GroupTripleEliminationStage)} />;
   } else if (format === "swiss" && swissStage) {
     view = <SwissStageView stage={swissStage} teams={teams} onChange={setSwissStage} />;
-  } else if (format === "battle_royale" && battleRoyaleStage) {
-    view = <BattleRoyaleStageView stage={battleRoyaleStage} teams={teams} onChange={setBattleRoyaleStage} />;
   }
 
   if (!view) {
@@ -1931,7 +1879,6 @@ function ActiveStageView({
     groupDoubleStage,
     groupTripleStage,
     swissStage,
-    battleRoyaleStage,
     tripleStage
   });
 
@@ -2006,7 +1953,6 @@ type PlacementSummarySource = {
   groupDoubleStage?: GroupDoubleEliminationStage;
   groupTripleStage?: GroupTripleEliminationStage;
   swissStage?: SwissStage;
-  battleRoyaleStage?: BattleRoyaleStage;
   tripleStage?: TripleEliminationStage;
 };
 
@@ -2260,14 +2206,6 @@ function getSeedRankedTeams(source: PlacementSummarySource): Team[] {
       .filter(Boolean) as Team[];
   }
 
-  if (format === "battle_royale" && source.battleRoyaleStage) {
-    const standings = calculateBattleRoyaleStandings(source.battleRoyaleStage, teams).filter((standing) => standing.roundsPlayed > 0);
-    return standings
-      .slice(0, source.battleRoyaleStage.options.advanceCount || teams.length)
-      .map((standing) => findTeam(teams, standing.teamId))
-      .filter(Boolean) as Team[];
-  }
-
   return getFinalRankedTeams(source);
 }
 
@@ -2322,14 +2260,6 @@ function getFinalRankedTeams(source: PlacementSummarySource): Team[] {
         if (a.goalDifference !== b.goalDifference) return b.goalDifference - a.goalDifference;
         return a.seed - b.seed;
       })
-      .slice(0, 3)
-      .map((standing) => findTeam(teams, standing.teamId))
-      .filter(Boolean) as Team[];
-  }
-
-  if (format === "battle_royale" && source.battleRoyaleStage) {
-    return calculateBattleRoyaleStandings(source.battleRoyaleStage, teams)
-      .filter((standing) => standing.roundsPlayed > 0)
       .slice(0, 3)
       .map((standing) => findTeam(teams, standing.teamId))
       .filter(Boolean) as Team[];

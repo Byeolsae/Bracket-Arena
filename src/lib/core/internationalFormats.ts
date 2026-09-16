@@ -6,8 +6,7 @@ export type InternationalStageFormat =
   | "league"
   | "group"
   | "group_double_elimination"
-  | "swiss"
-  | "battle_royale";
+  | "swiss";
 
 export type InternationalFormatProfile = {
   id: string;
@@ -60,27 +59,9 @@ const TEAM_COUNT_RULES: Record<string, TeamCountRule> = {
   "hots-hgc-2017": { exact: [16], label: "16팀 고정" },
   "hots-hgc-2018": { exact: [16], label: "16팀 고정" },
   "hots-post-hgc-community": { min: 8, max: 16, label: "8-16팀 권장" },
-  "battle-royale-worlds": { min: 16, max: 40, label: "16-40팀 권장" },
-  "apex-championship": { min: 20, max: 40, label: "20-40팀 권장" },
-  "apex-algs-2021-2022": { exact: [40], label: "40팀 권장" },
-  "apex-algs-2023-2025": { exact: [40], label: "40팀 권장" },
-  "pubg-global": { min: 24, max: 32, label: "24-32팀 권장" },
-  "pubg-pgc-2019": { exact: [32], label: "32팀 고정" },
-  "pubg-pgc-2021": { exact: [32], label: "32팀 고정" },
-  "pubg-pgc-2022-2024": { exact: [32], label: "32팀 고정" },
-  "pubg-pgc-2025": { min: 24, max: 32, label: "24-32팀 권장" },
-  "pubgm-global": { min: 16, max: 48, label: "16-48팀 권장" },
-  "fortnite-global": { min: 33, max: 100, label: "33-100팀/듀오 권장" },
-  "fortnite-world-cup-2019": { min: 50, max: 100, label: "50-100명/듀오 권장" },
-  "fortnite-invitational-2022": { min: 50, max: 100, label: "50-100명/듀오 권장" },
-  "fortnite-fncs-2023": { exact: [72], label: "72듀오 권장" },
-  "fortnite-fncs-2024-2025": { exact: [33, 50], label: "33트리오 또는 50듀오" },
-  "fortnite-fncs-2026": { min: 50, max: 100, label: "50-100듀오 권장" },
-  "freefire-global": { min: 12, max: 18, label: "12-18팀 권장" },
   "brawlstars-worlds": { min: 12, max: 16, label: "12-16팀 권장" },
   "wow-arena": { min: 8, max: 12, label: "8-12팀 권장" },
   "starcraft-global": { min: 16, max: 32, label: "16-32명 권장" },
-  "tft-worlds": { min: 32, max: 64, label: "32-64명 권장" },
   "fighting-swiss-bracket": { min: 16, max: 512, label: "16명 이상 권장" },
   "fighting-tekken": { min: 16, max: 32, label: "16-32명 권장" },
   "fighting-streetfighter": { min: 16, max: 48, label: "16-48명 권장" },
@@ -92,7 +73,6 @@ const TEAM_COUNT_RULES: Record<string, TeamCountRule> = {
   "chess-global": { min: 8, max: 206, label: "8-206명 권장" },
   "go-global": { min: 8, max: 64, label: "8-64명 권장" },
   "crossfire-global": { min: 12, max: 16, label: "12-16팀 권장" },
-  "eternal-return": { min: 16, max: 40, label: "16-40팀 권장" },
   "football-world-cup-32": { exact: [32], label: "32팀 고정" },
   "football-world-cup-48": { exact: [48], label: "48팀 고정" },
   "uefa-swiss-model": { exact: [36], label: "36팀 고정" }
@@ -112,7 +92,7 @@ export function isTeamCountAllowed(profileId: string, count: number): boolean {
 }
 
 export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
-  {
+{
     id: "cs-2013-2016",
     game: "Counter-Strike",
     gameCode: "CS",
@@ -125,7 +105,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["16팀 -> 4개 조 -> 조별 2팀 진출 -> 8강 본선"],
     sourceLevel: "verified"
   },
-  {
+{
     id: "cs-2017",
     game: "Counter-Strike",
     gameCode: "CS",
@@ -138,7 +118,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["16팀 스위스 -> 상위 8팀 -> 8강 본선"],
     sourceLevel: "verified"
   },
-  {
+{
     id: "cs-2018-2024",
     game: "Counter-Strike",
     gameCode: "CS",
@@ -151,7 +131,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["스위스 2회 -> 8강 토너먼트"],
     sourceLevel: "verified"
   },
-  {
+{
     id: "cs-2025-current",
     game: "Counter-Strike",
     gameCode: "CS",
@@ -164,7 +144,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["스위스 3회 -> 8강 토너먼트"],
     sourceLevel: "verified"
   },
-  {
+{
     id: "lol-2014-2016",
     game: "League of Legends",
     gameCode: "LOL",
@@ -177,7 +157,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["16팀 -> 4개 조 -> 조별 2팀 -> 8강 Bo5 싱글 엘리미네이션"],
     sourceLevel: "verified"
   },
-  {
+{
     id: "lol-2017-2022",
     game: "League of Legends",
     gameCode: "LOL",
@@ -190,7 +170,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["플레이-인 -> 그룹 스테이지 -> 8강 녹아웃"],
     sourceLevel: "verified"
   },
-  {
+{
     id: "lol-2023-current",
     game: "League of Legends",
     gameCode: "LOL",
@@ -203,7 +183,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["플레이-인 -> 스위스 -> 8강 녹아웃"],
     sourceLevel: "verified"
   },
-  {
+{
     id: "valo-2021-reykjavik",
     game: "VALORANT",
     gameCode: "VALO",
@@ -216,7 +196,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["단독 10팀 더블 엘리미네이션"],
     sourceLevel: "verified"
   },
-  {
+{
     id: "valo-2022-2023-champions",
     game: "VALORANT",
     gameCode: "VALO",
@@ -229,7 +209,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["GSL 조별 -> 8팀 더블 엘리미네이션"],
     sourceLevel: "verified"
   },
-  {
+{
     id: "valo-masters-2024-2026",
     game: "VALORANT",
     gameCode: "VALO",
@@ -242,7 +222,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["스위스 -> 4팀 또는 8팀 더블 엘리미네이션"],
     sourceLevel: "verified"
   },
-  {
+{
     id: "valo-kickoff-2026",
     game: "VALORANT",
     gameCode: "VALO",
@@ -255,7 +235,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["단독 트리플 엘리미네이션"],
     sourceLevel: "verified"
   },
-  {
+{
     id: "ow-2018",
     game: "Overwatch",
     gameCode: "OW",
@@ -268,7 +248,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["6팀 싱글 엘리미네이션 + 상위 시드 부전승"],
     sourceLevel: "verified"
   },
-  {
+{
     id: "ow-2019-2025",
     game: "Overwatch",
     gameCode: "OW",
@@ -281,7 +261,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["8팀 또는 12팀 더블 엘리미네이션"],
     sourceLevel: "verified"
   },
-  {
+{
     id: "ow-2026-midseason",
     game: "Overwatch",
     gameCode: "OW",
@@ -294,7 +274,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["더블엘리 그룹 -> 싱글 엘리미네이션"],
     sourceLevel: "verified"
   },
-  {
+{
     id: "dota-ti",
     game: "Dota 2",
     gameCode: "DOTA",
@@ -307,7 +287,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 -> 더블 엘리미네이션"],
     sourceLevel: "curated"
   },
-  {
+{
     id: "dota-ti-2021-2022",
     game: "Dota 2",
     gameCode: "DOTA",
@@ -320,7 +300,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 라운드 로빈 -> 상위조/하위조 더블 엘리미네이션"],
     sourceLevel: "verified"
   },
-  {
+{
     id: "dota-ti-2023",
     game: "Dota 2",
     gameCode: "DOTA",
@@ -333,7 +313,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 Phase 1 -> 배정 매치 Phase 2 -> 더블 엘리미네이션"],
     sourceLevel: "verified"
   },
-  {
+{
     id: "dota-ti-2024-current",
     game: "Dota 2",
     gameCode: "DOTA",
@@ -346,7 +326,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 -> 더블 엘리미네이션"],
     sourceLevel: "verified"
   },
-  {
+{
     id: "rlcs-modern",
     game: "Rocket League",
     gameCode: "RL",
@@ -359,7 +339,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["스위스 -> 싱글 엘리미네이션"],
     sourceLevel: "curated"
   },
-  {
+{
     id: "r6-invitational",
     game: "Rainbow Six Siege",
     gameCode: "R6",
@@ -372,7 +352,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 -> 더블 엘리미네이션"],
     sourceLevel: "curated"
   },
-  {
+{
     id: "cod-champs",
     game: "Call of Duty",
     gameCode: "COD",
@@ -385,7 +365,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 -> 더블 엘리미네이션"],
     sourceLevel: "curated"
   },
-  {
+{
     id: "cod-champs-2019",
     game: "Call of Duty",
     gameCode: "COD",
@@ -398,7 +378,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["풀 플레이 -> 더블 엘리미네이션"],
     sourceLevel: "verified"
   },
-  {
+{
     id: "cod-cdl-2020-2025",
     game: "Call of Duty",
     gameCode: "COD",
@@ -411,7 +391,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["시드 배정 -> 더블 엘리미네이션"],
     sourceLevel: "curated"
   },
-  {
+{
     id: "halo-championship",
     game: "Halo",
     gameCode: "HALO",
@@ -424,7 +404,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 -> 더블 엘리미네이션"],
     sourceLevel: "curated"
   },
-  {
+{
     id: "moba-groups-knockout",
     game: "MOBA 국제대회 공통",
     gameCode: "HOK/MBLL/MR/HOTS",
@@ -437,7 +417,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 -> 싱글 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
+{
     id: "hots-blizzcon-2015-2016",
     game: "Heroes of the Storm",
     gameCode: "HOTS",
@@ -450,7 +430,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 -> 싱글 엘리미네이션"],
     sourceLevel: "curated"
   },
-  {
+{
     id: "hots-hgc-2017",
     game: "Heroes of the Storm",
     gameCode: "HOTS",
@@ -463,7 +443,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 -> 싱글 엘리미네이션"],
     sourceLevel: "curated"
   },
-  {
+{
     id: "hots-hgc-2018",
     game: "Heroes of the Storm",
     gameCode: "HOTS",
@@ -476,7 +456,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 -> 싱글 엘리미네이션"],
     sourceLevel: "curated"
   },
-  {
+{
     id: "hots-post-hgc-community",
     game: "Heroes of the Storm",
     gameCode: "HOTS",
@@ -489,20 +469,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 -> 더블 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
-    id: "battle-royale-worlds",
-    game: "Battle Royale",
-    gameCode: "PUBG/PUBGM/APEX/FN/FF/BS",
-    title: "누적 리더보드 계열",
-    years: "대표 국제대회",
-    teamCount: "16-40팀",
-    qualifierFormats: ["battle_royale"],
-    finalFormat: "battle_royale",
-    summary: "여러 라운드 기록으로 예선과 결승 리더보드를 나누는 방식.",
-    notes: ["배틀로얄 예선 -> 배틀로얄 결승"],
-    sourceLevel: "generic"
-  },
-  {
+{
     id: "fighting-swiss-bracket",
     game: "Fighting / 1v1",
     gameCode: "TK/SF/SMB/PKMN",
@@ -515,7 +482,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["스위스 -> 싱글 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
+{
     id: "card-strategy-swiss",
     game: "Card / Strategy",
     gameCode: "HS/SC/TFT/GO/CH/CR/CF",
@@ -528,215 +495,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["스위스 -> 싱글 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
-    id: "apex-championship",
-    game: "Apex Legends",
-    gameCode: "APEX",
-    title: "ALGS Championship 계열",
-    years: "대표 국제대회",
-    teamCount: "40팀 내외",
-    qualifierFormats: ["battle_royale", "battle_royale"],
-    finalFormat: "battle_royale",
-    summary: "그룹/브래킷 스테이지를 라운드 기록으로 진행하고 결승도 배틀로얄 리더보드로 운영.",
-    notes: ["배틀로얄 예선 -> 배틀로얄 준결승 -> 배틀로얄 결승"],
-    sourceLevel: "generic"
-  },
-  {
-    id: "apex-algs-2021-2022",
-    game: "Apex Legends",
-    gameCode: "APEX",
-    title: "ALGS Championship 2021-2022",
-    years: "2021-2022",
-    teamCount: "40팀 내외",
-    qualifierFormats: ["battle_royale", "battle_royale"],
-    finalFormat: "battle_royale",
-    summary: "그룹 스테이지와 브래킷/세미 파이널을 점수 누적으로 치른 뒤 매치 포인트 결승.",
-    notes: ["그룹 리더보드 -> 브래킷/세미 리더보드 -> 결승"],
-    sourceLevel: "curated"
-  },
-  {
-    id: "apex-algs-2023-2025",
-    game: "Apex Legends",
-    gameCode: "APEX",
-    title: "ALGS Championship 2023-2025",
-    years: "2023-2025",
-    teamCount: "40팀",
-    qualifierFormats: ["battle_royale", "battle_royale", "battle_royale"],
-    finalFormat: "battle_royale",
-    summary: "그룹 스테이지, 승자/패자 브래킷형 리더보드, 결승 로비로 이어지는 다단계 배틀로얄.",
-    notes: ["그룹 -> 승자/패자 리더보드 -> 라스트 찬스 -> 결승"],
-    sourceLevel: "curated"
-  },
-  {
-    id: "pubg-global",
-    game: "PUBG",
-    gameCode: "PUBG",
-    title: "PGC/PGS 계열",
-    years: "대표 국제대회",
-    teamCount: "24-32팀",
-    qualifierFormats: ["battle_royale"],
-    finalFormat: "battle_royale",
-    summary: "라운드별 순위와 킬 점수 누적으로 예선과 결승 리더보드를 구성.",
-    notes: ["누적 리더보드 -> 결승 리더보드"],
-    sourceLevel: "generic"
-  },
-  {
-    id: "pubg-pgc-2019",
-    game: "PUBG",
-    gameCode: "PUBG",
-    title: "PGC 2019",
-    years: "2019",
-    teamCount: "32팀",
-    qualifierFormats: ["battle_royale", "battle_royale"],
-    finalFormat: "battle_royale",
-    summary: "그룹 스테이지와 세미 파이널을 라운드 기록으로 거쳐 그랜드 파이널 리더보드로 우승 결정.",
-    notes: ["그룹 -> 세미 파이널 -> 그랜드 파이널"],
-    sourceLevel: "curated"
-  },
-  {
-    id: "pubg-pgc-2021",
-    game: "PUBG",
-    gameCode: "PUBG",
-    title: "PGC 2021",
-    years: "2021",
-    teamCount: "32팀",
-    qualifierFormats: ["battle_royale", "battle_royale", "battle_royale"],
-    finalFormat: "battle_royale",
-    summary: "Rank Decision, Weekly Survival/Finals, Grand Survival을 거쳐 Grand Finals로 이어진 독특한 생존형 포맷.",
-    notes: ["순위 결정 -> 주간 생존/결승 -> 그랜드 서바이벌 -> 결승"],
-    sourceLevel: "curated"
-  },
-  {
-    id: "pubg-pgc-2022-2024",
-    game: "PUBG",
-    gameCode: "PUBG",
-    title: "PGC 2022-2024",
-    years: "2022-2024",
-    teamCount: "32팀",
-    qualifierFormats: ["battle_royale", "battle_royale", "battle_royale"],
-    finalFormat: "battle_royale",
-    summary: "그룹 스테이지 후 승자/패자 브래킷형 누적 리더보드와 그랜드 파이널로 이어지는 현대 PGC 계열.",
-    notes: ["그룹 -> 승자/패자 브래킷 -> 그랜드 파이널"],
-    sourceLevel: "curated"
-  },
-  {
-    id: "pubg-pgc-2025",
-    game: "PUBG",
-    gameCode: "PUBG",
-    title: "PGC 2025 계열",
-    years: "2025",
-    teamCount: "대회별",
-    qualifierFormats: ["battle_royale", "battle_royale", "battle_royale"],
-    finalFormat: "battle_royale",
-    summary: "최근 PUBG 글로벌 대회 흐름에 맞춘 그룹/브래킷/라스트 찬스/결승 리더보드 템플릿.",
-    notes: ["그룹 -> 브래킷 -> 라스트 찬스 -> 결승"],
-    sourceLevel: "curated"
-  },
-  {
-    id: "pubgm-global",
-    game: "PUBG Mobile",
-    gameCode: "PUBGM",
-    title: "PMGC 계열",
-    years: "대표 국제대회",
-    teamCount: "16-48팀",
-    qualifierFormats: ["battle_royale", "battle_royale"],
-    finalFormat: "battle_royale",
-    summary: "그룹/서바이벌/라스트 찬스 같은 라운드 기록 단계를 거쳐 결승 리더보드로 연결.",
-    notes: ["배틀로얄 다단계 -> 결승 리더보드"],
-    sourceLevel: "generic"
-  },
-  {
-    id: "fortnite-global",
-    game: "Fortnite",
-    gameCode: "FN",
-    title: "FNCS Global 계열",
-    years: "대표 국제대회",
-    teamCount: "듀오/스쿼드 규모별",
-    qualifierFormats: ["battle_royale"],
-    finalFormat: "battle_royale",
-    summary: "여러 매치 기록으로 최종 순위를 결정하는 배틀로얄 결승형.",
-    notes: ["라운드 기록 -> 최종 리더보드"],
-    sourceLevel: "generic"
-  },
-  {
-    id: "fortnite-world-cup-2019",
-    game: "Fortnite",
-    gameCode: "FN",
-    title: "World Cup 2019",
-    years: "2019",
-    teamCount: "솔로/듀오",
-    qualifierFormats: [],
-    finalFormat: "battle_royale",
-    summary: "온라인 예선 통과자들이 월드컵 결승에서 여러 매치 기록으로 우승자를 결정.",
-    notes: ["단독 결승 리더보드"],
-    sourceLevel: "curated"
-  },
-  {
-    id: "fortnite-invitational-2022",
-    game: "Fortnite",
-    gameCode: "FN",
-    title: "FNCS Invitational 2022",
-    years: "2022",
-    teamCount: "듀오",
-    qualifierFormats: [],
-    finalFormat: "battle_royale",
-    summary: "초청 LAN 결승형. 여러 매치 기록으로 최종 순위 결정.",
-    notes: ["단독 결승 리더보드"],
-    sourceLevel: "curated"
-  },
-  {
-    id: "fortnite-fncs-2023",
-    game: "Fortnite",
-    gameCode: "FN",
-    title: "FNCS Global Championship 2023",
-    years: "2023",
-    teamCount: "72듀오",
-    qualifierFormats: ["battle_royale", "battle_royale"],
-    finalFormat: "battle_royale",
-    summary: "Upper Bracket 상위권은 결승 직행, 나머지는 Lower Bracket으로 남은 결승 슬롯 경쟁.",
-    notes: ["상위 브래킷 -> 하위 브래킷 -> 그랜드 파이널"],
-    sourceLevel: "verified"
-  },
-  {
-    id: "fortnite-fncs-2024-2025",
-    game: "Fortnite",
-    gameCode: "FN",
-    title: "FNCS Global Championship 2024-2025",
-    years: "2024-2025",
-    teamCount: "50듀오 / 33트리오",
-    qualifierFormats: [],
-    finalFormat: "battle_royale",
-    summary: "글로벌 결승 리더보드 중심. 2024는 듀오, 2025는 트리오 라운드 기록 결승.",
-    notes: ["결승 리더보드"],
-    sourceLevel: "verified"
-  },
-  {
-    id: "fortnite-fncs-2026",
-    game: "Fortnite",
-    gameCode: "FN",
-    title: "FNCS Global Championship 2026",
-    years: "2026",
-    teamCount: "듀오 예정",
-    qualifierFormats: ["battle_royale"],
-    finalFormat: "battle_royale",
-    summary: "2026은 듀오 복귀 예정. Major/Summit 계열 선발 후 글로벌 결승으로 연결.",
-    notes: ["시즌 선발 -> 결승 리더보드"],
-    sourceLevel: "curated"
-  },
-  {
-    id: "freefire-global",
-    game: "Free Fire",
-    gameCode: "FF",
-    title: "World Series 계열",
-    years: "대표 국제대회",
-    teamCount: "12-18팀",
-    qualifierFormats: ["battle_royale"],
-    finalFormat: "battle_royale",
-    summary: "포인트 러시/결승 등 라운드 기록 기반 스테이지를 쓰는 계열.",
-    notes: ["배틀로얄 예선 -> 결승 리더보드"],
-    sourceLevel: "generic"
-  },
-  {
+{
     id: "brawlstars-worlds",
     game: "Brawl Stars",
     gameCode: "BS",
@@ -749,7 +508,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 -> 싱글 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
+{
     id: "wow-arena",
     game: "World of Warcraft",
     gameCode: "WOW",
@@ -762,7 +521,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹/리그 -> 더블 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
+{
     id: "starcraft-global",
     game: "StarCraft",
     gameCode: "SC",
@@ -775,20 +534,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["GSL 조별 -> 싱글 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
-    id: "tft-worlds",
-    game: "Teamfight Tactics",
-    gameCode: "TFT",
-    title: "Tactician's Crown 계열",
-    years: "대표 국제대회",
-    teamCount: "32명 내외",
-    qualifierFormats: ["battle_royale", "battle_royale"],
-    finalFormat: "battle_royale",
-    summary: "로비별 순위 점수를 누적해 컷오프를 반복하고 최종 로비에서 우승자를 결정.",
-    notes: ["로비 점수 누적 -> 컷오프 -> 결승 로비"],
-    sourceLevel: "generic"
-  },
-  {
+{
     id: "fighting-tekken",
     game: "Tekken",
     gameCode: "TK",
@@ -801,7 +547,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 -> 더블 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
+{
     id: "fighting-streetfighter",
     game: "Street Fighter",
     gameCode: "SF",
@@ -814,7 +560,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 -> 더블 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
+{
     id: "smash-major",
     game: "Smash",
     gameCode: "SMB",
@@ -827,7 +573,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["풀 -> 더블 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
+{
     id: "pokemon-worlds",
     game: "Pokemon",
     gameCode: "PKMN",
@@ -840,7 +586,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["스위스 -> 싱글 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
+{
     id: "hearthstone-worlds",
     game: "Hearthstone",
     gameCode: "HS",
@@ -853,7 +599,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 -> 싱글 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
+{
     id: "clash-royale-worlds",
     game: "Clash Royale",
     gameCode: "CR",
@@ -866,7 +612,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["스위스 -> 싱글 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
+{
     id: "chess-global",
     game: "Chess",
     gameCode: "CH",
@@ -879,7 +625,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["단독 싱글 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
+{
     id: "go-global",
     game: "Go",
     gameCode: "GO",
@@ -892,7 +638,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["단독 싱글 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
+{
     id: "crossfire-global",
     game: "CrossFire",
     gameCode: "CF",
@@ -905,20 +651,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 -> 싱글 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
-    id: "eternal-return",
-    game: "Eternal Return",
-    gameCode: "ER",
-    title: "Masters/Finals 계열",
-    years: "대표 국제대회",
-    teamCount: "로비 규모별",
-    qualifierFormats: ["battle_royale"],
-    finalFormat: "battle_royale",
-    summary: "라운드별 순위 점수 누적으로 결승 진출과 우승자를 가르는 방식.",
-    notes: ["라운드 기록 -> 결승 리더보드"],
-    sourceLevel: "generic"
-  },
-  {
+{
     id: "realm-shooter-generic",
     game: "RS",
     gameCode: "RS",
@@ -931,7 +664,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 -> 더블 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
+{
     id: "deadbydaylight-generic",
     game: "Dead by Daylight",
     gameCode: "DBD",
@@ -944,7 +677,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 -> 싱글 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
+{
     id: "kart-racer-generic",
     game: "Kart Racer",
     gameCode: "KR",
@@ -957,7 +690,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["리그 -> 스텝래더"],
     sourceLevel: "generic"
   },
-  {
+{
     id: "ftl-fury-generic",
     game: "FTLFRY",
     gameCode: "FTLFRY",
@@ -970,7 +703,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["스위스 -> 더블 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
+{
     id: "byeolsae-generic",
     game: "Byeolsae",
     gameCode: "Byeolsae",
@@ -983,7 +716,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["리그 -> 싱글 엘리미네이션"],
     sourceLevel: "generic"
   },
-  {
+{
     id: "football-world-cup-32",
     game: "Football",
     gameCode: "FC",
@@ -996,7 +729,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 -> 16강 녹아웃"],
     sourceLevel: "curated"
   },
-  {
+{
     id: "football-world-cup-48",
     game: "Football",
     gameCode: "FC",
@@ -1009,7 +742,7 @@ export const INTERNATIONAL_FORMAT_PROFILES: InternationalFormatProfile[] = [
     notes: ["그룹 -> 32강 녹아웃"],
     sourceLevel: "curated"
   },
-  {
+{
     id: "uefa-swiss-model",
     game: "Football",
     gameCode: "FC",
@@ -1035,3 +768,4 @@ export function getInternationalFormatGroups() {
     return groups;
   }, {});
 }
+

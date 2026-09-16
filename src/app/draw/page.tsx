@@ -4,13 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, ChevronDown, ChevronRight, Folder, Layers3, Play, RotateCcw, Shuffle, Trophy, Users } from "lucide-react";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import type { Team, TeamFolder } from "@/lib/core/models";
-import {
-  BATTLE_ROYALE_FINAL_TEAM_COUNT,
-  BATTLE_ROYALE_GROUP_COUNT,
-  BATTLE_ROYALE_GROUP_SIZE,
-  BATTLE_ROYALE_QUALIFIER_TEAM_COUNT,
-  normalizeBattleRoyaleMatchCount
-} from "@/lib/core/battleRoyale";
 import { useTeamStore } from "@/store/teamStore";
 
 type DrawType = "seed" | "group";
@@ -60,6 +53,14 @@ const qualifierFinalOptions: Partial<Record<StageFormat, StageFormat[]>> = {
 };
 const doubleEliminationCounts = [4, 8, 16];
 const tripleEliminationCount = 8;
+const BATTLE_ROYALE_QUALIFIER_TEAM_COUNT = 24;
+const BATTLE_ROYALE_FINAL_TEAM_COUNT = 16;
+const BATTLE_ROYALE_GROUP_COUNT = 3;
+const BATTLE_ROYALE_GROUP_SIZE = 8;
+
+function normalizeBattleRoyaleMatchCount(value: number | undefined) {
+  return value === 6 ? 6 : 5;
+}
 
 function getStageLimitLabel(format: StageFormat) {
   if (format === "triple") return "8팀";
