@@ -424,9 +424,7 @@ function BattleRoyaleLobbyTables({
                         const isMatchWinner = isBattleRoyaleRoundComplete(round) && placement.placement === 1;
                         const totalPoints =
                           getBattleRoyalePlacementPoints(options, placement.placement) +
-                          getBattleRoyaleKillPoints(options, placement.kills) +
-                          (placement.bonusPoints ?? 0) -
-                          (placement.penaltyPoints ?? 0);
+                          getBattleRoyaleKillPoints(options, placement.kills);
                         return [
                           <td
                             key={`${round.id}-${teamId}-placement`}

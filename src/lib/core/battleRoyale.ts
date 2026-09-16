@@ -259,9 +259,7 @@ export function calculateBattleRoyaleStandings(
       standing.penaltyPoints += placement.penaltyPoints ?? 0;
       standing.totalPoints +=
         placementPoints +
-        killPoints +
-        (placement.bonusPoints ?? 0) -
-        (placement.penaltyPoints ?? 0);
+        killPoints;
     });
   });
 
