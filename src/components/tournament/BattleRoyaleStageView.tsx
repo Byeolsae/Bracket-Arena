@@ -6,6 +6,7 @@ import { Dices } from "lucide-react";
 import type { BattleRoyalePlacement, BattleRoyaleStage, Team } from "@/lib/core/models";
 import {
   applyBattleRoyaleResult,
+  getBattleRoyaleKillPoints,
   getBattleRoyalePlacementPoints,
   hydrateBattleRoyaleStage,
   isBattleRoyaleRoundComplete
@@ -186,12 +187,12 @@ function BattleRoyaleLobbyTables({
           </div>
 
           <div className="overflow-x-auto rounded-md border border-line bg-panel">
-            <table className="w-full min-w-[1680px] border-collapse text-sm">
+            <table className="w-full min-w-[1920px] border-collapse text-sm">
               <thead className="bg-arena text-xs uppercase text-slate-400">
                 <tr>
                   <th className="sticky left-0 z-10 min-w-[220px] bg-arena px-3 py-3 text-left font-black">팀</th>
                   {lobby.rounds.map((round, index) => (
-                    <th key={round.id} className="border-l border-line px-3 py-3 text-center font-black" colSpan={3}>
+                    <th key={round.id} className="border-l border-line px-3 py-3 text-center font-black" colSpan={4}>
                       {index + 1}경기
                     </th>
                   ))}
@@ -201,6 +202,7 @@ function BattleRoyaleLobbyTables({
                   {lobby.rounds.flatMap((round) => [
                     <th key={`${round.id}-placement`} className="border-l border-line px-2 py-2 text-center font-black">순위</th>,
                     <th key={`${round.id}-kills`} className="px-2 py-2 text-center font-black">킬</th>,
+                    <th key={`${round.id}-kill-points`} className="px-2 py-2 text-center font-black">킬점수</th>,
                     <th key={`${round.id}-placement-points`} className="px-2 py-2 text-center font-black">순위점수</th>
                   ])}
                 </tr>
@@ -224,6 +226,7 @@ function BattleRoyaleLobbyTables({
                         const placement = getRoundPlacement(round, teamId);
                         const isMatchWinner = isBattleRoyaleRoundComplete(round) && placement.placement === 1;
                         const placementPoints = getBattleRoyalePlacementPoints(options, placement.placement);
+                        const killPoints = getBattleRoyaleKillPoints(options, placement.kills);
                         return [
                           <td
                             key={`${round.id}-${teamId}-placement`}
@@ -254,10 +257,16 @@ function BattleRoyaleLobbyTables({
                             />
                           </td>,
                           <td
+                            key={`${round.id}-${teamId}-kill-points`}
+                            className={clsx("px-2 py-2", isMatchWinner && "border-y border-lime/70 text-lime")}
+                          >
+                            <LobbyPointCell value={killPoints} winner={isMatchWinner} tone="cyan" />
+                          </td>,
+                          <td
                             key={`${round.id}-${teamId}-placement-points`}
                             className={clsx("px-2 py-2", isMatchWinner && "border-y border-r border-lime/70 text-lime")}
                           >
-                            <LobbyPlacementPointCell value={placementPoints} winner={isMatchWinner} />
+                            <LobbyPointCell value={placementPoints} winner={isMatchWinner} tone="gold" />
                           </td>
                         ];
                       })}
@@ -352,12 +361,20 @@ function PlacementSelect({
   );
 }
 
-function LobbyPlacementPointCell({ value, winner }: { value: number; winner?: boolean }) {
+function LobbyPointCell({
+  value,
+  winner,
+  tone
+}: {
+  value: number;
+  winner?: boolean;
+  tone: "cyan" | "gold";
+}) {
   return (
     <div
       className={clsx(
         "flex h-8 w-16 items-center justify-center rounded-md border bg-field px-2 text-center text-xs font-black",
-        winner ? "border-line text-lime" : "border-line text-gold"
+        winner ? "border-line text-lime" : tone === "cyan" ? "border-line text-cyan" : "border-line text-gold"
       )}
     >
       {value}

@@ -23,6 +23,7 @@ const defaultBattleRoyaleOptions: BattleRoyaleOptions = {
   teamsPerRound: 16,
   advanceCount: 16,
   placementPoints: defaultBattleRoyalePlacementPoints,
+  killPoint: 1,
   stageMode: "standard"
 };
 
@@ -162,6 +163,13 @@ export function getBattleRoyalePlacementPoints(
   return (options?.placementPoints ?? defaultBattleRoyalePlacementPoints)[placement] ?? 0;
 }
 
+export function getBattleRoyaleKillPoints(
+  options: Pick<BattleRoyaleOptions, "killPoint"> | undefined,
+  kills: number
+) {
+  return Math.max(0, Math.floor(kills)) * (options?.killPoint ?? defaultBattleRoyaleOptions.killPoint);
+}
+
 export function createInitialBattleRoyalePlacements(teamIds: string[]): BattleRoyalePlacement[] {
   return teamIds.map((teamId, index) => ({
     teamId,
@@ -217,6 +225,7 @@ export function calculateBattleRoyaleStandings(
       teamId: team.id,
       roundsPlayed: 0,
       placementPoints: 0,
+      killPoints: 0,
       bonusPoints: 0,
       penaltyPoints: 0
     })
@@ -229,6 +238,7 @@ export function calculateBattleRoyaleStandings(
       if (!standing) return;
       standing.roundsPlayed += 1;
       standing.placementPoints += getBattleRoyalePlacementPoints(stage.options, placement.placement);
+      standing.killPoints += getBattleRoyaleKillPoints(stage.options, placement.kills);
       standing.bonusPoints += placement.bonusPoints ?? 0;
       standing.penaltyPoints += placement.penaltyPoints ?? 0;
     });

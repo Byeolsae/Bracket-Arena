@@ -1160,6 +1160,7 @@ test("battle royale standings only count completed rounds", () => {
   assert.equal(standings.find((standing) => standing.teamId === "team-17")?.roundsPlayed, 0);
   assert.equal(standings.find((standing) => standing.teamId === "team-1")?.placementPoints, 10);
   assert.equal(standings.find((standing) => standing.teamId === "team-16")?.placementPoints, 0);
+  assert.equal(standings.find((standing) => standing.teamId === "team-16")?.killPoints, 50);
 });
 
 test("battle royale standings use placement points only", () => {
@@ -1182,8 +1183,33 @@ test("battle royale standings use placement points only", () => {
   const standings = calculateBattleRoyaleStandings(stage, roster);
   assert.equal(standings[0].teamId, "team-2");
   assert.equal(standings[0].placementPoints, 10);
+  assert.equal(standings[0].killPoints, 0);
   assert.equal(standings[1].teamId, "team-1");
   assert.equal(standings[1].placementPoints, 6);
+  assert.equal(standings[1].killPoints, 50);
+});
+
+test("battle royale standings track kill points without changing placement-point order", () => {
+  const roster = teams(24);
+  let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
+  const firstRound = stage.rounds[0];
+
+  stage = applyBattleRoyaleResult(
+    stage,
+    firstRound.id,
+    firstRound.teamIds.map((teamId, index) => ({
+      teamId,
+      placement: index + 1,
+      kills: teamId === "team-2" ? 20 : 0,
+      bonusPoints: 0,
+      penaltyPoints: 0
+    }))
+  );
+
+  const standings = calculateBattleRoyaleStandings(stage, roster);
+  assert.equal(standings[0].teamId, "team-1");
+  assert.equal(standings[1].teamId, "team-2");
+  assert.equal(standings[1].killPoints, 20);
 });
 
 test("battle royale group standings keep group order", () => {
