@@ -166,14 +166,17 @@ export function getBattleRoyalePlacementPoints(
   placement: number
 ) {
   if (placement <= 0) return 0;
-  return (options?.placementPoints ?? defaultBattleRoyalePlacementPoints)[placement] ?? 0;
+  return options?.placementPoints?.[placement] ?? defaultBattleRoyalePlacementPoints[placement] ?? 0;
 }
 
 export function getBattleRoyaleKillPoints(
   options: Pick<BattleRoyaleOptions, "killPoint"> | undefined,
   kills: number
 ) {
-  return Math.max(0, Math.floor(kills)) * (options?.killPoint ?? defaultBattleRoyaleOptions.killPoint);
+  const killPoint = typeof options?.killPoint === "number" && options.killPoint > 0
+    ? options.killPoint
+    : defaultBattleRoyaleOptions.killPoint;
+  return Math.max(0, Math.floor(kills)) * killPoint;
 }
 
 export function createInitialBattleRoyalePlacements(teamIds: string[]): BattleRoyalePlacement[] {
