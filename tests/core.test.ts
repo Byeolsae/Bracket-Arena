@@ -1261,6 +1261,70 @@ test("battle royale standings rank the sample placement and kill totals", () => 
   );
 });
 
+const battleRoyaleSixMatchFixture: Record<"AB" | "AC" | "BC", Array<Array<[string, number]>>> = {
+  AB: [
+    [["A3", 7], ["B2", 5], ["A6", 4], ["B7", 3], ["A8", 3], ["B5", 2], ["A2", 2], ["B4", 1], ["A5", 2], ["B1", 1], ["A7", 1], ["B8", 0], ["A4", 0], ["B6", 0], ["A1", 0], ["B3", 0]],
+    [["B6", 8], ["A4", 5], ["B3", 6], ["A1", 4], ["B1", 3], ["A7", 2], ["B8", 1], ["A6", 2], ["B7", 2], ["A2", 1], ["B5", 1], ["A8", 1], ["B4", 0], ["A5", 0], ["B2", 0], ["A3", 0]],
+    [["A1", 9], ["B5", 6], ["A5", 5], ["B8", 4], ["A7", 3], ["B3", 3], ["A2", 2], ["B1", 1], ["A8", 1], ["B4", 2], ["A4", 1], ["B2", 1], ["A6", 0], ["B6", 0], ["A3", 0], ["B7", 0]],
+    [["B2", 6], ["A8", 7], ["B7", 4], ["A5", 5], ["B4", 3], ["A3", 2], ["B6", 2], ["A2", 1], ["B3", 2], ["A7", 1], ["B8", 1], ["A4", 0], ["B5", 0], ["A6", 0], ["B1", 0], ["A1", 0]],
+    [["A7", 8], ["B1", 5], ["A3", 6], ["B6", 4], ["A1", 3], ["B8", 2], ["A6", 2], ["B5", 1], ["A4", 2], ["B2", 1], ["A2", 1], ["B7", 0], ["A8", 0], ["B3", 0], ["A5", 0], ["B4", 0]],
+    [["B4", 7], ["A2", 6], ["B8", 5], ["A6", 4], ["B3", 3], ["A5", 3], ["B1", 2], ["A8", 1], ["B7", 1], ["A1", 2], ["B5", 1], ["A7", 1], ["B2", 0], ["A4", 0], ["B6", 0], ["A3", 0]]
+  ],
+  AC: [
+    [["C5", 8], ["A2", 6], ["C1", 5], ["A7", 4], ["C8", 3], ["A5", 2], ["C3", 2], ["A1", 1], ["C7", 1], ["A8", 1], ["C6", 0], ["A3", 0], ["C4", 0], ["A6", 0], ["C2", 0], ["A4", 0]],
+    [["A6", 7], ["C4", 5], ["A8", 5], ["C2", 4], ["A4", 3], ["C6", 2], ["A3", 2], ["C8", 1], ["A7", 1], ["C1", 1], ["A5", 0], ["C3", 0], ["A1", 0], ["C5", 0], ["A2", 0], ["C7", 0]],
+    [["C2", 6], ["A7", 7], ["C6", 4], ["A3", 5], ["C7", 3], ["A1", 3], ["C4", 2], ["A4", 1], ["C3", 1], ["A2", 1], ["C8", 1], ["A8", 0], ["C1", 0], ["A5", 0], ["C5", 0], ["A6", 0]],
+    [["A1", 9], ["C5", 6], ["A5", 5], ["C8", 3], ["A7", 3], ["C3", 2], ["A2", 2], ["C1", 1], ["A8", 1], ["C7", 1], ["A3", 0], ["C6", 0], ["A6", 0], ["C4", 0], ["A4", 0], ["C2", 0]],
+    [["C7", 7], ["A3", 6], ["C3", 4], ["A6", 4], ["C1", 3], ["A8", 2], ["C5", 2], ["A4", 1], ["C6", 1], ["A2", 0], ["C4", 0], ["A5", 0], ["C8", 0], ["A7", 0], ["C2", 0], ["A1", 0]],
+    [["A8", 8], ["C2", 5], ["A1", 6], ["C6", 4], ["A5", 3], ["C4", 2], ["A7", 2], ["C8", 1], ["A3", 1], ["C5", 1], ["A2", 0], ["C7", 0], ["A4", 0], ["C1", 0], ["C3", 0], ["A6", 0]]
+  ],
+  BC: [
+    [["B3", 8], ["C7", 6], ["B1", 5], ["C3", 4], ["B5", 3], ["C6", 2], ["B6", 2], ["C1", 1], ["B7", 1], ["C8", 1], ["B4", 0], ["C4", 0], ["B2", 0], ["C2", 0], ["B8", 0], ["C5", 0]],
+    [["C5", 9], ["B4", 6], ["C2", 5], ["B7", 4], ["C8", 3], ["B1", 3], ["C3", 2], ["B8", 1], ["C6", 1], ["B2", 1], ["C1", 0], ["B6", 0], ["C4", 0], ["B5", 0], ["C7", 0], ["B3", 0]],
+    [["B8", 7], ["C5", 5], ["B6", 5], ["C1", 4], ["B2", 3], ["C4", 2], ["B5", 2], ["C8", 1], ["B3", 1], ["C7", 1], ["B7", 0], ["C6", 0], ["B4", 0], ["C3", 0], ["B1", 0], ["C2", 0]],
+    [["C2", 8], ["B3", 6], ["C7", 5], ["B2", 4], ["C6", 3], ["B5", 2], ["C8", 2], ["B6", 1], ["C3", 1], ["B1", 1], ["C5", 0], ["B7", 0], ["C1", 0], ["B4", 0], ["C4", 0], ["B8", 0]],
+    [["B2", 9], ["C8", 6], ["B8", 5], ["C4", 4], ["B7", 3], ["C3", 2], ["B1", 2], ["C7", 1], ["B4", 1], ["C1", 1], ["B5", 0], ["C6", 0], ["B6", 0], ["C2", 0], ["B3", 0], ["C5", 0]],
+    [["C5", 8], ["B3", 7], ["C1", 5], ["B8", 4], ["C6", 3], ["B2", 3], ["C4", 2], ["B5", 1], ["C8", 1], ["B7", 1], ["C7", 0], ["B1", 0], ["C3", 0], ["B6", 0], ["C2", 0], ["B4", 0]]
+  ]
+};
+
+function battleRoyaleLabelTeams(): Team[] {
+  return ["A", "B", "C"].flatMap((group) =>
+    Array.from({ length: 8 }, (_, index) => {
+      const label = `${group}${index + 1}`;
+      return {
+        id: label,
+        name: label,
+        shortName: label,
+        defaultSeed: group.charCodeAt(0) * 10 + index,
+        defaultRating: 1500
+      };
+    })
+  );
+}
+
+function applyBattleRoyaleFixture(stage: ReturnType<typeof generateBattleRoyaleRounds>) {
+  return (Object.entries(battleRoyaleSixMatchFixture) as Array<["AB" | "AC" | "BC", Array<Array<[string, number]>>]>)
+    .flatMap(([pair, rounds]) => rounds.map((round, matchIndex) => ({ pair, matchIndex, round })))
+    .reduce((currentStage, item) => {
+      const round = currentStage.rounds.find((candidate) =>
+        candidate.groupName === `${item.matchIndex + 1}경기 · ${item.pair[0]}조/${item.pair[1]}조 로비`
+      );
+      assert.ok(round, `missing ${item.pair} match ${item.matchIndex + 1}`);
+      return applyBattleRoyaleResult(
+        currentStage,
+        round.id,
+        item.round.map(([teamId, kills], index) => ({
+          teamId,
+          placement: index + 1,
+          kills,
+          bonusPoints: 0,
+          penaltyPoints: 0
+        }))
+      );
+    }, stage);
+}
+
 test("battle royale group standings rank by total points within each scope", () => {
   const roster = teams(24);
   let stage = generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 5 });
@@ -1331,6 +1395,68 @@ for (const matchCount of [5, 6]) {
     assert.equal(groupStandings[1].standings[0].totalPoints, matchCount * 10);
   });
 }
+
+test("battle royale group standings aggregate the provided six-match fixture", () => {
+  const roster = battleRoyaleLabelTeams();
+  const stage = applyBattleRoyaleFixture(
+    generateBattleRoyaleRounds(roster, { stageMode: "qualifier", roundCount: 6 })
+  );
+  const groupStandings = calculateBattleRoyaleGroupStandings(stage, roster);
+
+  assert.deepEqual(
+    groupStandings.map((group) => ({
+      groupName: group.groupName,
+      standings: group.standings.map((standing) => ({
+        teamId: standing.teamId,
+        roundsPlayed: standing.roundsPlayed,
+        killPoints: standing.killPoints,
+        placementPoints: standing.placementPoints,
+        totalPoints: standing.totalPoints
+      }))
+    })),
+    [
+      {
+        groupName: "A조",
+        standings: [
+          { teamId: "A1", roundsPlayed: 12, killPoints: 37, placementPoints: 35, totalPoints: 72 },
+          { teamId: "A7", roundsPlayed: 12, killPoints: 33, placementPoints: 29, totalPoints: 62 },
+          { teamId: "A3", roundsPlayed: 12, killPoints: 29, placementPoints: 28, totalPoints: 57 },
+          { teamId: "A8", roundsPlayed: 12, killPoints: 30, placementPoints: 27, totalPoints: 57 },
+          { teamId: "A6", roundsPlayed: 12, killPoints: 23, placementPoints: 25, totalPoints: 48 },
+          { teamId: "A5", roundsPlayed: 12, killPoints: 25, placementPoints: 21, totalPoints: 46 },
+          { teamId: "A2", roundsPlayed: 12, killPoints: 22, placementPoints: 16, totalPoints: 38 },
+          { teamId: "A4", roundsPlayed: 12, killPoints: 13, placementPoints: 11, totalPoints: 24 }
+        ]
+      },
+      {
+        groupName: "B조",
+        standings: [
+          { teamId: "B2", roundsPlayed: 12, killPoints: 33, placementPoints: 35, totalPoints: 68 },
+          { teamId: "B3", roundsPlayed: 12, killPoints: 36, placementPoints: 32, totalPoints: 68 },
+          { teamId: "B8", roundsPlayed: 12, killPoints: 30, placementPoints: 32, totalPoints: 62 },
+          { teamId: "B6", roundsPlayed: 12, killPoints: 22, placementPoints: 22, totalPoints: 44 },
+          { teamId: "B1", roundsPlayed: 12, killPoints: 23, placementPoints: 19, totalPoints: 42 },
+          { teamId: "B4", roundsPlayed: 12, killPoints: 20, placementPoints: 20, totalPoints: 40 },
+          { teamId: "B5", roundsPlayed: 12, killPoints: 19, placementPoints: 16, totalPoints: 35 },
+          { teamId: "B7", roundsPlayed: 12, killPoints: 19, placementPoints: 16, totalPoints: 35 }
+        ]
+      },
+      {
+        groupName: "C조",
+        standings: [
+          { teamId: "C5", roundsPlayed: 12, killPoints: 39, placementPoints: 43, totalPoints: 82 },
+          { teamId: "C2", roundsPlayed: 12, killPoints: 28, placementPoints: 35, totalPoints: 63 },
+          { teamId: "C7", roundsPlayed: 12, killPoints: 25, placementPoints: 25, totalPoints: 50 },
+          { teamId: "C8", roundsPlayed: 12, killPoints: 23, placementPoints: 20, totalPoints: 43 },
+          { teamId: "C1", roundsPlayed: 12, killPoints: 21, placementPoints: 19, totalPoints: 40 },
+          { teamId: "C6", roundsPlayed: 12, killPoints: 20, placementPoints: 19, totalPoints: 39 },
+          { teamId: "C4", roundsPlayed: 12, killPoints: 17, placementPoints: 16, totalPoints: 33 },
+          { teamId: "C3", roundsPlayed: 12, killPoints: 18, placementPoints: 15, totalPoints: 33 }
+        ]
+      }
+    ]
+  );
+});
 
 test("battle royale standings count entered legacy rounds without complete flags", () => {
   const roster = teams(24);
