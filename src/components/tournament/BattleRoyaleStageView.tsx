@@ -25,6 +25,7 @@ type BattleRoyaleStageViewProps = {
 export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleStageViewProps) {
   const [localStage, setLocalStage] = useState(() => hydrateBattleRoyaleStage(stage));
   const localStageRef = useRef(localStage);
+  const lastPublishedStageRef = useRef<BattleRoyaleStage | null>(null);
   const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
   const chickenCounts = useMemo(() => getChickenCounts(localStage), [localStage]);
   const groupStandings = useMemo(
@@ -39,14 +40,27 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: BattleRoyaleSt
 
   useEffect(() => {
     const hydratedStage = hydrateBattleRoyaleStage(stage);
+    const isNewStage = hydratedStage.id !== localStageRef.current.id;
+    const isEchoedLocalStage =
+      stage === lastPublishedStageRef.current || hydratedStage === lastPublishedStageRef.current;
+
+    if (lastPublishedStageRef.current && !isNewStage && !isEchoedLocalStage) {
+      return;
+    }
+
     localStageRef.current = hydratedStage;
     setLocalStage(hydratedStage);
-    if (hydratedStage !== stage) onChange?.(hydratedStage);
+    if (isEchoedLocalStage) lastPublishedStageRef.current = null;
+    if (hydratedStage !== stage) {
+      lastPublishedStageRef.current = hydratedStage;
+      onChange?.(hydratedStage);
+    }
   }, [onChange, stage]);
 
   const updateStage = (updater: BattleRoyaleStage | ((current: BattleRoyaleStage) => BattleRoyaleStage)) => {
     const nextStage = typeof updater === "function" ? updater(localStageRef.current) : updater;
     localStageRef.current = nextStage;
+    lastPublishedStageRef.current = nextStage;
     setLocalStage(nextStage);
     onChange?.(nextStage);
   };
