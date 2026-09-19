@@ -1,76 +1,117 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Eye, MonitorPlay, Palette, Radio, Settings2 } from "lucide-react";
+import { Eye, Layers3, MonitorPlay, Radio, Settings2 } from "lucide-react";
 
-type ScoreboardStyle = "esports" | "football" | "baseball" | "mini" | "lowerThird" | "lineup";
+type BoardKind = "tile" | "center" | "compact" | "stacked" | "fighter";
+type DisplayMode =
+  | "logo"
+  | "score"
+  | "short"
+  | "full"
+  | "logoScore"
+  | "logoShortScore"
+  | "logoFullScore";
 
 type ScoreboardState = {
   matchTitle: string;
   leftName: string;
+  leftShort: string;
   rightName: string;
+  rightShort: string;
   leftScore: number;
   rightScore: number;
-  period: string;
   timer: string;
-  note: string;
+  phase: string;
 };
 
-const scoreboardStyles: Array<{
-  id: ScoreboardStyle;
+const boardKinds: Array<{
+  id: BoardKind;
   name: string;
   description: string;
 }> = [
   {
-    id: "esports",
-    name: "E스포츠 중앙형",
-    description: "양쪽 팀 컬러와 중앙 점수가 강하게 보이는 방송용 기본형"
+    id: "tile",
+    name: "1번 타일형",
+    description: "시간 박스와 양 팀 컬러 타일이 붙는 구조. 로고모드와 점수모드 지원"
   },
   {
-    id: "football",
-    name: "축구 상단바",
-    description: "타이머와 팀명이 한 줄에 정리되는 월드컵 스타일"
+    id: "center",
+    name: "2번 중앙바",
+    description: "중앙 점수/시간을 기준으로 좌우 팀명이 펼쳐지는 구조. 약칭/풀네임 지원"
   },
   {
-    id: "baseball",
-    name: "야구 정보형",
-    description: "이닝, 아웃, 카운트, 베이스 상태까지 담는 박스형"
+    id: "compact",
+    name: "3번 컴팩트",
+    description: "로고와 점수를 섞는 얇은 국제대회형 바. 세 가지 표시 모드 지원"
   },
   {
-    id: "mini",
-    name: "미니 바",
-    description: "화면 상단에 작게 올리기 좋은 얇은 스코어바"
+    id: "stacked",
+    name: "상하 팀형",
+    description: "팀 정보를 위아래로 쌓는 게임 HUD형 구조. 로고+약칭 또는 풀네임 지원"
   },
   {
-    id: "lowerThird",
-    name: "하단 자막형",
-    description: "하단 배너처럼 팀명과 점수를 크게 보여주는 스타일"
-  },
-  {
-    id: "lineup",
-    name: "라인업 박스형",
-    description: "선수명, 상황 정보, 큰 점수판을 함께 보여주는 정보 패널형"
+    id: "fighter",
+    name: "상단 대전형",
+    description: "격투게임처럼 화면 위쪽에 길게 얹는 대칭형 스코어보드"
   }
 ];
 
+const modeOptions: Record<BoardKind, Array<{ id: DisplayMode; label: string }>> = {
+  tile: [
+    { id: "logo", label: "로고모드" },
+    { id: "score", label: "점수모드" }
+  ],
+  center: [
+    { id: "short", label: "약칭모드" },
+    { id: "full", label: "풀네임모드" }
+  ],
+  compact: [
+    { id: "logoScore", label: "로고점수" },
+    { id: "logoShortScore", label: "로고약칭점수" },
+    { id: "logoFullScore", label: "로고풀네임점수" }
+  ],
+  stacked: [
+    { id: "short", label: "로고약칭" },
+    { id: "full", label: "로고풀네임" }
+  ],
+  fighter: [{ id: "full", label: "상단바" }]
+};
+
+const defaultModeByKind: Record<BoardKind, DisplayMode> = {
+  tile: "score",
+  center: "short",
+  compact: "logoShortScore",
+  stacked: "short",
+  fighter: "full"
+};
+
 const defaultState: ScoreboardState = {
-  matchTitle: "Grand Final",
-  leftName: "TEAM A",
-  rightName: "TEAM B",
-  leftScore: 5,
-  rightScore: 2,
-  period: "1st",
-  timer: "00:00",
-  note: "LIVE"
+  matchTitle: "Grand Finals",
+  leftName: "THY Chikurin",
+  leftShort: "THY",
+  rightName: "UYU Double",
+  rightShort: "UYU",
+  leftScore: 0,
+  rightScore: 1,
+  timer: "45:00",
+  phase: "LIVE"
 };
 
 export default function ScoreboardPage() {
-  const [selectedStyle, setSelectedStyle] = useState<ScoreboardStyle>("esports");
+  const [boardKind, setBoardKind] = useState<BoardKind>("tile");
+  const [displayMode, setDisplayMode] = useState<DisplayMode>(defaultModeByKind.tile);
   const [scoreboard, setScoreboard] = useState<ScoreboardState>(defaultState);
-  const selectedStyleName = useMemo(
-    () => scoreboardStyles.find((style) => style.id === selectedStyle)?.name ?? "스코어보드",
-    [selectedStyle]
+  const selectedBoard = useMemo(
+    () => boardKinds.find((board) => board.id === boardKind) ?? boardKinds[0],
+    [boardKind]
   );
+  const modes = modeOptions[boardKind];
+
+  const selectBoard = (nextKind: BoardKind) => {
+    setBoardKind(nextKind);
+    setDisplayMode(defaultModeByKind[nextKind]);
+  };
 
   const updateField = <Key extends keyof ScoreboardState>(key: Key, value: ScoreboardState[Key]) => {
     setScoreboard((current) => ({ ...current, [key]: value }));
@@ -85,44 +126,44 @@ export default function ScoreboardPage() {
             스코어보드
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-            방송 화면에 맞는 스코어보드 스타일을 고르고, 점수와 경기 정보를 미리 확인합니다.
+            사진의 원본을 그대로 복제하지 않고, 방송 스코어보드의 구조만 가져와 선택형으로 정리했습니다.
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-md border border-line bg-panel px-4 py-2 text-sm font-black uppercase tracking-wide text-cyan">
           <Radio className="h-4 w-4" aria-hidden="true" />
-          {selectedStyleName}
+          {selectedBoard.name}
         </div>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[420px_1fr]">
+      <section className="grid gap-5 xl:grid-cols-[430px_1fr]">
         <aside className="space-y-5">
           <div className="arena-card p-5">
             <div className="mb-4 flex items-center gap-2">
-              <Palette className="h-5 w-5 text-cyan" aria-hidden="true" />
-              <h2 className="text-lg font-black uppercase tracking-wide text-ink">스타일 선택</h2>
+              <Layers3 className="h-5 w-5 text-cyan" aria-hidden="true" />
+              <h2 className="text-lg font-black uppercase tracking-wide text-ink">스코어보드 종류</h2>
             </div>
 
             <div className="grid gap-3">
-              {scoreboardStyles.map((style) => {
-                const active = selectedStyle === style.id;
+              {boardKinds.map((board) => {
+                const active = boardKind === board.id;
 
                 return (
                   <button
-                    key={style.id}
+                    key={board.id}
                     type="button"
-                    onClick={() => setSelectedStyle(style.id)}
-                    className={`grid grid-cols-[88px_1fr] items-center gap-3 rounded-md border p-3 text-left transition ${
+                    onClick={() => selectBoard(board.id)}
+                    className={`grid grid-cols-[92px_1fr] items-center gap-3 rounded-md border p-3 text-left transition ${
                       active
                         ? "border-cyan bg-cyan/10 shadow-glow"
                         : "border-line bg-field hover:border-cyan/70 hover:bg-panel"
                     }`}
                   >
-                    <StyleThumbnail styleId={style.id} active={active} />
+                    <BoardThumb kind={board.id} active={active} />
                     <span className="min-w-0">
                       <span className="block text-sm font-black uppercase tracking-wide text-ink">
-                        {style.name}
+                        {board.name}
                       </span>
-                      <span className="mt-1 block text-xs leading-5 text-muted">{style.description}</span>
+                      <span className="mt-1 block text-xs leading-5 text-muted">{board.description}</span>
                     </span>
                   </button>
                 );
@@ -132,7 +173,30 @@ export default function ScoreboardPage() {
 
           <div className="arena-card p-5">
             <div className="mb-4 flex items-center gap-2">
-              <Settings2 className="h-5 w-5 text-lime" aria-hidden="true" />
+              <Eye className="h-5 w-5 text-lime" aria-hidden="true" />
+              <h2 className="text-lg font-black uppercase tracking-wide text-ink">표시 모드</h2>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {modes.map((mode) => (
+                <button
+                  key={mode.id}
+                  type="button"
+                  onClick={() => setDisplayMode(mode.id)}
+                  className={`rounded-md border px-3 py-2 text-sm font-black uppercase tracking-wide transition ${
+                    displayMode === mode.id
+                      ? "border-cyan bg-cyan text-arena"
+                      : "border-line bg-field text-muted hover:border-cyan hover:text-cyan"
+                  }`}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="arena-card p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <Settings2 className="h-5 w-5 text-gold" aria-hidden="true" />
               <h2 className="text-lg font-black uppercase tracking-wide text-ink">컨트롤</h2>
             </div>
 
@@ -147,22 +211,26 @@ export default function ScoreboardPage() {
               </label>
 
               <div className="grid grid-cols-2 gap-3">
-                <label className="block">
-                  <span className="mb-2 block text-xs font-black uppercase tracking-wide text-muted">왼쪽 팀</span>
-                  <input
-                    className="input"
-                    value={scoreboard.leftName}
-                    onChange={(event) => updateField("leftName", event.target.value)}
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-xs font-black uppercase tracking-wide text-muted">오른쪽 팀</span>
-                  <input
-                    className="input"
-                    value={scoreboard.rightName}
-                    onChange={(event) => updateField("rightName", event.target.value)}
-                  />
-                </label>
+                <TextField
+                  label="왼쪽 풀네임"
+                  value={scoreboard.leftName}
+                  onChange={(value) => updateField("leftName", value)}
+                />
+                <TextField
+                  label="오른쪽 풀네임"
+                  value={scoreboard.rightName}
+                  onChange={(value) => updateField("rightName", value)}
+                />
+                <TextField
+                  label="왼쪽 약칭"
+                  value={scoreboard.leftShort}
+                  onChange={(value) => updateField("leftShort", value.toUpperCase().slice(0, 5))}
+                />
+                <TextField
+                  label="오른쪽 약칭"
+                  value={scoreboard.rightShort}
+                  onChange={(value) => updateField("rightShort", value.toUpperCase().slice(0, 5))}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -178,42 +246,28 @@ export default function ScoreboardPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <label className="block">
-                  <span className="mb-2 block text-xs font-black uppercase tracking-wide text-muted">단계</span>
-                  <input
-                    className="input"
-                    value={scoreboard.period}
-                    onChange={(event) => updateField("period", event.target.value)}
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-xs font-black uppercase tracking-wide text-muted">시간</span>
-                  <input
-                    className="input"
-                    value={scoreboard.timer}
-                    onChange={(event) => updateField("timer", event.target.value)}
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-xs font-black uppercase tracking-wide text-muted">상태</span>
-                  <input
-                    className="input"
-                    value={scoreboard.note}
-                    onChange={(event) => updateField("note", event.target.value)}
-                  />
-                </label>
+              <div className="grid grid-cols-2 gap-3">
+                <TextField
+                  label="시간"
+                  value={scoreboard.timer}
+                  onChange={(value) => updateField("timer", value)}
+                />
+                <TextField
+                  label="상태"
+                  value={scoreboard.phase}
+                  onChange={(value) => updateField("phase", value)}
+                />
               </div>
             </div>
           </div>
 
           <div className="arena-card p-5">
             <div className="mb-4 flex items-center gap-2">
-              <MonitorPlay className="h-5 w-5 text-gold" aria-hidden="true" />
+              <MonitorPlay className="h-5 w-5 text-cyan" aria-hidden="true" />
               <h2 className="text-lg font-black uppercase tracking-wide text-ink">OBS 화면</h2>
             </div>
             <div className="rounded-md border border-dashed border-line bg-field p-4 text-sm leading-6 text-muted">
-              현재는 스타일 선택과 미리보기 단계입니다. 다음 단계에서 오버레이 전용 URL과 투명 배경 표시를
+              지금은 구조와 모드 선택 단계입니다. 이후 오버레이 전용 URL을 만들면 OBS 브라우저 소스로 바로
               분리할 수 있습니다.
             </div>
           </div>
@@ -223,23 +277,41 @@ export default function ScoreboardPage() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-arena/80 px-5 py-4">
             <div>
               <p className="section-kicker">미리보기</p>
-              <h2 className="mt-1 text-xl font-black uppercase tracking-wide text-ink">{selectedStyleName}</h2>
+              <h2 className="mt-1 text-xl font-black uppercase tracking-wide text-ink">{selectedBoard.name}</h2>
             </div>
             <div className="inline-flex items-center gap-2 rounded-md border border-line bg-panel px-3 py-2 text-xs font-black uppercase tracking-wide text-muted">
               <Eye className="h-4 w-4" aria-hidden="true" />
-              16:9 Preview
+              {modes.find((mode) => mode.id === displayMode)?.label}
             </div>
           </div>
 
           <div className="grid min-h-[620px] place-items-center bg-[radial-gradient(circle_at_50%_28%,rgba(47,230,255,0.12),transparent_32%),hsl(var(--arena))] p-4 sm:p-6">
-            <div className="relative grid aspect-video w-full max-w-6xl place-items-center overflow-hidden rounded-md border border-line bg-[#05070c] p-6 shadow-panel">
-              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:48px_48px]" />
-              <ScoreboardPreview styleId={selectedStyle} scoreboard={scoreboard} />
+            <div className="relative grid aspect-video w-full max-w-6xl place-items-center overflow-hidden rounded-md border border-line bg-[#06110f] p-6 shadow-panel">
+              <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(130,255,49,0.12),transparent_38%),linear-gradient(315deg,rgba(47,230,255,0.1),transparent_32%)]" />
+              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:48px_48px] opacity-70" />
+              <ScoreboardPreview kind={boardKind} mode={displayMode} scoreboard={scoreboard} />
             </div>
           </div>
         </div>
       </section>
     </main>
+  );
+}
+
+function TextField({
+  label,
+  value,
+  onChange
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-black uppercase tracking-wide text-muted">{label}</span>
+      <input className="input" value={value} onChange={(event) => onChange(event.target.value)} />
+    </label>
   );
 }
 
@@ -268,56 +340,53 @@ function NumberField({
   );
 }
 
-function StyleThumbnail({ styleId, active }: { styleId: ScoreboardStyle; active: boolean }) {
+function BoardThumb({ kind, active }: { kind: BoardKind; active: boolean }) {
   return (
     <span
       className={`relative block h-14 overflow-hidden rounded border ${
         active ? "border-cyan bg-arena" : "border-line bg-arena/80"
       }`}
     >
-      {styleId === "esports" ? (
-        <span className="absolute inset-x-2 top-4 grid grid-cols-[1fr_34px_34px_1fr] text-[10px] font-black text-white">
-          <span className="bg-lime/80 px-1 py-1">A</span>
-          <span className="bg-lime py-1 text-center text-arena">5</span>
-          <span className="bg-blue-500 py-1 text-center">2</span>
-          <span className="bg-blue-500/80 px-1 py-1 text-right">B</span>
+      {kind === "tile" ? (
+        <span className="absolute inset-2 grid grid-cols-[28px_1fr_1fr] text-[9px] font-black">
+          <span className="grid place-items-center bg-zinc-200 text-zinc-900">45</span>
+          <span className="grid place-items-center bg-blue-600 text-white">A</span>
+          <span className="grid place-items-center bg-red-600 text-white">B</span>
         </span>
       ) : null}
-      {styleId === "football" ? (
-        <span className="absolute inset-x-3 top-4 flex items-center justify-center rounded-full bg-white text-[10px] font-black text-slate-950">
-          A&nbsp;5-2&nbsp;B
+      {kind === "center" ? (
+        <span className="absolute inset-x-1 top-4 grid grid-cols-[1fr_42px_1fr] text-[9px] font-black">
+          <span className="bg-purple-950 px-1 py-1 text-white">AAA</span>
+          <span className="bg-lime px-1 py-1 text-center text-purple-950">0-1</span>
+          <span className="bg-purple-950 px-1 py-1 text-right text-white">BBB</span>
         </span>
       ) : null}
-      {styleId === "baseball" ? (
-        <span className="absolute inset-2 grid grid-cols-[1fr_28px] gap-1 text-[9px] font-black">
-          <span className="bg-blue-600 px-1 py-1 text-white">AWAY</span>
-          <span className="bg-white py-1 text-center text-slate-950">5</span>
-          <span className="bg-black px-1 py-1 text-white">HOME</span>
-          <span className="bg-white py-1 text-center text-slate-950">2</span>
+      {kind === "compact" ? (
+        <span className="absolute inset-x-2 top-5 flex overflow-hidden text-[9px] font-black">
+          <span className="bg-black px-2 py-1 text-white">A</span>
+          <span className="bg-gold px-2 py-1 text-arena">7:1</span>
+          <span className="bg-black px-2 py-1 text-white">B</span>
         </span>
       ) : null}
-      {styleId === "mini" ? (
-        <span className="absolute inset-x-2 top-5 flex overflow-hidden rounded-sm text-[9px] font-black">
-          <span className="bg-blue-700 px-2 py-1 text-white">A</span>
-          <span className="bg-white px-2 py-1 text-slate-950">5-2</span>
-          <span className="bg-red-600 px-2 py-1 text-white">B</span>
-        </span>
-      ) : null}
-      {styleId === "lowerThird" ? (
-        <span className="absolute inset-x-1 bottom-2 grid grid-cols-[1fr_44px_1fr] text-[9px] font-black text-white">
-          <span className="bg-orange-500 px-1 py-2">A</span>
-          <span className="bg-black py-2 text-center">5-2</span>
-          <span className="bg-blue-700 px-1 py-2 text-right">B</span>
-        </span>
-      ) : null}
-      {styleId === "lineup" ? (
-        <span className="absolute inset-2 grid grid-rows-[1fr_1.4fr_0.8fr] gap-1 text-[8px] font-black">
-          <span className="bg-zinc-800 px-2 py-1 text-white">PLAYER</span>
-          <span className="grid grid-cols-[1fr_24px]">
-            <span className="bg-blue-700 px-1 py-1 text-white">AWAY</span>
-            <span className="bg-white text-center text-slate-950">5</span>
+      {kind === "stacked" ? (
+        <span className="absolute inset-2 grid grid-rows-2 overflow-hidden rounded-sm text-[9px] font-black">
+          <span className="grid grid-cols-[22px_1fr_24px] bg-cyan/25 text-white">
+            <b className="bg-cyan" />
+            <b className="px-1 py-1">A</b>
+            <b className="py-1 text-center">1</b>
           </span>
-          <span className="bg-zinc-200 px-2 py-1 text-slate-950">1st</span>
+          <span className="grid grid-cols-[22px_1fr_24px] bg-red-500/25 text-white">
+            <b className="bg-red-500" />
+            <b className="px-1 py-1">B</b>
+            <b className="py-1 text-center">3</b>
+          </span>
+        </span>
+      ) : null}
+      {kind === "fighter" ? (
+        <span className="absolute inset-x-2 top-3 grid grid-cols-[1fr_36px_1fr] text-[9px] font-black">
+          <span className="bg-red-600 px-1 py-2 text-white">P1</span>
+          <span className="bg-white py-2 text-center text-slate-950">25</span>
+          <span className="bg-blue-600 px-1 py-2 text-right text-white">P2</span>
         </span>
       ) : null}
     </span>
@@ -325,263 +394,307 @@ function StyleThumbnail({ styleId, active }: { styleId: ScoreboardStyle; active:
 }
 
 function ScoreboardPreview({
-  styleId,
+  kind,
+  mode,
   scoreboard
 }: {
-  styleId: ScoreboardStyle;
+  kind: BoardKind;
+  mode: DisplayMode;
   scoreboard: ScoreboardState;
 }) {
-  if (styleId === "football") return <FootballScoreboard scoreboard={scoreboard} />;
-  if (styleId === "baseball") return <BaseballScoreboard scoreboard={scoreboard} />;
-  if (styleId === "mini") return <MiniScoreboard scoreboard={scoreboard} />;
-  if (styleId === "lowerThird") return <LowerThirdScoreboard scoreboard={scoreboard} />;
-  if (styleId === "lineup") return <LineupScoreboard scoreboard={scoreboard} />;
-  return <EsportsScoreboard scoreboard={scoreboard} />;
+  if (kind === "center") return <CenterBarBoard mode={mode} scoreboard={scoreboard} />;
+  if (kind === "compact") return <CompactBoard mode={mode} scoreboard={scoreboard} />;
+  if (kind === "stacked") return <StackedBoard mode={mode} scoreboard={scoreboard} />;
+  if (kind === "fighter") return <FighterBoard scoreboard={scoreboard} />;
+  return <TileBoard mode={mode} scoreboard={scoreboard} />;
 }
 
-function EsportsScoreboard({ scoreboard }: { scoreboard: ScoreboardState }) {
+function TileBoard({ mode, scoreboard }: { mode: DisplayMode; scoreboard: ScoreboardState }) {
+  const scoreMode = mode === "score";
+
   return (
-    <div className="relative z-10 w-full max-w-5xl">
-      <div className="mx-auto mb-[-2px] grid w-64 place-items-center bg-gradient-to-b from-slate-900 to-slate-950 px-6 py-2 text-lg font-black uppercase tracking-wide text-white shadow-[0_12px_28px_rgba(0,0,0,0.45)] [clip-path:polygon(12%_0,88%_0,100%_100%,0_100%)]">
-        {scoreboard.note}
-      </div>
-      <div className="grid grid-cols-[1fr_120px_120px_1fr] items-stretch drop-shadow-[0_18px_24px_rgba(0,0,0,0.5)]">
-        <SlantPanel color="lime" label={scoreboard.leftName} side="left" />
-        <div className="grid min-h-28 place-items-center bg-gradient-to-br from-red-600 to-red-800 text-6xl font-black text-white [clip-path:polygon(0_0,90%_0,100%_100%,10%_100%)]">
-          {scoreboard.leftScore}
+    <div className="relative z-10 flex items-start drop-shadow-[0_18px_22px_rgba(0,0,0,0.38)]">
+      <div className="grid grid-rows-[54px_94px]">
+        <div className="grid place-items-center bg-zinc-900 px-5 text-3xl font-black tabular-nums text-white">
+          {scoreboard.timer}
         </div>
-        <div className="grid min-h-28 place-items-center bg-gradient-to-br from-blue-500 to-blue-800 text-6xl font-black text-white [clip-path:polygon(0_0,90%_0,100%_100%,10%_100%)]">
-          {scoreboard.rightScore}
+        <div className="grid place-items-center bg-zinc-100 px-5">
+          <PlayerSilhouette />
         </div>
-        <SlantPanel color="blue" label={scoreboard.rightName} side="right" />
       </div>
-      <div className="mx-auto mt-3 w-fit rounded-full bg-black/70 px-5 py-2 text-sm font-black uppercase tracking-[0.18em] text-muted">
-        {scoreboard.matchTitle} · {scoreboard.period} · {scoreboard.timer}
+      <TileTeam
+        color="bg-blue-700"
+        accent="bg-cyan"
+        label={scoreMode ? scoreboard.leftShort : scoreboard.leftName}
+        score={scoreboard.leftScore}
+        showScore={scoreMode}
+      />
+      <TileTeam
+        color="bg-red-600"
+        accent="bg-lime"
+        label={scoreMode ? scoreboard.rightShort : scoreboard.rightName}
+        score={scoreboard.rightScore}
+        showScore={scoreMode}
+      />
+    </div>
+  );
+}
+
+function TileTeam({
+  color,
+  accent,
+  label,
+  score,
+  showScore
+}: {
+  color: string;
+  accent: string;
+  label: string;
+  score: number;
+  showScore: boolean;
+}) {
+  return (
+    <div className={`grid w-36 grid-rows-[54px_94px_12px] ${color}`}>
+      <div className="grid place-items-center px-3 text-2xl font-black uppercase text-white">{label}</div>
+      <div className="grid place-items-center px-3">
+        {showScore ? (
+          <span className="text-7xl font-black text-white">{score}</span>
+        ) : (
+          <LogoDisc label={label} />
+        )}
+      </div>
+      <div className={accent} />
+    </div>
+  );
+}
+
+function CenterBarBoard({ mode, scoreboard }: { mode: DisplayMode; scoreboard: ScoreboardState }) {
+  const leftLabel = mode === "full" ? scoreboard.leftName : scoreboard.leftShort;
+  const rightLabel = mode === "full" ? scoreboard.rightName : scoreboard.rightShort;
+
+  return (
+    <div className="relative z-10 w-full max-w-4xl">
+      <div className="mx-auto mb-[-22px] grid h-28 w-28 place-items-center rounded-full border-4 border-white/15 bg-black/40 text-3xl font-black text-white">
+        BA
+      </div>
+      <div className="grid grid-cols-[1fr_240px_1fr] items-stretch shadow-[0_18px_28px_rgba(0,0,0,0.35)]">
+        <div className="flex items-center justify-end border-l-[12px] border-red-600 bg-purple-950 px-10 text-5xl font-black uppercase text-white">
+          {leftLabel}
+        </div>
+        <div>
+          <div className="grid min-h-28 place-items-center bg-lime text-6xl font-black text-purple-950">
+            {scoreboard.leftScore} - {scoreboard.rightScore}
+          </div>
+          <div className="grid place-items-center bg-white px-6 py-4 text-5xl font-black text-purple-950">
+            {scoreboard.timer}
+          </div>
+        </div>
+        <div className="flex items-center border-r-[12px] border-gold bg-purple-950 px-10 text-5xl font-black uppercase text-white">
+          {rightLabel}
+        </div>
       </div>
     </div>
   );
 }
 
-function SlantPanel({
+function CompactBoard({ mode, scoreboard }: { mode: DisplayMode; scoreboard: ScoreboardState }) {
+  const leftText = mode === "logoScore" ? "" : mode === "logoFullScore" ? scoreboard.leftName : scoreboard.leftShort;
+  const rightText = mode === "logoScore" ? "" : mode === "logoFullScore" ? scoreboard.rightName : scoreboard.rightShort;
+
+  return (
+    <div className="relative z-10 w-full max-w-4xl">
+      <div className="mx-auto grid w-full grid-cols-[1fr_170px_1fr] items-center overflow-hidden rounded-md border border-white/30 bg-black text-white shadow-[0_18px_30px_rgba(0,0,0,0.45)]">
+        <CompactTeam side="left" label={leftText} short={scoreboard.leftShort} />
+        <div className="grid grid-rows-[auto_auto] bg-zinc-100 text-zinc-950">
+          <div className="grid place-items-center bg-gold px-4 py-3 text-4xl font-black">
+            {scoreboard.leftScore}:{scoreboard.rightScore}
+          </div>
+          <div className="grid place-items-center bg-zinc-950 px-4 py-2 text-xl font-black text-white">
+            {scoreboard.timer}
+          </div>
+        </div>
+        <CompactTeam side="right" label={rightText} short={scoreboard.rightShort} />
+      </div>
+      <div className="mx-auto mt-3 w-fit rounded-full bg-black px-4 py-1 text-xs font-black uppercase tracking-[0.18em] text-white">
+        {scoreboard.matchTitle}
+      </div>
+    </div>
+  );
+}
+
+function CompactTeam({
+  side,
+  label,
+  short
+}: {
+  side: "left" | "right";
+  label: string;
+  short: string;
+}) {
+  return (
+    <div className={`flex min-w-0 items-center gap-4 px-5 py-4 ${side === "right" ? "justify-end" : ""}`}>
+      {side === "left" ? <FlagPill label={short} /> : null}
+      {label ? <span className="truncate text-3xl font-black uppercase">{label}</span> : null}
+      {side === "right" ? <FlagPill label={short} /> : null}
+    </div>
+  );
+}
+
+function StackedBoard({ mode, scoreboard }: { mode: DisplayMode; scoreboard: ScoreboardState }) {
+  return (
+    <div className="relative z-10 w-full max-w-3xl overflow-hidden rounded-md border border-white/10 bg-black/75 shadow-[0_22px_42px_rgba(0,0,0,0.55)] backdrop-blur">
+      <div className="grid grid-cols-[150px_1fr_120px_150px] border-b border-white/10 bg-black/60 text-center text-2xl font-black text-white">
+        <div className="grid place-items-center bg-orange-600">BA</div>
+        <div className="grid place-items-center">{scoreboard.timer}</div>
+        <div className="grid place-items-center">K</div>
+        <div className="grid place-items-center">NET</div>
+      </div>
+      <StackedTeam
+        color="cyan"
+        label={mode === "full" ? scoreboard.leftName : scoreboard.leftShort}
+        subLabel={mode === "full" ? scoreboard.leftShort : scoreboard.leftName}
+        score={scoreboard.leftScore}
+      />
+      <StackedTeam
+        color="red"
+        label={mode === "full" ? scoreboard.rightName : scoreboard.rightShort}
+        subLabel={mode === "full" ? scoreboard.rightShort : scoreboard.rightName}
+        score={scoreboard.rightScore}
+      />
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 bg-black/65 px-8 py-5">
+        <DotTrack side="left" />
+        <div className="grid h-20 w-20 place-items-center rounded-full border border-white/20 bg-zinc-900 text-3xl font-black text-white">
+          BA
+        </div>
+        <DotTrack side="right" />
+      </div>
+    </div>
+  );
+}
+
+function StackedTeam({
   color,
   label,
-  side
+  subLabel,
+  score
 }: {
-  color: "lime" | "blue";
+  color: "cyan" | "red";
   label: string;
-  side: "left" | "right";
+  subLabel: string;
+  score: number;
 }) {
   const colorClass =
-    color === "lime"
-      ? "from-lime to-emerald-700 text-arena"
-      : "from-cyan to-blue-800 text-white";
+    color === "cyan"
+      ? "border-cyan bg-cyan/15 text-cyan"
+      : "border-red-500 bg-red-500/15 text-red-200";
 
   return (
-    <div
-      className={`flex min-h-24 items-center gap-4 bg-gradient-to-br ${colorClass} px-8 text-3xl font-black uppercase tracking-wide ${
-        side === "left"
-          ? "justify-start [clip-path:polygon(0_0,94%_0,100%_100%,5%_100%)]"
-          : "justify-end [clip-path:polygon(0_0,100%_0,95%_100%,6%_100%)]"
-      }`}
-    >
-      {side === "left" ? <LogoMark label={label} /> : null}
-      <span className="truncate">{label}</span>
-      {side === "right" ? <LogoMark label={label} /> : null}
-    </div>
-  );
-}
-
-function FootballScoreboard({ scoreboard }: { scoreboard: ScoreboardState }) {
-  return (
-    <div className="relative z-10 w-full max-w-3xl">
-      <div className="mx-auto grid w-full grid-cols-[1fr_auto_1fr] items-center overflow-hidden rounded-full border border-white/70 bg-white text-slate-950 shadow-[0_18px_34px_rgba(0,0,0,0.38)]">
-        <FootballTeam label={scoreboard.leftName} side="left" />
-        <div className="grid min-w-44 grid-rows-[1fr_auto] overflow-hidden border-x border-slate-200 bg-slate-950 text-white">
-          <div className="px-6 py-2 text-center text-3xl font-black tabular-nums">
-            {scoreboard.leftScore} - {scoreboard.rightScore}
-          </div>
-          <div className="bg-cyan px-4 py-1 text-center text-sm font-black text-arena">{scoreboard.timer}</div>
-        </div>
-        <FootballTeam label={scoreboard.rightName} side="right" />
+    <div className={`grid grid-cols-[110px_1fr_110px_110px] items-center border-l-8 ${colorClass}`}>
+      <div className="grid place-items-center px-4 py-5">
+        <LogoDisc label={label} />
       </div>
-      <div className="mx-auto mt-4 w-fit rounded-md bg-white/95 px-5 py-2 text-sm font-black uppercase tracking-[0.18em] text-slate-950">
-        {scoreboard.matchTitle} · {scoreboard.period}
+      <div className="min-w-0 px-4 py-5">
+        <div className="truncate text-5xl font-black uppercase text-white">{label}</div>
+        <div className="mt-1 truncate text-xl font-black uppercase text-current">{subLabel}</div>
       </div>
-    </div>
-  );
-}
-
-function FootballTeam({ label, side }: { label: string; side: "left" | "right" }) {
-  return (
-    <div className={`flex items-center gap-3 px-5 py-4 ${side === "right" ? "justify-end" : ""}`}>
-      {side === "left" ? <FlagMark tone="blue" /> : null}
-      <span className="truncate text-2xl font-black uppercase tracking-wide">{label}</span>
-      {side === "right" ? <FlagMark tone="red" /> : null}
-    </div>
-  );
-}
-
-function BaseballScoreboard({ scoreboard }: { scoreboard: ScoreboardState }) {
-  return (
-    <div className="relative z-10 w-full max-w-4xl">
-      <div className="grid grid-cols-[1.15fr_0.85fr] overflow-hidden border border-white/30 bg-zinc-950 shadow-[0_18px_34px_rgba(0,0,0,0.48)]">
-        <div>
-          <BaseballRow active label={scoreboard.rightName} score={scoreboard.rightScore} />
-          <BaseballRow label={scoreboard.leftName} score={scoreboard.leftScore} />
-          <div className="grid grid-cols-3 divide-x divide-zinc-300 bg-zinc-200 text-center text-4xl font-black text-zinc-950">
-            <div className="py-5">2-1</div>
-            <div className="py-5">0 Outs</div>
-            <div className="py-5">{scoreboard.period}</div>
-          </div>
-        </div>
-        <div className="grid place-items-center bg-zinc-100 p-6 text-zinc-950">
-          <div>
-            <div className="mb-5 text-center text-5xl font-black uppercase">{scoreboard.period}</div>
-            <div className="relative mx-auto h-40 w-40 rotate-45">
-              <span className="absolute left-0 top-14 h-16 w-16 border-4 border-blue-700 bg-transparent" />
-              <span className="absolute left-14 top-0 h-16 w-16 bg-blue-700" />
-              <span className="absolute left-28 top-14 h-16 w-16 bg-blue-700" />
-            </div>
-            <div className="mt-5 text-center text-2xl font-black uppercase text-zinc-600">{scoreboard.timer}</div>
-          </div>
-        </div>
-      </div>
-      <div className="mt-3 bg-zinc-900 px-5 py-3 text-center text-lg font-black uppercase tracking-wide text-white">
-        {scoreboard.matchTitle}
-      </div>
-    </div>
-  );
-}
-
-function BaseballRow({ active, label, score }: { active?: boolean; label: string; score: number }) {
-  return (
-    <div className={`grid grid-cols-[1fr_120px] ${active ? "bg-blue-700" : "bg-black"}`}>
-      <div className="flex items-center gap-4 px-7 py-5 text-5xl font-black uppercase text-white">
-        <LogoMark label={label} />
-        <span className="truncate">{label}</span>
-      </div>
-      <div className="grid place-items-center border-l border-zinc-300 bg-white text-6xl font-black text-zinc-950">
+      <div className="grid place-items-center border-l border-white/10 py-5 text-5xl font-black text-white">
         {score}
       </div>
-    </div>
-  );
-}
-
-function MiniScoreboard({ scoreboard }: { scoreboard: ScoreboardState }) {
-  return (
-    <div className="relative z-10 w-full max-w-3xl">
-      <div className="mx-auto flex w-fit items-center overflow-hidden rounded-md border border-white/25 bg-slate-950 text-2xl font-black uppercase text-white shadow-[0_12px_28px_rgba(0,0,0,0.42)]">
-        <div className="bg-blue-700 px-7 py-3">{scoreboard.leftName}</div>
-        <div className="bg-white px-7 py-3 text-3xl tabular-nums text-slate-950">
-          {scoreboard.leftScore}-{scoreboard.rightScore}
-        </div>
-        <div className="bg-red-600 px-7 py-3">{scoreboard.rightName}</div>
-        <div className="bg-slate-950 px-6 py-3 text-lg text-muted">{scoreboard.timer}</div>
-      </div>
-      <div className="mx-auto mt-3 w-fit rounded bg-black/70 px-4 py-1 text-xs font-black uppercase tracking-[0.18em] text-muted">
-        {scoreboard.matchTitle}
+      <div className="grid place-items-center border-l border-white/10 py-5 text-3xl font-black text-white/80">
+        {score * 13 || 13}
       </div>
     </div>
   );
 }
 
-function LowerThirdScoreboard({ scoreboard }: { scoreboard: ScoreboardState }) {
+function FighterBoard({ scoreboard }: { scoreboard: ScoreboardState }) {
   return (
-    <div className="absolute inset-x-10 bottom-10 z-10">
-      <div className="mx-auto max-w-5xl">
-        <div className="ml-[34%] w-72 bg-zinc-600 px-5 py-2 text-lg font-black uppercase text-white">
-          {scoreboard.period} &nbsp; {scoreboard.timer}
-        </div>
-        <div className="grid grid-cols-[1fr_220px_1fr] overflow-hidden border border-white/30 shadow-[0_18px_34px_rgba(0,0,0,0.5)]">
-          <div className="flex items-center gap-4 bg-orange-500 px-7 py-6 text-4xl font-black uppercase text-white [clip-path:polygon(0_0,86%_0,100%_100%,0_100%)]">
-            <LogoMark label={scoreboard.leftName} />
-            <span className="truncate">{scoreboard.leftName}</span>
+    <div className="absolute left-10 right-10 top-8 z-10">
+      <div className="grid grid-cols-[1fr_130px_1fr] items-start">
+        <FighterSide side="left" name={scoreboard.leftName} short={scoreboard.leftShort} score={scoreboard.leftScore} />
+        <div className="grid place-items-center">
+          <div className="grid h-28 w-36 place-items-center bg-white/95 text-7xl font-black italic text-zinc-950 [clip-path:polygon(15%_0,85%_0,100%_100%,0_100%)]">
+            25
           </div>
-          <div className="grid place-items-center bg-black px-8 py-6 text-5xl font-black text-white">
-            {scoreboard.leftScore} - {scoreboard.rightScore}
-          </div>
-          <div className="flex items-center justify-end gap-4 bg-blue-700 px-7 py-6 text-right text-4xl font-black uppercase text-white [clip-path:polygon(0_0,100%_0,100%_100%,14%_100%)]">
-            <span className="truncate">{scoreboard.rightName}</span>
-            <LogoMark label={scoreboard.rightName} />
-          </div>
+          <div className="mt-2 text-xs font-black uppercase tracking-[0.22em] text-white">{scoreboard.matchTitle}</div>
         </div>
-        <div className="mx-auto grid w-fit grid-cols-3 overflow-hidden border-x border-b border-white/20 bg-zinc-900 text-lg font-black uppercase text-white">
-          <span className="px-8 py-3">{scoreboard.matchTitle}</span>
-          <span className="border-x border-white/20 px-8 py-3">Ball on 25</span>
-          <span className="px-8 py-3">{scoreboard.note}</span>
-        </div>
+        <FighterSide side="right" name={scoreboard.rightName} short={scoreboard.rightShort} score={scoreboard.rightScore} />
       </div>
     </div>
   );
 }
 
-function LineupScoreboard({ scoreboard }: { scoreboard: ScoreboardState }) {
+function FighterSide({
+  side,
+  name,
+  short,
+  score
+}: {
+  side: "left" | "right";
+  name: string;
+  short: string;
+  score: number;
+}) {
   return (
-    <div className="relative z-10 w-full max-w-4xl">
-      <div className="mb-3 grid grid-cols-[88px_1fr] bg-zinc-900 text-white shadow-[0_12px_26px_rgba(0,0,0,0.36)]">
-        <div className="grid place-items-center bg-zinc-600 p-5 text-4xl font-black">23</div>
-        <div className="flex items-center px-6 text-4xl font-black">Max Mustermann</div>
-        <div className="grid place-items-center border-t border-zinc-700 bg-zinc-600 p-5 text-4xl font-black">P</div>
-        <div className="grid grid-cols-[1fr_auto_auto] items-center gap-6 border-t border-zinc-800 px-6 text-4xl font-black">
-          <span>John Doe</span>
-          <span>P</span>
-          <span>0</span>
+    <div className={`relative ${side === "right" ? "text-right" : ""}`}>
+      <div
+        className={`grid grid-cols-[90px_1fr_70px] items-center bg-gradient-to-r ${
+          side === "left" ? "from-red-700 to-zinc-950" : "from-zinc-950 to-blue-700"
+        } px-4 py-3 text-white shadow-[0_12px_22px_rgba(0,0,0,0.45)]`}
+      >
+        {side === "left" ? <LogoDisc label={short} /> : <div className="text-4xl font-black">{score}</div>}
+        <div className="min-w-0">
+          <div className="truncate text-xl font-black uppercase tracking-wide">{name}</div>
+          <div className="mt-1 h-2 bg-gradient-to-r from-fuchsia-500 via-cyan to-transparent" />
         </div>
+        {side === "left" ? <div className="text-4xl font-black">{score}</div> : <LogoDisc label={short} />}
       </div>
-
-      <div className="grid grid-cols-[1.1fr_0.85fr] overflow-hidden border border-white/50 bg-zinc-100 text-zinc-950 shadow-panel">
-        <div>
-          <LineupTeamRow active label={scoreboard.rightName} score={scoreboard.rightScore} />
-          <LineupTeamRow label={scoreboard.leftName} score={scoreboard.leftScore} />
-        </div>
-        <div className="grid place-items-center border-l border-zinc-300 p-6">
-          <div className="text-center">
-            <div className="mb-4 text-5xl font-black uppercase">{scoreboard.period}</div>
-            <div className="mx-auto grid h-36 w-36 rotate-45 grid-cols-2 grid-rows-2 gap-2">
-              <span className="border-4 border-blue-700" />
-              <span className="bg-blue-700" />
-              <span />
-              <span className="bg-blue-700" />
-            </div>
-          </div>
-        </div>
-        <div className="grid grid-cols-3 divide-x divide-zinc-300 border-t border-zinc-300 text-center text-5xl font-black">
-          <span className="py-7">2-1</span>
-          <span className="py-7">0 Outs</span>
-          <span className="py-7">{scoreboard.timer}</span>
-        </div>
-        <div className="border-l border-t border-zinc-300" />
+      <div className={`mt-2 text-sm font-black uppercase tracking-[0.22em] text-white/80 ${side === "right" ? "pr-4" : "pl-4"}`}>
+        {short}
       </div>
     </div>
   );
 }
 
-function LineupTeamRow({ active, label, score }: { active?: boolean; label: string; score: number }) {
+function PlayerSilhouette() {
   return (
-    <div className={`grid grid-cols-[1fr_120px] ${active ? "bg-blue-700 text-white" : "bg-black text-white"}`}>
-      <div className="px-8 py-7 text-6xl font-black uppercase">{label}</div>
-      <div className="grid place-items-center text-6xl font-black">{score}</div>
+    <div className="relative h-14 w-16 text-zinc-900">
+      <div className="absolute left-5 top-1 h-4 w-4 rounded-full bg-current" />
+      <div className="absolute left-6 top-5 h-7 w-3 rotate-12 bg-current" />
+      <div className="absolute left-1 top-7 h-3 w-9 -rotate-12 bg-current" />
+      <div className="absolute left-7 top-11 h-3 w-10 rotate-12 bg-current" />
+      <div className="absolute right-0 top-8 h-3 w-3 rounded-full bg-current" />
     </div>
   );
 }
 
-function LogoMark({ label }: { label: string }) {
+function LogoDisc({ label }: { label: string }) {
   return (
-    <span className="grid h-14 w-14 shrink-0 place-items-center rounded-md border border-white/25 bg-black/25 text-base font-black uppercase text-white">
+    <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full border-4 border-white bg-black/40 text-lg font-black uppercase text-white shadow-[inset_0_0_0_3px_rgba(255,255,255,0.15)]">
       {label.trim().slice(0, 2) || "T"}
     </span>
   );
 }
 
-function FlagMark({ tone }: { tone: "blue" | "red" }) {
+function FlagPill({ label }: { label: string }) {
   return (
-    <span
-      className={`h-9 w-14 rounded-sm border border-slate-300 ${
-        tone === "blue"
-          ? "bg-gradient-to-r from-blue-700 via-white to-red-500"
-          : "bg-gradient-to-r from-red-600 via-white to-blue-700"
-      }`}
-      aria-hidden="true"
-    />
+    <span className="grid min-h-12 min-w-20 place-items-center rounded-sm bg-gradient-to-r from-red-600 via-white to-green-600 px-3 text-lg font-black uppercase text-zinc-950">
+      {label}
+    </span>
+  );
+}
+
+function DotTrack({ side }: { side: "left" | "right" }) {
+  return (
+    <div className={`flex gap-3 ${side === "right" ? "justify-start" : "justify-end"}`}>
+      {Array.from({ length: 5 }, (_, index) => (
+        <span
+          key={index}
+          className={`h-12 w-12 rounded-full border border-white/10 ${
+            index === 2 ? "bg-lime" : "bg-black"
+          }`}
+        />
+      ))}
+    </div>
   );
 }
