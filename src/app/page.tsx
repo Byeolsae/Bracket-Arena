@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Brackets, Layers3, Shuffle, Users } from "lucide-react";
+import { ArrowRight, Brackets, Layers3, MonitorPlay, Shuffle, Users } from "lucide-react";
 
 const entryPoints = [
   {
@@ -22,6 +22,13 @@ const entryPoints = [
     href: "/tier-list",
     icon: Layers3,
     cta: "티어 정리하기"
+  },
+  {
+    title: "스코어보드",
+    description: "OBS 방송 화면에 올릴 경기 점수판과 오버레이 화면을 준비합니다.",
+    href: "/scoreboard",
+    icon: MonitorPlay,
+    cta: "스코어보드 열기"
   },
   {
     title: "추첨 및 참가팀 선택",

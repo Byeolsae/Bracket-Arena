@@ -19,6 +19,9 @@ export function HeaderNav() {
         <Link className="rounded-md border border-transparent px-3 py-2 text-ink/75 hover:border-cyan hover:text-cyan" href="/tier-list">
           티어리스트
         </Link>
+        <Link className="rounded-md border border-transparent px-3 py-2 text-ink/75 hover:border-cyan hover:text-cyan" href="/scoreboard">
+          스코어보드
+        </Link>
         <Link className="rounded-md border border-transparent px-3 py-2 text-ink/75 hover:border-cyan hover:text-cyan" href="/draw">
           추첨 및 참가팀 선택
         </Link>
