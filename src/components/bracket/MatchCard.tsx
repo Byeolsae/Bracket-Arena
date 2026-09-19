@@ -390,6 +390,8 @@ function LogoOnlyTeamTile({
   isWinner?: boolean;
   size: BracketTeamSizeClass;
 }) {
+  const winnerStyle = isWinner && team ? getLogoOnlyTileWinnerStyle(team) : undefined;
+
   return (
     <div
       className={clsx(
@@ -399,6 +401,7 @@ function LogoOnlyTeamTile({
         isPlaceholder && "bg-cyan/5 text-cyan",
         isBye && "bg-panel/60 text-muted"
       )}
+      style={winnerStyle}
       title={team?.name ?? label}
       aria-label={team?.name ?? label}
     >
@@ -454,6 +457,16 @@ function getLogoOnlyRowStyle(team?: Team, isWinner?: boolean): CSSProperties | u
     borderColor: primary,
     background: primary,
     boxShadow: `0 0 24px ${mix(primary, 38)}, inset 0 0 0 1px ${mix(primary, 58)}`
+  };
+}
+
+function getLogoOnlyTileWinnerStyle(team: Team): CSSProperties {
+  const primary = getTeamWinnerColor(team) ?? team.primaryColor ?? "hsl(var(--lime))";
+
+  return {
+    background: primary,
+    borderColor: primary,
+    boxShadow: `0 0 20px ${mix(primary, 42)}, inset 0 0 0 1px ${mix(primary, 72)}`
   };
 }
 
