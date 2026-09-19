@@ -194,7 +194,7 @@ const bracketTeamSizeClass: Record<TeamDisplaySize, BracketTeamSizeClass> = {
     card: "w-56",
     logoCard: "w-28",
     row: "h-9 grid-cols-[1fr_44px]",
-    logoRow: "h-12 grid-cols-[48px_44px]",
+    logoRow: "h-12 grid-cols-[6px_48px_44px]",
     teamCell: "gap-1.5 px-1.5",
     logoTile: "h-12 w-12",
     logo: "xs",
@@ -207,7 +207,7 @@ const bracketTeamSizeClass: Record<TeamDisplaySize, BracketTeamSizeClass> = {
     card: "w-60",
     logoCard: "w-32",
     row: "h-10 grid-cols-[1fr_48px]",
-    logoRow: "h-14 grid-cols-[56px_48px]",
+    logoRow: "h-14 grid-cols-[6px_56px_48px]",
     teamCell: "gap-2 px-2",
     logoTile: "h-14 w-14",
     logo: "sm",
@@ -220,7 +220,7 @@ const bracketTeamSizeClass: Record<TeamDisplaySize, BracketTeamSizeClass> = {
     card: "w-64",
     logoCard: "w-36",
     row: "h-11 grid-cols-[1fr_52px]",
-    logoRow: "h-16 grid-cols-[64px_52px]",
+    logoRow: "h-16 grid-cols-[6px_64px_52px]",
     teamCell: "gap-2 px-2",
     logoTile: "h-16 w-16",
     logo: "sm",
@@ -233,7 +233,7 @@ const bracketTeamSizeClass: Record<TeamDisplaySize, BracketTeamSizeClass> = {
     card: "w-72",
     logoCard: "w-40",
     row: "h-12 grid-cols-[1fr_56px]",
-    logoRow: "h-20 grid-cols-[80px_56px]",
+    logoRow: "h-20 grid-cols-[6px_80px_56px]",
     teamCell: "gap-2.5 px-2.5",
     logoTile: "h-20 w-20",
     logo: "md",
@@ -246,7 +246,7 @@ const bracketTeamSizeClass: Record<TeamDisplaySize, BracketTeamSizeClass> = {
     card: "w-80",
     logoCard: "w-44",
     row: "h-14 grid-cols-[1fr_60px]",
-    logoRow: "h-24 grid-cols-[96px_60px]",
+    logoRow: "h-24 grid-cols-[6px_96px_60px]",
     teamCell: "gap-3 px-3",
     logoTile: "h-24 w-24",
     logo: "md",
@@ -288,7 +288,9 @@ function BracketTeamRow({
   const isPlaceholder = !isBye && !team;
   const label = isBye ? "BYE" : team?.shortName || team?.name || "TBD";
   const teamStyle = getTeamAccentStyle(team, isWinner);
+  const logoStripStyle = getLogoOnlyStripStyle(team, isWinner);
   const rowStyle = getTeamWinnerRowStyle(team, isWinner);
+  const logoOnlyRowStyle = getLogoOnlyRowStyle(team, isWinner);
   const scoreStyle = isWinner && team ? getWinnerScoreStyle(team) : undefined;
   const textStyle = getTeamTextStyle(team, isWinner);
   const logoOnly = layout === "logo";
@@ -307,18 +309,20 @@ function BracketTeamRow({
         isBye && "border-dashed opacity-70",
         isPlaceholder && "border-dashed border-cyan/25 bg-cyan/5 text-cyan/80"
       )}
-      style={rowStyle}
+      style={logoOnly ? logoOnlyRowStyle : rowStyle}
     >
       {logoOnly ? (
-        <LogoOnlyTeamTile
-          team={team}
-          label={label}
-          isBye={isBye}
-          isPlaceholder={isPlaceholder}
-          isWinner={isWinner}
-          size={size}
-          style={teamStyle}
-        />
+        <>
+          <span className="h-full bg-cyan/20" style={logoStripStyle} aria-hidden="true" />
+          <LogoOnlyTeamTile
+            team={team}
+            label={label}
+            isBye={isBye}
+            isPlaceholder={isPlaceholder}
+            isWinner={isWinner}
+            size={size}
+          />
+        </>
       ) : (
         <div
           className={clsx(
@@ -377,8 +381,7 @@ function LogoOnlyTeamTile({
   isBye,
   isPlaceholder,
   isWinner,
-  size,
-  style
+  size
 }: {
   team?: Team;
   label: string;
@@ -386,7 +389,6 @@ function LogoOnlyTeamTile({
   isPlaceholder?: boolean;
   isWinner?: boolean;
   size: BracketTeamSizeClass;
-  style?: CSSProperties;
 }) {
   return (
     <div
@@ -397,7 +399,6 @@ function LogoOnlyTeamTile({
         isPlaceholder && "bg-cyan/5 text-cyan",
         isBye && "bg-panel/60 text-muted"
       )}
-      style={style}
       title={team?.name ?? label}
       aria-label={team?.name ?? label}
     >
@@ -443,6 +444,28 @@ function getTeamWinnerRowStyle(team?: Team, isWinner?: boolean): CSSProperties |
     background: primary,
     boxShadow: `0 0 32px ${mix(primary, 58)}, inset 0 0 0 1px ${mix(primary, 86)}, inset 5px 0 0 ${stripColor}`
   };
+}
+
+function getLogoOnlyRowStyle(team?: Team, isWinner?: boolean): CSSProperties | undefined {
+  if (!isWinner || !team) return undefined;
+  const primary = getTeamWinnerColor(team) ?? team.primaryColor ?? "hsl(var(--cyan))";
+
+  return {
+    borderColor: primary,
+    boxShadow: `0 0 24px ${mix(primary, 38)}, inset 0 0 0 1px ${mix(primary, 58)}`
+  };
+}
+
+function getLogoOnlyStripStyle(team?: Team, isWinner?: boolean): CSSProperties | undefined {
+  const primary = isWinner ? getTeamWinnerColor(team) ?? team?.primaryColor : team?.primaryColor;
+  const stripColor = (isWinner ? getTeamWinnerAccentColor(team) : getTeamBracketAccentColor(team)) ?? primary;
+
+  return stripColor
+    ? {
+        background: stripColor,
+        boxShadow: `0 0 14px ${mix(stripColor, 46)}`
+      }
+    : undefined;
 }
 
 function getWinnerScoreStyle(team: Team): CSSProperties {
