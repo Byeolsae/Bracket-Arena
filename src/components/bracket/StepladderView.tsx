@@ -84,7 +84,7 @@ export function StepladderView({
       window.removeEventListener("resize", scheduleUpdate);
       observer?.disconnect();
     };
-  }, [displayedMatches, zoom]);
+  }, [bracketTeamLayout, displayedMatches, teamDisplaySize, zoom]);
 
   return (
     <section className="bracket-board">
@@ -263,11 +263,12 @@ function buildStepladderConnectionPaths(root: HTMLElement, matches: BracketStage
 function getElementPoint(root: HTMLElement, element: HTMLElement, side: "left" | "right") {
   const rootRect = root.getBoundingClientRect();
   const rect = element.getBoundingClientRect();
-  const x = side === "right" ? rect.right - rootRect.left : rect.left - rootRect.left;
+  const scale = rootRect.width > 0 ? rootRect.width / Math.max(root.offsetWidth, 1) : 1;
+  const x = ((side === "right" ? rect.right : rect.left) - rootRect.left) / scale;
 
   return {
     x,
-    y: rect.top - rootRect.top + rect.height / 2
+    y: (rect.top + rect.height / 2 - rootRect.top) / scale
   };
 }
 

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { BracketStageMatch, Team } from "@/lib/core/models";
 import { sortBracketMatches } from "@/lib/core/bracketOrder";
 import { MatchCard } from "@/components/bracket/MatchCard";
+import { useUiStore } from "@/store/uiStore";
 
 type BracketLaneProps = {
   title: string;
@@ -50,6 +51,8 @@ export function BracketLane({
   const boardRef = useRef<HTMLDivElement>(null);
   const splitBoardRef = useRef<HTMLDivElement>(null);
   const [connectorPaths, setConnectorPaths] = useState<string[]>([]);
+  const bracketTeamLayout = useUiStore((state) => state.bracketTeamLayout);
+  const teamDisplaySize = useUiStore((state) => state.teamDisplaySize);
   const rounds = groupByRound(matches);
   const rawDisplayRounds =
     splitBranches && expectedFirstRoundMatchCount
@@ -99,7 +102,7 @@ export function BracketLane({
       window.removeEventListener("resize", scheduleUpdate);
       observer?.disconnect();
     };
-  }, [displayedMatches, rounds.length, splitBranches]);
+  }, [bracketTeamLayout, displayedMatches, rounds.length, splitBranches, teamDisplaySize]);
 
   return (
     <section className="min-w-0 space-y-3">
@@ -455,7 +458,7 @@ function getInferredTargetIndex(matchIndex: number, currentCount: number, nextCo
 function getElementPoint(root: HTMLElement, element: HTMLElement, side: "left" | "right") {
   const rootRect = root.getBoundingClientRect();
   const rect = element.getBoundingClientRect();
-  const scale = rootRect.width / Math.max(root.offsetWidth, 1);
+  const scale = rootRect.width > 0 ? rootRect.width / Math.max(root.offsetWidth, 1) : 1;
   const x = ((side === "left" ? rect.left : rect.right) - rootRect.left) / scale;
   const y = (rect.top + rect.height / 2 - rootRect.top) / scale;
   return { x, y };
