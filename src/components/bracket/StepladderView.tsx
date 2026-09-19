@@ -7,6 +7,7 @@ import { BracketZoomControls } from "@/components/bracket/BracketZoomControls";
 import { RandomRoundButton } from "@/components/bracket/RandomRoundButton";
 import { MatchCard } from "@/components/bracket/MatchCard";
 import { TeamLogo } from "@/components/teams/TeamLogo";
+import { useUiStore, type TeamDisplaySize } from "@/store/uiStore";
 
 type StepladderViewProps = {
   bracket: StepladderBracket;
@@ -27,6 +28,9 @@ export function StepladderView({
   const boardRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
   const [connectorPaths, setConnectorPaths] = useState<string[]>([]);
+  const bracketTeamLayout = useUiStore((state) => state.bracketTeamLayout);
+  const teamDisplaySize = useUiStore((state) => state.teamDisplaySize);
+  const stepSize = stepladderStepSizeClass[teamDisplaySize];
   const teamsById = new Map(teams.map((team) => [team.id, team]));
   const champion = bracket.championId ? teamsById.get(bracket.championId) : undefined;
   const placements = getStepladderPlacements(bracket, teamsById);
@@ -126,17 +130,18 @@ export function StepladderView({
             <StepladderConnectorOverlay paths={connectorPaths} />
             {bracket.matches.map((match, index) => {
               const toneClassName = stepRoundTone(index, bracket.matches.length);
+              const columnWidthClass = bracketTeamLayout === "logo" ? stepSize.logoColumn : stepSize.detailColumn;
 
               return (
                 <div
                   key={match.id}
-                  className="relative z-10 w-80 shrink-0"
-                  style={{ paddingTop: `${index * 74}px` }}
+                  className={`relative z-10 shrink-0 ${columnWidthClass}`}
+                  style={{ paddingTop: `${index * stepSize.stepOffset}px` }}
                 >
-                  <div className={`bracket-round-label ${toneClassName}`}>
+                  <div className={`bracket-round-label w-full ${stepSize.label} ${toneClassName}`}>
                     {index === bracket.matches.length - 1 ? "최종 보스" : `${index + 1}단계`}
                   </div>
-                  <div className="mt-3">
+                  <div className={stepSize.cardGap}>
                     <MatchCard
                       match={match}
                       teamsById={teamsById}
@@ -156,6 +161,53 @@ export function StepladderView({
     </section>
   );
 }
+
+const stepladderStepSizeClass: Record<
+  TeamDisplaySize,
+  {
+    detailColumn: string;
+    logoColumn: string;
+    stepOffset: number;
+    label: string;
+    cardGap: string;
+  }
+> = {
+  1: {
+    detailColumn: "w-56",
+    logoColumn: "w-28",
+    stepOffset: 52,
+    label: "!min-h-6 !px-2 !py-1 !text-[10px] !tracking-[0.1em]",
+    cardGap: "mt-2"
+  },
+  2: {
+    detailColumn: "w-60",
+    logoColumn: "w-32",
+    stepOffset: 58,
+    label: "!min-h-7 !px-2 !py-1.5 !text-[10px] !tracking-[0.12em]",
+    cardGap: "mt-2"
+  },
+  3: {
+    detailColumn: "w-64",
+    logoColumn: "w-36",
+    stepOffset: 64,
+    label: "!min-h-8 !px-3 !py-2 !text-xs !tracking-[0.14em]",
+    cardGap: "mt-3"
+  },
+  4: {
+    detailColumn: "w-72",
+    logoColumn: "w-40",
+    stepOffset: 74,
+    label: "!min-h-9 !px-3 !py-2 !text-xs !tracking-[0.16em]",
+    cardGap: "mt-3"
+  },
+  5: {
+    detailColumn: "w-80",
+    logoColumn: "w-44",
+    stepOffset: 86,
+    label: "!min-h-10 !px-4 !py-2.5 !text-sm !tracking-[0.16em]",
+    cardGap: "mt-4"
+  }
+};
 
 function StepladderConnectorOverlay({ paths }: { paths: string[] }) {
   if (!paths.length) return null;
