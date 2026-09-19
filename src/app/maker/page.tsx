@@ -1,12 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ChevronDown, ChevronRight, Folder, Info, Play, Printer, Settings2, Shuffle, Swords, Users } from "lucide-react";
+import { Play, Printer, Shuffle, Swords } from "lucide-react";
 import { PlacementSummary, type PlacementSummaryEntry } from "@/components/tournament/PlacementSummary";
 import { TeamLogo } from "@/components/teams/TeamLogo";
-import { nextPowerOfTwo } from "@/lib/core/bye";
 import { createGroupStage, calculateGroupStandings } from "@/lib/core/group";
 import {
   createGroupTripleEliminationStage,
@@ -33,7 +32,6 @@ import type {
   StepladderBracket,
   SwissStage,
   Team,
-  TeamFolder,
   Tournament,
   TripleEliminationStage
 } from "@/lib/core/models";
@@ -98,7 +96,6 @@ type DrawImportSetup = {
   qualifierFormat?: StageFormat;
   finalFormat?: StageFormat;
   groupCount?: number;
-  battleRoundCount?: number;
 };
 type DrawImportPayload =
   | { type: "seed"; teamIds: string[]; setup?: DrawImportSetup }
@@ -126,25 +123,6 @@ const STAGE_LABELS: Record<StageFormat, { label: string; hint: string }> = {
   battle_royale: { label: "배틀로얄", hint: "라운드별 순위/킬 기록" }
 };
 
-const QUALIFIER_STAGE_OPTIONS: StageFormat[] = [
-  "league",
-  "group",
-  "group_double_elimination",
-  "group_triple_elimination",
-  "swiss",
-  "battle_royale"
-];
-
-const FINAL_STAGE_OPTIONS: StageFormat[] = [
-  "single",
-  "double",
-  "triple",
-  "stepladder",
-  "swiss",
-  "battle_royale",
-  "league"
-];
-
 const TWO_STAGE_FINAL_OPTIONS: StageFormat[] = ["single", "double", "triple", "stepladder", "battle_royale"];
 
 const QUALIFIER_FINAL_COMPATIBILITY: Partial<Record<StageFormat, StageFormat[]>> = {
@@ -166,10 +144,6 @@ const ELIMINATION_TEAM_LIMITS: Partial<Record<StageFormat, number>> = {
 const DOUBLE_ELIMINATION_ALLOWED_TEAM_COUNTS = [4, 8, 16];
 const BATTLE_ROYALE_QUALIFIER_TEAM_COUNT = 24;
 const BATTLE_ROYALE_FINAL_TEAM_COUNT = 16;
-
-function normalizeBattleRoyaleMatchCount(value: number | undefined) {
-  return value === 6 ? 6 : 5;
-}
 
 function isGroupFormat(format: StageFormat) {
   return (
@@ -216,14 +190,6 @@ function getStageLimitLabel(format: StageFormat) {
   if (format === "battle_royale") return "예선 24팀 / 본선 16팀";
 
   return "자유";
-}
-
-function getStageRecommendationLabel(format: StageFormat) {
-  if (format === "double") return "권장 팀수: 4/8/16팀";
-  if (format === "triple") return "권장 팀수: 8팀";
-  if (format === "group_double_elimination") return "권장 팀수: 조당 4팀, 전체 4의 배수";
-  if (format === "group_triple_elimination") return "권장 팀수: 조당 8팀, 전체 8의 배수";
-  return `${getStageLimitLabel(format)} 가능`;
 }
 
 function getStageDisplayLabel(format: StageFormat) {
@@ -315,27 +281,6 @@ function buildGroupAssignments(
   return next;
 }
 
-function shuffleIds(ids: string[]) {
-  const next = [...ids];
-  for (let index = next.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
-  }
-  return next;
-}
-
-function getGroupLocalSeed(teamId: string, selectedTeamIds: string[], assignments: Record<string, number>, groupCount: number) {
-  const safeGroupCount = Math.max(1, groupCount);
-  const groupIndex = Math.max(0, Math.min(safeGroupCount - 1, assignments[teamId] ?? 0));
-  const seed =
-    selectedTeamIds.filter((id) => (assignments[id] ?? 0) === groupIndex).indexOf(teamId) + 1;
-
-  return {
-    groupIndex,
-    seed: Math.max(1, seed)
-  };
-}
-
 function isPowerOfTwo(value: number) {
   return value > 0 && (value & (value - 1)) === 0;
 }
@@ -412,7 +357,6 @@ function createFixedGroupPlayoffSeeding(stage: GroupStage, teams: Team[]): Fixed
 
 export default function MakerPage() {
   const teams = useTeamStore((state) => state.teams);
-  const folders = useTeamStore((state) => state.folders);
   const {
     tournament,
     doubleElimination,
@@ -432,12 +376,11 @@ export default function MakerPage() {
   const [qualifierFormat, setQualifierFormat] = useState<StageFormat>("league");
   const [finalFormat, setFinalFormat] = useState<StageFormat>("single");
   const [activeStage, setActiveStage] = useState<ActiveStage | null>(null);
-  const [leagueRounds, setLeagueRounds] = useState<1 | 2>(1);
-  const [leagueAdvanceCount, setLeagueAdvanceCount] = useState(4);
+  const [leagueRounds] = useState<1 | 2>(1);
+  const [leagueAdvanceCount] = useState(4);
   const [groupCount, setGroupCount] = useState(2);
   const [teamGroupAssignments, setTeamGroupAssignments] = useState<Record<string, number>>({});
-  const [groupAdvanceCount, setGroupAdvanceCount] = useState(2);
-  const [battleRoundCount, setBattleRoundCount] = useState(5);
+  const [groupAdvanceCount] = useState(2);
   const [leagueStage, setLeagueStage] = useState<LeagueStage>();
   const [groupStage, setGroupStage] = useState<GroupStage>();
   const [groupDoubleStage, setGroupDoubleStage] = useState<GroupDoubleEliminationStage>();
@@ -467,7 +410,6 @@ export default function MakerPage() {
       if (isStageFormat(payload.setup?.qualifierFormat)) setQualifierFormat(payload.setup.qualifierFormat);
       if (isStageFormat(payload.setup?.finalFormat)) setFinalFormat(payload.setup.finalFormat);
       if (payload.setup?.groupCount) setGroupCount(Math.max(1, payload.setup.groupCount));
-      if (payload.setup?.battleRoundCount) setBattleRoundCount(normalizeBattleRoyaleMatchCount(payload.setup.battleRoundCount));
 
       setSelectedTeamIds(teamIds);
       if (payload.type === "group") {
@@ -542,8 +484,6 @@ export default function MakerPage() {
       })
       .filter(Boolean) as Team[];
   }, [selectedTeamIds, teams]);
-  const bracketSize = nextPowerOfTwo(Math.max(selectedTeams.length, 2));
-  const byeCount = Math.max(0, bracketSize - selectedTeams.length);
   const canCreate = selectedTeams.length >= 2;
   const qualifierLimitMessage = mode === "two-stage" ? getStageLimitMessage(qualifierFormat, selectedTeams, "qualifier") : undefined;
   const finalLimitMessage = getStageLimitMessage(
@@ -553,47 +493,6 @@ export default function MakerPage() {
       : selectedTeams,
     "final"
   );
-
-  function setQualifierWithCompatibility(format: StageFormat) {
-    const allowedFinals = QUALIFIER_FINAL_COMPATIBILITY[format] ?? TWO_STAGE_FINAL_OPTIONS;
-    const projectedCount = getProjectedAdvancingCount(
-      format,
-      selectedTeamIds.length,
-      groupCount,
-      leagueAdvanceCount,
-      groupAdvanceCount
-    );
-    const enabledFinals = allowedFinals.filter((option) => !getFinalFormatDisabledReason(option, projectedCount));
-    const nextFinal = enabledFinals[0] ?? allowedFinals[0];
-
-    setQualifierFormat(format);
-    if (
-      (!allowedFinals.includes(finalFormat) || getFinalFormatDisabledReason(finalFormat, projectedCount)) &&
-      nextFinal
-    ) {
-      setFinalFormat(nextFinal);
-    }
-  }
-
-  function setCompatibleFinalFormat(format: StageFormat) {
-    if (mode === "two-stage") {
-      const allowedFinals = QUALIFIER_FINAL_COMPATIBILITY[qualifierFormat] ?? TWO_STAGE_FINAL_OPTIONS;
-      if (!allowedFinals.includes(format)) return;
-      if (getFinalFormatDisabledReason(format, projectedFinalTeamCount)) return;
-    }
-
-    setFinalFormat(format);
-  }
-
-  function randomizeSelectedSeeds() {
-    setSelectedTeamIds((current) => shuffleIds(current));
-  }
-
-  function randomizeSelectedGroups() {
-    setTeamGroupAssignments(() =>
-      buildGroupAssignments(shuffleIds(selectedTeamIds), activeGroupFormat, effectiveGroupCount, {})
-    );
-  }
 
   function getStageLimitMessage(format: StageFormat, stageTeams: Team[], role: ActiveStage["role"]) {
     if (format === "battle_royale") {
@@ -848,94 +747,6 @@ export default function MakerPage() {
   );
 }
 
-function TournamentSetup({
-  tournamentName,
-  setTournamentName,
-  mode,
-  setMode,
-  qualifierFormat,
-  setQualifierFormat,
-  finalFormat,
-  setFinalFormat,
-  projectedFinalTeamCount,
-  getFinalDisabledReason
-}: {
-  tournamentName: string;
-  setTournamentName: (value: string) => void;
-  mode: TournamentMode;
-  setMode: (value: TournamentMode) => void;
-  qualifierFormat: StageFormat;
-  setQualifierFormat: (value: StageFormat) => void;
-  finalFormat: StageFormat;
-  setFinalFormat: (value: StageFormat) => void;
-  projectedFinalTeamCount: number;
-  getFinalDisabledReason: (format: StageFormat) => string | undefined;
-}) {
-  const finalOptions = mode === "two-stage" ? TWO_STAGE_FINAL_OPTIONS : FINAL_STAGE_OPTIONS;
-  const disabledFinalOptions =
-    mode === "two-stage" ? finalOptions.filter((option) => Boolean(getFinalDisabledReason(option))) : [];
-
-  return (
-    <div className="arena-card p-4">
-      <div className="mb-4 flex items-center gap-2">
-        <Settings2 className="h-4 w-4 text-cyan" />
-        <h2 className="font-black uppercase tracking-wide text-ink">대회 설정</h2>
-      </div>
-      <div className="space-y-4">
-        <label className="space-y-1.5">
-          <span className="text-sm font-bold text-ink">대회 이름</span>
-          <input className="input" value={tournamentName} onChange={(event) => setTournamentName(event.target.value)} />
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          <ModeButton active={mode === "two-stage"} onClick={() => setMode("two-stage")} title="예선 + 본선" description="예선 결과를 본선으로 연결" />
-          <ModeButton active={mode === "final-only"} onClick={() => setMode("final-only")} title="본선" description="선택 팀으로 바로 생성" />
-        </div>
-        {mode === "two-stage" ? (
-          <StageSelect label="예선 방식" value={qualifierFormat} options={QUALIFIER_STAGE_OPTIONS} onChange={setQualifierFormat} />
-        ) : null}
-        <StageSelect
-          label="본선 방식"
-          value={finalFormat}
-          options={finalOptions}
-          disabledOptions={disabledFinalOptions}
-          getDisabledReason={mode === "two-stage" ? getFinalDisabledReason : undefined}
-          onChange={setFinalFormat}
-        />
-        {mode === "two-stage" ? (
-          <p className="rounded-md border border-line bg-field px-3 py-2 text-xs font-semibold leading-5 text-muted">
-            예상 본선 진출팀은 {projectedFinalTeamCount}팀입니다. 이 팀 수로 생성할 수 없는 본선 방식은 자동으로 비활성화됩니다.
-          </p>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function ModeButton({
-  active,
-  onClick,
-  title,
-  description
-}: {
-  active: boolean;
-  onClick: () => void;
-  title: string;
-  description: string;
-}) {
-  return (
-    <button
-      type="button"
-      className={`rounded-md border px-3 py-2 text-left transition ${
-        active ? "border-cyan bg-cyan/15 text-ink shadow-[0_0_24px_rgba(34,211,238,0.16)]" : "border-line bg-field text-muted hover:border-cyan/60 hover:text-ink"
-      }`}
-      onClick={onClick}
-    >
-      <span className="block text-sm font-black uppercase tracking-wide">{title}</span>
-      <span className="mt-1 block text-xs font-semibold">{description}</span>
-    </button>
-  );
-}
-
 function BracketLaunchPanel({
   tournamentName,
   mode,
@@ -1056,707 +867,6 @@ function BracketLaunchPanel({
         </div>
       </div>
     </section>
-  );
-}
-
-function FilteredStageOptionsPanel({
-  formats,
-  selectedTeamCount,
-  leagueRounds,
-  setLeagueRounds,
-  leagueAdvanceCount,
-  setLeagueAdvanceCount,
-  groupCount,
-  setGroupCount,
-  groupAdvanceCount,
-  setGroupAdvanceCount,
-  battleRoundCount,
-  setBattleRoundCount
-}: {
-  formats: StageFormat[];
-  selectedTeamCount: number;
-  leagueRounds: 1 | 2;
-  setLeagueRounds: (value: 1 | 2) => void;
-  leagueAdvanceCount: number;
-  setLeagueAdvanceCount: (value: number) => void;
-  groupCount: number;
-  setGroupCount: (value: number) => void;
-  groupAdvanceCount: number;
-  setGroupAdvanceCount: (value: number) => void;
-  battleRoundCount: number;
-  setBattleRoundCount: (value: number) => void;
-}) {
-  const needsLeague = formats.includes("league");
-  const needsSwiss = formats.includes("swiss");
-  const needsGroup =
-    formats.includes("group") ||
-    formats.includes("group_double_elimination") ||
-    formats.includes("group_triple_elimination");
-  const needsBattleRoyale = formats.includes("battle_royale");
-  const safeSelectedTeamCount = Math.max(0, selectedTeamCount);
-  const groupCountMax = Math.max(1, safeSelectedTeamCount);
-  const normalizedGroupCount = Math.max(1, Math.min(groupCount, groupCountMax));
-  const fixedGroupFormat = formats.find((format) => Boolean(getFixedGroupConfig(format)));
-  const fixedGroupConfig = fixedGroupFormat ? getFixedGroupConfig(fixedGroupFormat) : undefined;
-  const fixedGroupCount = fixedGroupFormat
-    ? getEffectiveGroupCount(fixedGroupFormat, safeSelectedTeamCount, groupCount)
-    : normalizedGroupCount;
-  const maxGroupAdvanceCount = Math.max(
-    1,
-    Math.ceil(Math.max(1, safeSelectedTeamCount) / normalizedGroupCount)
-  );
-
-  if (!needsLeague && !needsSwiss && !needsGroup && !needsBattleRoyale) return null;
-
-  return (
-    <div className="arena-card p-4">
-      <div className="mb-3 flex items-center gap-2 font-bold text-cyan">
-        <Info className="h-4 w-4" />
-        Stage 옵션
-      </div>
-      <div className="space-y-5">
-        {needsLeague ? (
-          <section>
-            <div className="grid grid-cols-2 gap-3">
-              <NumberField label="진출팀 수" value={leagueAdvanceCount} onChange={setLeagueAdvanceCount} min={1} />
-              <label className="space-y-1.5">
-                <span className="text-sm font-bold text-ink">리그 방식</span>
-                <select className="input" value={leagueRounds} onChange={(event) => setLeagueRounds(Number(event.target.value) as 1 | 2)}>
-                  <option value={1}>싱글 라운드 로빈</option>
-                  <option value={2}>더블 라운드 로빈</option>
-                </select>
-              </label>
-            </div>
-          </section>
-        ) : null}
-
-        {needsSwiss ? (
-          <section className="space-y-3">
-            <h3 className="text-sm font-black uppercase tracking-wide text-ink">스위스 설정</h3>
-            <div className="rounded-md border border-line bg-field px-3 py-2 text-xs font-semibold leading-5 text-muted">
-              팀 수에 따라 권장 승/패 기준과 라운드를 자동 적용합니다. 기본은 승수 달성 진출 / 패수 달성 탈락 방식입니다.
-            </div>
-          </section>
-        ) : null}
-
-        {needsGroup ? (
-          <section className="space-y-3">
-            <h3 className="text-sm font-black uppercase tracking-wide text-ink">그룹 설정</h3>
-            {fixedGroupConfig ? (
-              <div className="rounded-md border border-line bg-field px-3 py-2 text-xs font-semibold leading-5 text-muted">
-                {fixedGroupConfig.label}은 조별 {fixedGroupConfig.teamsPerGroup}팀 고정, 조별 {fixedGroupConfig.advancePerGroup}팀
-                진출입니다. 현재 선택 기준 {fixedGroupCount}개 조가 생성되며, 모든 조가 정확히 {fixedGroupConfig.teamsPerGroup}팀이어야 생성할 수 있습니다.
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <NumberField label="조 개수" value={groupCount} onChange={setGroupCount} min={1} max={groupCountMax} />
-                  <NumberField
-                    label="조별 진출팀"
-                    value={groupAdvanceCount}
-                    onChange={setGroupAdvanceCount}
-                    min={1}
-                    max={maxGroupAdvanceCount}
-                  />
-                </div>
-                <p className="text-xs font-semibold leading-5 text-muted">
-                  현재 참가팀 기준 조는 최대 {groupCountMax}개, 조별 진출은 최대 {maxGroupAdvanceCount}팀까지 가능합니다.
-                </p>
-              </>
-            )}
-          </section>
-        ) : null}
-
-        {needsBattleRoyale ? (
-          <section className="space-y-3">
-            <h3 className="text-sm font-black uppercase tracking-wide text-ink">배틀로얄 설정</h3>
-            <div className="rounded-md border border-line bg-field px-3 py-2 text-xs font-semibold leading-5 text-muted">
-              예선은 24팀 고정, A/B/C 3개 조, 조당 8팀으로 진행합니다. A조 vs B조, A조 vs C조, B조 vs C조 로비가 같은 횟수로 생성되고 통합 순위 1-16위가 배틀로얄 본선에 진출합니다. 본선은 16팀 단일 로비입니다.
-            </div>
-            <label className="block space-y-1.5">
-              <span className="text-sm font-bold text-ink">경기 수</span>
-              <select
-                className="input"
-                value={normalizeBattleRoyaleMatchCount(battleRoundCount)}
-                onChange={(event) => setBattleRoundCount(normalizeBattleRoyaleMatchCount(Number(event.target.value)))}
-              >
-                <option value={5}>5경기</option>
-                <option value={6}>6경기</option>
-              </select>
-            </label>
-          </section>
-        ) : null}
-
-      </div>
-    </div>
-  );
-}
-
-function TeamPicker({
-  teams,
-  folders,
-  selectedTeamIds,
-  setSelectedTeamIds,
-  selectedCount,
-  bracketSize,
-  byeCount,
-  showGroupSelect,
-  groupCount,
-  teamGroupAssignments,
-  onGroupChange,
-  onSeedChange,
-  onRandomizeSeed,
-  onSeedDistributeGroups,
-  onRandomizeGroups
-}: {
-  teams: Team[];
-  folders: TeamFolder[];
-  selectedTeamIds: string[];
-  setSelectedTeamIds: React.Dispatch<React.SetStateAction<string[]>>;
-  selectedCount: number;
-  bracketSize: number;
-  byeCount: number;
-  showGroupSelect: boolean;
-  groupCount: number;
-  teamGroupAssignments: Record<string, number>;
-  onGroupChange: (teamId: string, groupIndex: number) => void;
-  onSeedChange: (teamId: string, seed: number) => void;
-  onRandomizeSeed: () => void;
-  onSeedDistributeGroups: () => void;
-  onRandomizeGroups: () => void;
-}) {
-  const [openFolderIds, setOpenFolderIds] = useState<Set<string>>(() => new Set(["folder-default"]));
-  const [draggedGroupTeamId, setDraggedGroupTeamId] = useState<string | null>(null);
-  const teamsById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
-  const folderTree = useMemo(() => buildFolderPickerTree(folders, teams), [folders, teams]);
-  const selectedTeams = useMemo(
-    () => selectedTeamIds.map((teamId) => teamsById.get(teamId)).filter(Boolean) as Team[],
-    [selectedTeamIds, teamsById]
-  );
-
-  function toggleFolder(folderId: string) {
-    setOpenFolderIds((current) => {
-      const next = new Set(current);
-      if (next.has(folderId)) next.delete(folderId);
-      else next.add(folderId);
-      return next;
-    });
-  }
-
-  function setFolderTeams(folderTeamIds: string[], checked: boolean) {
-    setSelectedTeamIds((current) => {
-      const next = new Set(current);
-      for (const teamId of folderTeamIds) {
-        if (checked) next.add(teamId);
-        else next.delete(teamId);
-      }
-      return teams.filter((team) => next.has(team.id)).map((team) => team.id);
-    });
-  }
-
-  function toggleFolderTeams(folderTeamIds: string[]) {
-    const selectedInFolder = folderTeamIds.filter((teamId) => selectedTeamIds.includes(teamId)).length;
-    setFolderTeams(folderTeamIds, selectedInFolder !== folderTeamIds.length);
-  }
-
-  return (
-    <div className="arena-card p-4">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-md border border-cyan bg-cyan/10 text-cyan">
-            <Users className="h-5 w-5" aria-hidden="true" />
-          </div>
-          <div>
-            <h2 className="font-black uppercase tracking-wide text-ink">참가팀 선택</h2>
-            <p className="text-sm text-muted">
-              {selectedCount}/{teams.length}팀 참가 · 기준 브래킷 {bracketSize}강 · 부전승 {byeCount}
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button type="button" className="button-muted px-3 py-1 text-sm" onClick={() => setSelectedTeamIds(teams.map((team) => team.id))}>
-            전체
-          </button>
-          <button type="button" className="button-muted px-3 py-1 text-sm" onClick={() => setSelectedTeamIds([])}>
-            해제
-          </button>
-          <button type="button" className="button-muted px-3 py-1 text-sm" onClick={onRandomizeSeed} disabled={!selectedTeamIds.length}>
-            <Shuffle className="h-3.5 w-3.5" />
-            시드 랜덤
-          </button>
-          {showGroupSelect ? (
-            <>
-              <button type="button" className="button-muted px-3 py-1 text-sm" onClick={onSeedDistributeGroups} disabled={!selectedTeamIds.length}>
-                시드 배분
-              </button>
-              <button type="button" className="button-muted px-3 py-1 text-sm" onClick={onRandomizeGroups} disabled={!selectedTeamIds.length}>
-                <Shuffle className="h-3.5 w-3.5" />
-                그룹 랜덤
-              </button>
-            </>
-          ) : null}
-        </div>
-      </div>
-      {showGroupSelect && selectedTeams.length ? (
-        <GroupAssignmentBoard
-          teams={selectedTeams}
-          groupCount={groupCount}
-          teamGroupAssignments={teamGroupAssignments}
-          draggedTeamId={draggedGroupTeamId}
-          onDragStart={setDraggedGroupTeamId}
-          onDragEnd={() => setDraggedGroupTeamId(null)}
-          onDropTeam={(teamId, groupIndex) => {
-            onGroupChange(teamId, groupIndex);
-            setDraggedGroupTeamId(null);
-          }}
-        />
-      ) : null}
-      <div className="max-h-[560px] space-y-2 overflow-auto pr-1">
-        {folderTree.map((folder) => (
-          <FolderSelectSection
-            key={folder.id}
-            folder={folder}
-            teamsById={teamsById}
-            selectedTeamIds={selectedTeamIds}
-            selectedCount={selectedCount}
-            openFolderIds={openFolderIds}
-            showGroupSelect={showGroupSelect}
-            groupCount={groupCount}
-            teamGroupAssignments={teamGroupAssignments}
-            onToggleFolder={toggleFolder}
-            onToggleFolderTeams={toggleFolderTeams}
-            onGroupChange={onGroupChange}
-            onSeedChange={onSeedChange}
-            onToggleTeam={(teamId) =>
-              setSelectedTeamIds((current) =>
-                current.includes(teamId) ? current.filter((id) => id !== teamId) : [...current, teamId]
-              )
-            }
-          />
-        ))}
-        {!teams.length ? (
-          <div className="rounded-md border border-dashed border-line p-4 text-sm text-muted">
-            팀이 없습니다. 먼저 팀 관리에서 팀을 만들어주세요.
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function GroupAssignmentBoard({
-  teams,
-  groupCount,
-  teamGroupAssignments,
-  draggedTeamId,
-  onDragStart,
-  onDragEnd,
-  onDropTeam
-}: {
-  teams: Team[];
-  groupCount: number;
-  teamGroupAssignments: Record<string, number>;
-  draggedTeamId: string | null;
-  onDragStart: (teamId: string) => void;
-  onDragEnd: () => void;
-  onDropTeam: (teamId: string, groupIndex: number) => void;
-}) {
-  const safeGroupCount = Math.max(1, groupCount);
-  const groups = Array.from({ length: safeGroupCount }, (_, groupIndex) => ({
-    groupIndex,
-    name: `${String.fromCharCode(65 + groupIndex)}그룹`,
-    teams: teams.filter((team, index) => (teamGroupAssignments[team.id] ?? index % safeGroupCount) === groupIndex)
-  }));
-
-  return (
-    <div className="mb-4 rounded-md border border-line bg-field/60 p-3">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs font-black uppercase tracking-[0.2em] text-cyan">조 편성</span>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6">
-        {groups.map((group) => (
-          <div
-            key={group.groupIndex}
-            className={`min-h-28 rounded-md border border-dashed p-2 transition ${
-              draggedTeamId ? "border-cyan bg-cyan/10" : "border-line bg-panel/70"
-            }`}
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={(event) => {
-              event.preventDefault();
-              const teamId = event.dataTransfer.getData("text/team-id") || draggedTeamId;
-              if (teamId) onDropTeam(teamId, group.groupIndex);
-            }}
-          >
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs font-black uppercase tracking-wide text-ink">{group.name}</span>
-              <span className="text-xs font-semibold text-muted">{group.teams.length}팀</span>
-            </div>
-            <div className="flex min-h-14 flex-wrap content-start gap-2">
-              {group.teams.map((team, groupSeedIndex) => {
-                const groupSeed = groupSeedIndex + 1;
-                return (
-                <div
-                  key={team.id}
-                  draggable
-                  onDragStart={(event) => {
-                    event.dataTransfer.setData("text/team-id", team.id);
-                    onDragStart(team.id);
-                  }}
-                  onDragEnd={onDragEnd}
-                  className="relative grid h-12 w-12 cursor-grab place-items-center rounded-md border border-line bg-arena p-1 shadow-sm transition hover:border-cyan hover:bg-cyan/10 active:cursor-grabbing"
-                  title={`${group.name} #${groupSeed} · ${team.shortName || team.name}`}
-                  aria-label={`${group.name} ${groupSeed}번 시드 ${team.shortName || team.name} 배정`}
-                >
-                  <span className="absolute right-0.5 top-0.5 rounded bg-cyan px-1 text-[9px] font-black leading-3 text-black shadow-sm">
-                    #{groupSeed}
-                  </span>
-                  <TeamLogo team={team} size="sm" />
-                </div>
-                );
-              })}
-              {!group.teams.length ? (
-                <div className="grid h-12 min-w-24 place-items-center rounded border border-dashed border-line px-2 text-center text-xs font-semibold text-muted">
-                  여기에 드롭
-                </div>
-              ) : null}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-type FolderPickerNode = {
-  id: string;
-  name: string;
-  teamIds: string[];
-  children: FolderPickerNode[];
-};
-
-function buildFolderPickerTree(folders: TeamFolder[], teams: Team[]): FolderPickerNode[] {
-  const defaultFolderId = "folder-default";
-  const teamsById = new Set(teams.map((team) => team.id));
-  const folderMap = new Map(
-    (Array.isArray(folders) ? folders : []).map((folder) => [
-      folder.id,
-      {
-        ...folder,
-        teamIds: (folder.teamIds ?? []).filter((teamId) => teamsById.has(teamId)),
-        itemIds: folder.itemIds ?? []
-      }
-    ])
-  );
-  const root = folderMap.get(defaultFolderId) ?? {
-    id: defaultFolderId,
-    name: "\uBC14\uD0D5\uD654\uBA74",
-    teamIds: teams.map((team) => team.id),
-    itemIds: teams.map((team) => `team:${team.id}`)
-  };
-
-  function build(folderId: string): FolderPickerNode {
-    const folder = folderMap.get(folderId) ?? root;
-    const children = (folder.itemIds ?? [])
-      .filter((itemId) => itemId.startsWith("folder:"))
-      .map((itemId) => itemId.slice("folder:".length))
-      .filter((childId) => folderMap.has(childId))
-      .map(build);
-    const orderedTeamIds = (folder.itemIds ?? [])
-      .filter((itemId) => itemId.startsWith("team:"))
-      .map((itemId) => itemId.slice("team:".length))
-      .filter((teamId) => folder.teamIds.includes(teamId) && teamsById.has(teamId));
-    for (const teamId of folder.teamIds) {
-      if (!orderedTeamIds.includes(teamId)) orderedTeamIds.push(teamId);
-    }
-    return { id: folder.id, name: folder.name, teamIds: orderedTeamIds, children };
-  }
-
-  return [build(root.id)];
-}
-
-function getNestedTeamIds(folder: FolderPickerNode): string[] {
-  return [...folder.teamIds, ...folder.children.flatMap(getNestedTeamIds)];
-}
-
-function FolderSelectSection({
-  folder,
-  teamsById,
-  selectedTeamIds,
-  selectedCount,
-  openFolderIds,
-  showGroupSelect,
-  groupCount,
-  teamGroupAssignments,
-  onToggleFolder,
-  onToggleFolderTeams,
-  onGroupChange,
-  onSeedChange,
-  onToggleTeam,
-  depth = 0
-}: {
-  folder: FolderPickerNode;
-  teamsById: Map<string, Team>;
-  selectedTeamIds: string[];
-  selectedCount: number;
-  openFolderIds: Set<string>;
-  showGroupSelect: boolean;
-  groupCount: number;
-  teamGroupAssignments: Record<string, number>;
-  onToggleFolder: (folderId: string) => void;
-  onToggleFolderTeams: (teamIds: string[]) => void;
-  onGroupChange: (teamId: string, groupIndex: number) => void;
-  onSeedChange: (teamId: string, seed: number) => void;
-  onToggleTeam: (teamId: string) => void;
-  depth?: number;
-}) {
-  const isOpen = openFolderIds.has(folder.id);
-  const nestedTeamIds = getNestedTeamIds(folder);
-  const selectedInFolder = nestedTeamIds.filter((teamId) => selectedTeamIds.includes(teamId)).length;
-  const hasContents = nestedTeamIds.length > 0 || folder.children.length > 0;
-  const isFullySelected = nestedTeamIds.length > 0 && selectedInFolder === nestedTeamIds.length;
-
-  return (
-    <div className="rounded-md border border-line bg-panel/70">
-      <div className="flex items-center gap-2 px-3 py-2" style={{ paddingLeft: `${12 + depth * 16}px` }}>
-        <button type="button" className="grid h-7 w-7 place-items-center rounded border border-line bg-field text-muted" onClick={() => onToggleFolder(folder.id)}>
-          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-        <Folder className="h-4 w-4 text-cyan" />
-        <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onToggleFolder(folder.id)}>
-          <span className="block truncate text-sm font-black uppercase text-ink">{folder.name}</span>
-          <span className="block text-xs font-semibold text-muted">
-            {selectedInFolder}/{nestedTeamIds.length}팀 선택
-          </span>
-        </button>
-        {nestedTeamIds.length ? (
-          <button
-            type="button"
-            className={`shrink-0 rounded border px-3 py-1 text-xs font-black uppercase transition ${
-              isFullySelected
-                ? "border-cyan bg-cyan text-arena"
-                : "border-line bg-field text-muted hover:border-cyan hover:text-cyan"
-            }`}
-            onClick={() => onToggleFolderTeams(nestedTeamIds)}
-            title={isFullySelected ? "폴더 전체 선택 해제" : "폴더 전체 선택"}
-            aria-label={`${folder.name} ${isFullySelected ? "전체 선택 해제" : "전체 선택"}`}
-          >
-            {isFullySelected ? "선택됨" : "전체선택"}
-          </button>
-        ) : null}
-      </div>
-      {isOpen ? (
-        <div className="space-y-2 border-t border-line p-2">
-          {folder.children.map((child) => (
-            <FolderSelectSection
-              key={child.id}
-              folder={child}
-              teamsById={teamsById}
-              selectedTeamIds={selectedTeamIds}
-              selectedCount={selectedCount}
-              openFolderIds={openFolderIds}
-              showGroupSelect={showGroupSelect}
-              groupCount={groupCount}
-              teamGroupAssignments={teamGroupAssignments}
-              onToggleFolder={onToggleFolder}
-              onToggleFolderTeams={onToggleFolderTeams}
-              onGroupChange={onGroupChange}
-              onSeedChange={onSeedChange}
-              onToggleTeam={onToggleTeam}
-              depth={depth + 1}
-            />
-          ))}
-          <div className="grid gap-2 md:grid-cols-2">
-            {folder.teamIds.map((teamId) => {
-              const team = teamsById.get(teamId);
-              if (!team) return null;
-              const groupLocalSeed =
-                showGroupSelect && selectedTeamIds.includes(team.id)
-                  ? getGroupLocalSeed(team.id, selectedTeamIds, teamGroupAssignments, groupCount)
-                  : undefined;
-              return (
-                <TeamSelectRow
-                  key={team.id}
-                  team={team}
-                  checked={selectedTeamIds.includes(team.id)}
-                  seed={selectedTeamIds.indexOf(team.id) + 1}
-                  selectedCount={selectedCount}
-                  showGroupSelect={showGroupSelect}
-                  groupCount={groupCount}
-                  groupIndex={teamGroupAssignments[team.id] ?? 0}
-                  groupSeedLabel={
-                    groupLocalSeed
-                      ? `${String.fromCharCode(65 + groupLocalSeed.groupIndex)}#${groupLocalSeed.seed}`
-                      : undefined
-                  }
-                  onGroupChange={(groupIndex) => onGroupChange(team.id, groupIndex)}
-                  onSeedChange={(seed) => onSeedChange(team.id, seed)}
-                  onToggle={() => onToggleTeam(team.id)}
-                />
-              );
-            })}
-          </div>
-          {!hasContents ? <div className="rounded-md border border-dashed border-line p-3 text-sm text-muted">비어 있는 폴더입니다.</div> : null}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function NumberField({
-  label,
-  value,
-  onChange,
-  min,
-  max
-}: {
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-  min: number;
-  max?: number;
-}) {
-  function handleChange(nextValue: number) {
-    if (!Number.isFinite(nextValue)) {
-      onChange(min);
-      return;
-    }
-    onChange(Math.max(min, Math.min(max ?? nextValue, Math.floor(nextValue))));
-  }
-
-  return (
-    <label className="space-y-1.5">
-      <span className="text-sm font-bold text-ink">{label}</span>
-      <input
-        className="input"
-        type="number"
-        min={min}
-        max={max}
-        value={value}
-        onChange={(event) => handleChange(Number(event.target.value))}
-      />
-    </label>
-  );
-}
-
-function StageSelect({
-  label,
-  value,
-  options,
-  disabledOptions = [],
-  getDisabledReason,
-  onChange
-}: {
-  label: string;
-  value: StageFormat;
-  options: StageFormat[];
-  disabledOptions?: StageFormat[];
-  getDisabledReason?: (value: StageFormat) => string | undefined;
-  onChange: (value: StageFormat) => void;
-}) {
-  const selected = STAGE_LABELS[value];
-  const selectedDisabledReason = getDisabledReason?.(value) ?? (disabledOptions.includes(value) ? "비활성" : undefined);
-
-  return (
-    <label className="space-y-1.5">
-      <span className="text-sm font-bold text-ink">{label}</span>
-      <select className="input" value={value} onChange={(event) => onChange(event.target.value as StageFormat)}>
-        {options.map((option) => {
-          const disabledReason =
-            getDisabledReason?.(option) ?? (disabledOptions.includes(option) ? "비활성" : undefined);
-
-          return (
-            <option key={option} value={option} disabled={Boolean(disabledReason)}>
-              {getStageDisplayLabel(option)}
-              {disabledReason ? ` (${disabledReason})` : ""}
-            </option>
-          );
-        })}
-      </select>
-      <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-muted">
-        <span className="rounded border border-cyan/30 bg-cyan/10 px-2 py-0.5 text-cyan">{getStageLimitLabel(value)}</span>
-        <span className="rounded border border-line bg-field px-2 py-0.5">{getStageRecommendationLabel(value)}</span>
-        {selectedDisabledReason ? (
-          <span className="rounded border border-danger/40 bg-danger/10 px-2 py-0.5 text-danger">
-            {selectedDisabledReason}
-          </span>
-        ) : (
-          <span>{selected.hint}</span>
-        )}
-      </div>
-    </label>
-  );
-}
-
-function TeamSelectRow({
-  team,
-  checked,
-  seed,
-  selectedCount,
-  showGroupSelect,
-  groupCount,
-  groupIndex,
-  groupSeedLabel,
-  onGroupChange,
-  onSeedChange,
-  onToggle
-}: {
-  team: Team;
-  checked: boolean;
-  seed: number;
-  selectedCount: number;
-  showGroupSelect: boolean;
-  groupCount: number;
-  groupIndex: number;
-  groupSeedLabel?: string;
-  onGroupChange: (groupIndex: number) => void;
-  onSeedChange: (seed: number) => void;
-  onToggle: () => void;
-}) {
-  return (
-    <label className={`flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2 ${checked ? "border-cyan bg-cyan/10" : "border-line bg-field"}`}>
-      <input type="checkbox" checked={checked} onChange={onToggle} />
-      <TeamLogo team={team} size="sm" />
-      <div className="min-w-0">
-        <div className="truncate text-sm font-black uppercase text-ink">{team.shortName || team.name}</div>
-        <div className="truncate text-xs font-semibold text-muted">{team.name}</div>
-      </div>
-      {checked ? (
-        <div className="ml-auto flex shrink-0 gap-1.5">
-          {groupSeedLabel ? (
-            <span className="grid h-8 place-items-center rounded-md border border-cyan/40 bg-cyan/10 px-2 text-xs font-black text-cyan">
-              {groupSeedLabel}
-            </span>
-          ) : null}
-          {showGroupSelect ? (
-            <select
-              className="h-8 rounded-md border border-line bg-panel px-2 text-xs font-black text-ink"
-              value={Math.max(0, Math.min(groupCount - 1, groupIndex))}
-              onChange={(event) => onGroupChange(Number(event.target.value))}
-              onClick={(event) => event.stopPropagation()}
-              title="조 선택"
-            >
-              {Array.from({ length: groupCount }, (_, index) => (
-                <option key={index} value={index}>
-                  {String.fromCharCode(65 + index)}그룹
-                </option>
-              ))}
-            </select>
-          ) : null}
-          <select
-            className="h-8 rounded-md border border-line bg-panel px-2 text-xs font-black text-ink"
-            value={seed}
-            onChange={(event) => onSeedChange(Number(event.target.value))}
-            onClick={(event) => event.stopPropagation()}
-          >
-            {Array.from({ length: selectedCount }, (_, index) => (
-              <option key={index + 1} value={index + 1}>
-                {index + 1}번 시드
-              </option>
-            ))}
-          </select>
-        </div>
-      ) : null}
-    </label>
   );
 }
 

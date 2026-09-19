@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import type { StepladderBracket, Team } from "@/lib/core/models";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { BracketStageMatch, StepladderBracket, Team } from "@/lib/core/models";
 import { createRandomHeadToHeadScore } from "@/lib/core/randomResults";
 import { BracketZoomControls } from "@/components/bracket/BracketZoomControls";
 import { RandomRoundButton } from "@/components/bracket/RandomRoundButton";
@@ -24,10 +24,13 @@ export function StepladderView({
   onSaveResult,
   onClearResult
 }: StepladderViewProps) {
+  const boardRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
+  const [connectorPaths, setConnectorPaths] = useState<string[]>([]);
   const teamsById = new Map(teams.map((team) => [team.id, team]));
   const champion = bracket.championId ? teamsById.get(bracket.championId) : undefined;
   const placements = getStepladderPlacements(bracket, teamsById);
+  const displayedMatches = useMemo(() => bracket.matches, [bracket.matches]);
   const currentMatch = bracket.matches.find(
     (match) =>
       match.status !== "complete" &&
@@ -45,12 +48,46 @@ export function StepladderView({
     });
   };
 
+  useEffect(() => {
+    let frameId = 0;
+
+    const updateConnectorPaths = () => {
+      const root = boardRef.current;
+      const nextPaths = root ? buildStepladderConnectionPaths(root, displayedMatches) : [];
+      setConnectorPaths((currentPaths) =>
+        currentPaths.join("|") === nextPaths.join("|") ? currentPaths : nextPaths
+      );
+    };
+
+    const scheduleUpdate = () => {
+      if (frameId) window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(updateConnectorPaths);
+    };
+
+    scheduleUpdate();
+    const timeoutId = window.setTimeout(scheduleUpdate, 100);
+    window.addEventListener("resize", scheduleUpdate);
+
+    const observer =
+      boardRef.current && "ResizeObserver" in window
+        ? new ResizeObserver(scheduleUpdate)
+        : undefined;
+    if (boardRef.current) observer?.observe(boardRef.current);
+
+    return () => {
+      if (frameId) window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
+      window.removeEventListener("resize", scheduleUpdate);
+      observer?.disconnect();
+    };
+  }, [displayedMatches, zoom]);
+
   return (
     <section className="bracket-board">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line bg-arena/85 px-5 py-4">
         <div>
           <p className="section-kicker">스텝래더</p>
-          <h2 className="mt-1 text-3xl font-black uppercase tracking-wide text-ink">
+          <h2 className="mt-1 text-2xl font-black uppercase tracking-wide text-ink sm:text-3xl">
             낮은 시드부터 최상위 시드까지
           </h2>
           <p className="mt-1 text-sm text-muted">
@@ -85,15 +122,16 @@ export function StepladderView({
             width: `${100 / zoom}%`
           }}
         >
-          <div className="flex min-w-max items-start gap-10">
+          <div ref={boardRef} className="relative isolate flex min-w-max items-start gap-16 pb-16 pr-16 pt-2">
+            <StepladderConnectorOverlay paths={connectorPaths} />
             {bracket.matches.map((match, index) => {
               const toneClassName = stepRoundTone(index, bracket.matches.length);
 
               return (
                 <div
                   key={match.id}
-                  className="relative w-[280px] shrink-0"
-                  style={{ paddingTop: `${index * 56}px` }}
+                  className="relative z-10 w-80 shrink-0"
+                  style={{ paddingTop: `${index * 74}px` }}
                 >
                   <div className={`bracket-round-label ${toneClassName}`}>
                     {index === bracket.matches.length - 1 ? "최종 보스" : `${index + 1}단계`}
@@ -116,6 +154,74 @@ export function StepladderView({
         </div>
       </div>
     </section>
+  );
+}
+
+function StepladderConnectorOverlay({ paths }: { paths: string[] }) {
+  if (!paths.length) return null;
+
+  return (
+    <svg className="pointer-events-none absolute inset-0 z-[1] h-full w-full overflow-visible" aria-hidden="true">
+      <defs>
+        <linearGradient id="stepladder-connector-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="hsl(var(--cyan))" stopOpacity="0.18" />
+          <stop offset="55%" stopColor="hsl(var(--lime))" stopOpacity="0.72" />
+          <stop offset="100%" stopColor="hsl(var(--gold))" stopOpacity="0.88" />
+        </linearGradient>
+      </defs>
+      {paths.map((path, index) => (
+        <path
+          key={`${path}-${index}`}
+          d={path}
+          fill="none"
+          stroke="url(#stepladder-connector-gradient)"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+          className="drop-shadow-[0_0_6px_rgba(130,255,49,0.34)]"
+        />
+      ))}
+    </svg>
+  );
+}
+
+function buildStepladderConnectionPaths(root: HTMLElement, matches: BracketStageMatch[]) {
+  return matches
+    .filter((match) => match.nextMatchId)
+    .map((match) => {
+      const from = getMatchCardElement(root, match.id);
+      const to = match.nextMatchId ? getMatchCardElement(root, match.nextMatchId) : undefined;
+      if (!from || !to) return undefined;
+
+      const fromPoint = getElementPoint(root, from, "right");
+      const toPoint = getElementPoint(root, to, "left");
+      const bendX = fromPoint.x + Math.max(34, (toPoint.x - fromPoint.x) * 0.46);
+
+      return [
+        `M ${fromPoint.x} ${fromPoint.y}`,
+        `L ${bendX} ${fromPoint.y}`,
+        `L ${bendX} ${toPoint.y}`,
+        `L ${toPoint.x} ${toPoint.y}`
+      ].join(" ");
+    })
+    .filter(Boolean) as string[];
+}
+
+function getElementPoint(root: HTMLElement, element: HTMLElement, side: "left" | "right") {
+  const rootRect = root.getBoundingClientRect();
+  const rect = element.getBoundingClientRect();
+  const x = side === "right" ? rect.right - rootRect.left : rect.left - rootRect.left;
+
+  return {
+    x,
+    y: rect.top - rootRect.top + rect.height / 2
+  };
+}
+
+function getMatchCardElement(root: HTMLElement, matchId: string) {
+  return Array.from(root.querySelectorAll<HTMLElement>("[data-match-card='true']")).find(
+    (element) => element.dataset.matchId === matchId
   );
 }
 
