@@ -7,7 +7,7 @@ import clsx from "clsx";
 import type { Match, MatchParticipant, Team } from "@/lib/core/models";
 import { createRandomHeadToHeadScore } from "@/lib/core/randomResults";
 import { TeamLogo } from "@/components/teams/TeamLogo";
-import { useUiStore, type TeamDisplaySize } from "@/store/uiStore";
+import { useUiStore, type BracketTeamLayout, type TeamDisplaySize } from "@/store/uiStore";
 import {
   getTeamBracketAccentColor,
   getTeamReadableScoreTextColor,
@@ -51,6 +51,7 @@ export function MatchCard({
   const isLockedBye = match.status === "bye";
   const isLocked = locked || isLockedBye;
   const hasBothTeams = Boolean(teamA?.id && teamB?.id);
+  const bracketTeamLayout = useUiStore((state) => state.bracketTeamLayout);
   const teamDisplaySize = useUiStore((state) => state.teamDisplaySize);
   const size = bracketTeamSizeClass[teamDisplaySize];
 
@@ -113,7 +114,7 @@ export function MatchCard({
       data-match-id={match.id}
       className={clsx(
         "relative shrink-0 border border-line bg-panel shadow-panel",
-        size.card,
+        bracketTeamLayout === "logo" ? size.logoCard : size.card,
         active && !isLocked && "ring-2 ring-cyan shadow-[0_0_26px_rgba(47,230,255,0.26)]",
         match.winnerId && "border-lime",
         locked && "opacity-60"
@@ -152,6 +153,7 @@ export function MatchCard({
           isLoser={Boolean(match.winnerId && teamA?.id && match.winnerId !== teamA.id)}
           disabled={isLocked}
           onInput={scheduleAutoApply}
+          layout={bracketTeamLayout}
           size={size}
         />
         <BracketTeamRow
@@ -165,6 +167,7 @@ export function MatchCard({
           isLoser={Boolean(match.winnerId && teamB?.id && match.winnerId !== teamB.id)}
           disabled={isLocked}
           onInput={scheduleAutoApply}
+          layout={bracketTeamLayout}
           size={size}
         />
       </div>
@@ -174,9 +177,13 @@ export function MatchCard({
 
 type BracketTeamSizeClass = {
   card: string;
+  logoCard: string;
   row: string;
+  logoRow: string;
   teamCell: string;
+  logoTile: string;
   logo: "xs" | "sm" | "md" | "lg" | "xl";
+  logoOnlyLogo: "xs" | "sm" | "md" | "lg" | "xl";
   primaryText: string;
   secondaryText: string;
   scoreText: string;
@@ -185,45 +192,65 @@ type BracketTeamSizeClass = {
 const bracketTeamSizeClass: Record<TeamDisplaySize, BracketTeamSizeClass> = {
   1: {
     card: "w-56",
+    logoCard: "w-28",
     row: "h-9 grid-cols-[1fr_44px]",
+    logoRow: "h-12 grid-cols-[48px_44px]",
     teamCell: "gap-1.5 px-1.5",
+    logoTile: "h-12 w-12",
     logo: "xs",
+    logoOnlyLogo: "sm",
     primaryText: "text-[10px]",
     secondaryText: "text-[9px]",
     scoreText: "text-sm"
   },
   2: {
     card: "w-60",
+    logoCard: "w-32",
     row: "h-10 grid-cols-[1fr_48px]",
+    logoRow: "h-14 grid-cols-[56px_48px]",
     teamCell: "gap-2 px-2",
+    logoTile: "h-14 w-14",
     logo: "sm",
+    logoOnlyLogo: "md",
     primaryText: "text-[11px]",
     secondaryText: "text-[10px]",
     scoreText: "text-sm"
   },
   3: {
     card: "w-64",
+    logoCard: "w-36",
     row: "h-11 grid-cols-[1fr_52px]",
+    logoRow: "h-16 grid-cols-[64px_52px]",
     teamCell: "gap-2 px-2",
+    logoTile: "h-16 w-16",
     logo: "sm",
+    logoOnlyLogo: "md",
     primaryText: "text-xs",
     secondaryText: "text-[10px]",
     scoreText: "text-base"
   },
   4: {
     card: "w-72",
+    logoCard: "w-40",
     row: "h-12 grid-cols-[1fr_56px]",
+    logoRow: "h-20 grid-cols-[80px_56px]",
     teamCell: "gap-2.5 px-2.5",
+    logoTile: "h-20 w-20",
     logo: "md",
+    logoOnlyLogo: "lg",
     primaryText: "text-sm",
     secondaryText: "text-xs",
     scoreText: "text-lg"
   },
   5: {
     card: "w-80",
+    logoCard: "w-44",
     row: "h-14 grid-cols-[1fr_60px]",
+    logoRow: "h-24 grid-cols-[96px_60px]",
     teamCell: "gap-3 px-3",
+    logoTile: "h-24 w-24",
     logo: "md",
+    logoOnlyLogo: "xl",
     primaryText: "text-base",
     secondaryText: "text-sm",
     scoreText: "text-xl"
@@ -241,6 +268,7 @@ function BracketTeamRow({
   isLoser,
   disabled,
   onInput,
+  layout,
   size
 }: {
   participant?: MatchParticipant;
@@ -253,6 +281,7 @@ function BracketTeamRow({
   isLoser?: boolean;
   disabled?: boolean;
   onInput: () => void;
+  layout: BracketTeamLayout;
   size: BracketTeamSizeClass;
 }) {
   const isBye = participant?.isBye;
@@ -262,6 +291,7 @@ function BracketTeamRow({
   const rowStyle = getTeamWinnerRowStyle(team, isWinner);
   const scoreStyle = isWinner && team ? getWinnerScoreStyle(team) : undefined;
   const textStyle = getTeamTextStyle(team, isWinner);
+  const logoOnly = layout === "logo";
 
   return (
     <div
@@ -271,7 +301,7 @@ function BracketTeamRow({
       data-team-id={team?.id}
       className={clsx(
         "grid items-stretch overflow-hidden border border-line bg-field text-ink transition",
-        size.row,
+        logoOnly ? size.logoRow : size.row,
         isWinner && "shadow-[0_0_24px_rgba(47,230,255,0.14)]",
         isLoser && "opacity-55 saturate-75",
         isBye && "border-dashed opacity-70",
@@ -279,32 +309,44 @@ function BracketTeamRow({
       )}
       style={rowStyle}
     >
-      <div
-        className={clsx(
-          "flex min-w-0 items-center transition",
-          size.teamCell,
-          isWinner && "shadow-[0_0_18px_rgba(47,230,255,0.18)]",
-          isPlaceholder && "bg-cyan/5"
-        )}
-        style={teamStyle}
-      >
-        {isPlaceholder ? (
-          <TbdMark />
-        ) : (
-          <TeamLogo team={team} size={size.logo} highlighted={isWinner} useVictoryLogo={isWinner} />
-        )}
-        <div className="min-w-0">
-          <div
-            className={clsx("truncate font-black uppercase tracking-wide", size.primaryText, isPlaceholder && "text-cyan")}
-            style={textStyle}
-          >
-            {label}
+      {logoOnly ? (
+        <LogoOnlyTeamTile
+          team={team}
+          label={label}
+          isBye={isBye}
+          isPlaceholder={isPlaceholder}
+          isWinner={isWinner}
+          size={size}
+          style={teamStyle}
+        />
+      ) : (
+        <div
+          className={clsx(
+            "flex min-w-0 items-center transition",
+            size.teamCell,
+            isWinner && "shadow-[0_0_18px_rgba(47,230,255,0.18)]",
+            isPlaceholder && "bg-cyan/5"
+          )}
+          style={teamStyle}
+        >
+          {isPlaceholder ? (
+            <TbdMark />
+          ) : (
+            <TeamLogo team={team} size={size.logo} highlighted={isWinner} useVictoryLogo={isWinner} />
+          )}
+          <div className="min-w-0">
+            <div
+              className={clsx("truncate font-black uppercase tracking-wide", size.primaryText, isPlaceholder && "text-cyan")}
+              style={textStyle}
+            >
+              {label}
+            </div>
+            {team?.shortName ? (
+              <div className={clsx("truncate font-bold", size.secondaryText)} style={textStyle}>{team.name}</div>
+            ) : null}
           </div>
-          {team?.shortName ? (
-            <div className={clsx("truncate font-bold", size.secondaryText)} style={textStyle}>{team.name}</div>
-          ) : null}
         </div>
-      </div>
+      )}
       <input
         ref={inputRef}
         type="text"
@@ -325,6 +367,47 @@ function BracketTeamRow({
         style={scoreStyle}
         aria-label={`${label} score`}
       />
+    </div>
+  );
+}
+
+function LogoOnlyTeamTile({
+  team,
+  label,
+  isBye,
+  isPlaceholder,
+  isWinner,
+  size,
+  style
+}: {
+  team?: Team;
+  label: string;
+  isBye?: boolean;
+  isPlaceholder?: boolean;
+  isWinner?: boolean;
+  size: BracketTeamSizeClass;
+  style?: CSSProperties;
+}) {
+  return (
+    <div
+      className={clsx(
+        "grid place-items-center border-r border-line bg-field transition",
+        size.logoTile,
+        isWinner && "shadow-[0_0_18px_rgba(47,230,255,0.18)]",
+        isPlaceholder && "bg-cyan/5 text-cyan",
+        isBye && "bg-panel/60 text-muted"
+      )}
+      style={style}
+      title={team?.name ?? label}
+      aria-label={team?.name ?? label}
+    >
+      {isPlaceholder ? (
+        <TbdMark />
+      ) : isBye ? (
+        <span className="text-xs font-black uppercase tracking-wide">BYE</span>
+      ) : (
+        <TeamLogo team={team} size={size.logoOnlyLogo} highlighted={isWinner} useVictoryLogo={isWinner} />
+      )}
     </div>
   );
 }
