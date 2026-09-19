@@ -452,6 +452,7 @@ function getLogoOnlyRowStyle(team?: Team, isWinner?: boolean): CSSProperties | u
 
   return {
     borderColor: primary,
+    background: primary,
     boxShadow: `0 0 24px ${mix(primary, 38)}, inset 0 0 0 1px ${mix(primary, 58)}`
   };
 }
