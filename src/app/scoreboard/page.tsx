@@ -7,6 +7,7 @@ import { Eye, MonitorPlay, Move, Plus, Settings2, SlidersHorizontal, Trash2 } fr
 type NameMode = "short" | "full";
 type Direction = "horizontal" | "vertical";
 type ScreenResolution = "fhd" | "qhd" | "uhd" | "custom";
+type ResizeAxis = "width" | "height" | "both";
 type DragGuides = {
   verticalCenter: boolean;
   horizontalCenter: boolean;
@@ -43,6 +44,8 @@ type OverlaySettings = {
   rowHeight: number;
   timerWidth: number;
   timerHeight: number;
+  timerX: number;
+  timerY: number;
   logoSize: number;
   fontSize: number;
   nameMode: NameMode;
@@ -74,6 +77,8 @@ const defaultSettings: OverlaySettings = {
   rowHeight: 48,
   timerWidth: 190,
   timerHeight: 30,
+  timerX: 0,
+  timerY: 0,
   logoSize: 30,
   fontSize: 30,
   nameMode: "short",
@@ -311,13 +316,13 @@ export default function ScoreboardPage() {
 
   const handleBracketResizeStart = (
     teamId: string | null,
-    axis: "width" | "height",
+    axis: ResizeAxis,
     event: ReactPointerEvent<HTMLDivElement>
   ) => {
     if (event.button !== 0) return;
 
     const targetTeam = teamId ? scoreboard.teams.find((team) => team.id === teamId) : null;
-    const startPointer = axis === "width" ? event.clientX : event.clientY;
+    const startPointer = axis === "height" ? event.clientY : event.clientX;
     const startTeamWidth = targetTeam?.teamWidth ?? settings.teamWidth;
     const startRowHeight = targetTeam?.rowHeight ?? settings.rowHeight;
 
@@ -325,10 +330,11 @@ export default function ScoreboardPage() {
     event.stopPropagation();
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
-      const currentPointer = axis === "width" ? moveEvent.clientX : moveEvent.clientY;
+      const currentPointer = axis === "height" ? moveEvent.clientY : moveEvent.clientX;
       const delta = currentPointer - startPointer;
-      const nextTeamWidth = axis === "width" ? Math.round(clamp(startTeamWidth + delta, 80, 620)) : startTeamWidth;
-      const nextRowHeight = axis === "height" ? Math.round(clamp(startRowHeight + delta, 24, 160)) : startRowHeight;
+      const heightDelta = axis === "both" ? moveEvent.clientY - event.clientY : delta;
+      const nextTeamWidth = axis === "width" || axis === "both" ? Math.round(clamp(startTeamWidth + delta, 80, 620)) : startTeamWidth;
+      const nextRowHeight = axis === "height" || axis === "both" ? Math.round(clamp(startRowHeight + heightDelta, 24, 160)) : startRowHeight;
 
       if (!teamId || settings.symmetricSizes) {
         resizeAllTeams(nextTeamWidth, nextRowHeight);
@@ -353,12 +359,12 @@ export default function ScoreboardPage() {
   };
 
   const handleTimerResizeStart = (
-    axis: "width" | "height",
+    axis: ResizeAxis,
     event: ReactPointerEvent<HTMLDivElement>
   ) => {
     if (event.button !== 0) return;
 
-    const startPointer = axis === "width" ? event.clientX : event.clientY;
+    const startPointer = axis === "height" ? event.clientY : event.clientX;
     const startTimerWidth = settings.timerWidth;
     const startTimerHeight = settings.timerHeight;
 
@@ -366,19 +372,80 @@ export default function ScoreboardPage() {
     event.stopPropagation();
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
-      const currentPointer = axis === "width" ? moveEvent.clientX : moveEvent.clientY;
+      const currentPointer = axis === "height" ? moveEvent.clientY : moveEvent.clientX;
       const delta = currentPointer - startPointer;
+      const heightDelta = axis === "both" ? moveEvent.clientY - event.clientY : delta;
 
       setSettings((current) => ({
         ...current,
-        timerWidth: axis === "width" ? Math.round(clamp(startTimerWidth + delta, 70, 520)) : current.timerWidth,
-        timerHeight: axis === "height" ? Math.round(clamp(startTimerHeight + delta, 20, 120)) : current.timerHeight
+        timerWidth: axis === "width" || axis === "both" ? Math.round(clamp(startTimerWidth + delta, 70, 520)) : current.timerWidth,
+        timerHeight: axis === "height" || axis === "both" ? Math.round(clamp(startTimerHeight + heightDelta, 20, 120)) : current.timerHeight
       }));
     };
 
     const handlePointerUp = () => {
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+  };
+
+  const handleTimerDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || !previewRef.current) return;
+
+    const previewRect = previewRef.current.getBoundingClientRect();
+    const timerRect = event.currentTarget.getBoundingClientRect();
+    const grabOffsetX = event.clientX - timerRect.left;
+    const grabOffsetY = event.clientY - timerRect.top;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const maxLeft = Math.max(0, previewRect.width - timerRect.width);
+      const maxTop = Math.max(0, previewRect.height - timerRect.height);
+      const centerLeft = maxLeft / 2;
+      const centerTop = maxTop / 2;
+      let nextLeft = clamp(moveEvent.clientX - previewRect.left - grabOffsetX, 0, maxLeft);
+      let nextTop = clamp(moveEvent.clientY - previewRect.top - grabOffsetY, 0, maxTop);
+      const nextGuides: DragGuides = { ...hiddenDragGuides };
+
+      if (Math.abs(nextLeft - centerLeft) <= snapDistance) {
+        nextLeft = centerLeft;
+        nextGuides.verticalCenter = true;
+      } else if (nextLeft <= snapDistance) {
+        nextLeft = 0;
+        nextGuides.leftEdge = true;
+      } else if (Math.abs(nextLeft - maxLeft) <= snapDistance) {
+        nextLeft = maxLeft;
+        nextGuides.rightEdge = true;
+      }
+
+      if (Math.abs(nextTop - centerTop) <= snapDistance) {
+        nextTop = centerTop;
+        nextGuides.horizontalCenter = true;
+      } else if (nextTop <= snapDistance) {
+        nextTop = 0;
+        nextGuides.topEdge = true;
+      } else if (Math.abs(nextTop - maxTop) <= snapDistance) {
+        nextTop = maxTop;
+        nextGuides.bottomEdge = true;
+      }
+
+      setSettings((current) => ({
+        ...current,
+        timerX: Math.round(nextLeft),
+        timerY: Math.round(nextTop)
+      }));
+      setDragGuides(nextGuides);
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      setDragGuides(hiddenDragGuides);
     };
 
     window.addEventListener("pointermove", handlePointerMove);
@@ -613,6 +680,7 @@ export default function ScoreboardPage() {
                 onTeamPointerDown={handleTeamDragStart}
                 onBracketResizePointerDown={handleBracketResizeStart}
                 onTimerResizePointerDown={handleTimerResizeStart}
+                onTimerPointerDown={handleTimerDragStart}
               />
             </div>
           </div>
@@ -628,14 +696,16 @@ function CustomScoreboardOverlay({
   onPointerDown,
   onTeamPointerDown,
   onBracketResizePointerDown,
-  onTimerResizePointerDown
+  onTimerResizePointerDown,
+  onTimerPointerDown
 }: {
   scoreboard: ScoreboardState;
   settings: OverlaySettings;
   onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onTeamPointerDown: (teamId: string, event: ReactPointerEvent<HTMLDivElement>) => void;
-  onBracketResizePointerDown: (teamId: string | null, axis: "width" | "height", event: ReactPointerEvent<HTMLDivElement>) => void;
-  onTimerResizePointerDown: (axis: "width" | "height", event: ReactPointerEvent<HTMLDivElement>) => void;
+  onBracketResizePointerDown: (teamId: string | null, axis: ResizeAxis, event: ReactPointerEvent<HTMLDivElement>) => void;
+  onTimerResizePointerDown: (axis: ResizeAxis, event: ReactPointerEvent<HTMLDivElement>) => void;
+  onTimerPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const overlayStyle: CSSProperties = {
     left: `${settings.x}%`,
@@ -656,6 +726,7 @@ function CustomScoreboardOverlay({
             settings={settings}
             className="pointer-events-auto absolute left-0 top-0"
             onResizePointerDown={onTimerResizePointerDown}
+            onPointerDown={onTimerPointerDown}
           />
         ) : null}
         {scoreboard.teams.map((team, index) => (
@@ -684,6 +755,7 @@ function CustomScoreboardOverlay({
           timer={scoreboard.timer}
           settings={settings}
           onResizePointerDown={onTimerResizePointerDown}
+          onPointerDown={onTimerPointerDown}
         />
       ) : null}
 
@@ -745,17 +817,25 @@ function TimerBlock({
   timer,
   settings,
   className = "",
-  onResizePointerDown
+  onResizePointerDown,
+  onPointerDown
 }: {
   timer: string;
   settings: OverlaySettings;
   className?: string;
-  onResizePointerDown: (axis: "width" | "height", event: ReactPointerEvent<HTMLDivElement>) => void;
+  onResizePointerDown: (axis: ResizeAxis, event: ReactPointerEvent<HTMLDivElement>) => void;
+  onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   return (
     <div
-      className={`group relative bg-white text-slate-950 ${className}`}
-      style={{ width: settings.timerWidth, height: settings.timerHeight }}
+      className={`group relative cursor-move touch-none select-none bg-white text-slate-950 ${className}`}
+      onPointerDown={onPointerDown}
+      style={{
+        width: settings.timerWidth,
+        height: settings.timerHeight,
+        transform: `translate(${settings.timerX}px, ${settings.timerY}px)`
+      }}
+      title="타이머 드래그"
     >
       <div
         className="grid h-full place-items-center px-2 text-center font-black tabular-nums leading-none"
@@ -771,7 +851,7 @@ function TimerBlock({
 function ResizeHandles({
   onResizePointerDown
 }: {
-  onResizePointerDown: (axis: "width" | "height", event: ReactPointerEvent<HTMLDivElement>) => void;
+  onResizePointerDown: (axis: ResizeAxis, event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   return (
     <>
@@ -784,6 +864,11 @@ function ResizeHandles({
         className="absolute bottom-[-5px] left-1 right-1 z-20 h-2 cursor-ns-resize rounded-full bg-cyan/35 opacity-0 transition hover:bg-cyan/80 group-hover:opacity-100"
         onPointerDown={(event) => onResizePointerDown("height", event)}
         title="높이 조절"
+      />
+      <div
+        className="absolute bottom-[-6px] right-[-6px] z-30 h-3 w-3 cursor-nwse-resize rounded-sm border border-cyan/60 bg-cyan/45 opacity-0 shadow-[0_0_12px_rgba(47,230,255,0.6)] transition hover:bg-cyan group-hover:opacity-100"
+        onPointerDown={(event) => onResizePointerDown("both", event)}
+        title="넓이와 높이 동시 조절"
       />
     </>
   );
@@ -816,7 +901,7 @@ function SplitTeamBracket({
   index: number;
   settings: OverlaySettings;
   onPointerDown: (teamId: string, event: ReactPointerEvent<HTMLDivElement>) => void;
-  onResizePointerDown: (teamId: string | null, axis: "width" | "height", event: ReactPointerEvent<HTMLDivElement>) => void;
+  onResizePointerDown: (teamId: string | null, axis: ResizeAxis, event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const side = index % 2 === 0 ? "left" : "right";
   const scoreFirst = settings.direction === "horizontal" && settings.symmetricBrackets && side === "left";
