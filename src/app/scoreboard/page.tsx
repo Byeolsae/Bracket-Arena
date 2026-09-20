@@ -1,7 +1,7 @@
 "use client";
 
-import type { CSSProperties } from "react";
-import { useState } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import { useRef, useState } from "react";
 import { Eye, MonitorPlay, Move, Settings2, SlidersHorizontal } from "lucide-react";
 
 type NameMode = "short" | "full";
@@ -77,6 +77,7 @@ const resolutionOptions: Record<ScreenResolution, { label: string; width: number
 export default function ScoreboardPage() {
   const [scoreboard, setScoreboard] = useState<ScoreboardState>(defaultScoreboard);
   const [settings, setSettings] = useState<OverlaySettings>(defaultSettings);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   const updateScoreboard = <Key extends keyof ScoreboardState>(key: Key, value: ScoreboardState[Key]) => {
     setScoreboard((current) => ({ ...current, [key]: value }));
@@ -84,6 +85,38 @@ export default function ScoreboardPage() {
 
   const updateSetting = <Key extends keyof OverlaySettings>(key: Key, value: OverlaySettings[Key]) => {
     setSettings((current) => ({ ...current, [key]: value }));
+  };
+
+  const handleScoreboardDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || !previewRef.current) return;
+
+    const previewRect = previewRef.current.getBoundingClientRect();
+    const overlayRect = event.currentTarget.getBoundingClientRect();
+    const grabOffsetX = event.clientX - overlayRect.left;
+    const grabOffsetY = event.clientY - overlayRect.top;
+
+    event.preventDefault();
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const maxLeft = Math.max(0, previewRect.width - overlayRect.width);
+      const maxTop = Math.max(0, previewRect.height - overlayRect.height);
+      const nextLeft = clamp(moveEvent.clientX - previewRect.left - grabOffsetX, 0, maxLeft);
+      const nextTop = clamp(moveEvent.clientY - previewRect.top - grabOffsetY, 0, maxTop);
+
+      setSettings((current) => ({
+        ...current,
+        x: Math.round((nextLeft / Math.max(1, previewRect.width)) * 1000) / 10,
+        y: Math.round((nextTop / Math.max(1, previewRect.height)) * 1000) / 10
+      }));
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
   };
 
   return (
@@ -213,8 +246,14 @@ export default function ScoreboardPage() {
               <h2 className="text-lg font-black uppercase tracking-wide text-ink">위치</h2>
             </div>
             <div className="grid gap-3">
-              <RangeField label="가로 위치" value={settings.x} min={0} max={100} onChange={(value) => updateSetting("x", value)} suffix="%" />
-              <RangeField label="세로 위치" value={settings.y} min={0} max={100} onChange={(value) => updateSetting("y", value)} suffix="%" />
+              <div className="rounded-md border border-line bg-arena/70 px-3 py-3">
+                <p className="text-xs font-bold leading-5 text-muted">
+                  미리보기 화면에서 스코어보드를 직접 드래그해서 위치를 조절합니다.
+                </p>
+                <p className="mt-2 text-xs font-black uppercase tracking-wide text-cyan">
+                  X {settings.x}% / Y {settings.y}%
+                </p>
+              </div>
               <RangeField label="타이머 가로 위치" value={settings.timerX} min={-400} max={400} onChange={(value) => updateSetting("timerX", value)} suffix="px" />
               <RangeField label="타이머 세로 위치" value={settings.timerY} min={-160} max={160} onChange={(value) => updateSetting("timerY", value)} suffix="px" />
             </div>
@@ -251,6 +290,7 @@ export default function ScoreboardPage() {
 
           <div className="grid min-h-[620px] place-items-center bg-[radial-gradient(circle_at_50%_28%,rgba(47,230,255,0.1),transparent_34%),hsl(var(--arena))] p-4 sm:p-6">
             <div
+              ref={previewRef}
               className="relative w-full max-w-6xl overflow-hidden rounded-md border border-line bg-[#111318] shadow-panel"
               style={{
                 aspectRatio: `${resolutionOptions[settings.resolution].width} / ${resolutionOptions[settings.resolution].height}`
@@ -258,7 +298,11 @@ export default function ScoreboardPage() {
             >
               <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:52px_52px]" />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_48%_24%,rgba(255,255,255,0.08),transparent_18%)]" />
-              <CustomScoreboardOverlay scoreboard={scoreboard} settings={settings} />
+              <CustomScoreboardOverlay
+                scoreboard={scoreboard}
+                settings={settings}
+                onPointerDown={handleScoreboardDragStart}
+              />
             </div>
           </div>
         </div>
@@ -269,10 +313,12 @@ export default function ScoreboardPage() {
 
 function CustomScoreboardOverlay({
   scoreboard,
-  settings
+  settings,
+  onPointerDown
 }: {
   scoreboard: ScoreboardState;
   settings: OverlaySettings;
+  onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const labelA = settings.nameMode === "short" ? scoreboard.leftShort : scoreboard.leftName;
   const labelB = settings.nameMode === "short" ? scoreboard.rightShort : scoreboard.rightName;
@@ -288,7 +334,12 @@ function CustomScoreboardOverlay({
       : settings.teamWidth;
 
   return (
-    <div className="absolute z-10" style={overlayStyle}>
+    <div
+      className="absolute z-10 cursor-move touch-none select-none"
+      onPointerDown={onPointerDown}
+      style={overlayStyle}
+      title="드래그해서 위치 조절"
+    >
       {settings.showTimer ? (
         <div
           className="bg-white text-slate-950"
@@ -333,6 +384,10 @@ function CustomScoreboardOverlay({
       </div>
     </div>
   );
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
 }
 
 function TeamCell({
