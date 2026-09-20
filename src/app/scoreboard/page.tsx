@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import { Eye, MonitorPlay, Move, Plus, Settings2, SlidersHorizontal, Trash2 } from "lucide-react";
 
 type NameMode = "short" | "full";
@@ -274,6 +274,37 @@ export default function ScoreboardPage() {
     window.addEventListener("pointerup", handlePointerUp);
   };
 
+  const handleTeamGapDragStart = (
+    direction: Direction,
+    event: ReactPointerEvent<HTMLDivElement>
+  ) => {
+    if (event.button !== 0) return;
+
+    const startGap = settings.teamGap;
+    const startPointer = direction === "horizontal" ? event.clientX : event.clientY;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const currentPointer = direction === "horizontal" ? moveEvent.clientX : moveEvent.clientY;
+      const nextGap = clamp(startGap + currentPointer - startPointer, 0, 160);
+
+      setSettings((current) => ({
+        ...current,
+        teamGap: Math.round(nextGap)
+      }));
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+  };
+
   return (
     <main className="min-h-[calc(100vh-73px)] px-4 py-8 sm:px-6 2xl:px-8">
       <section className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -415,6 +446,7 @@ export default function ScoreboardPage() {
               <div className="rounded-md border border-line bg-arena/70 px-3 py-3">
                 <p className="text-xs font-bold leading-5 text-muted">
                   미리보기 화면에서 드래그합니다. 중앙과 가장자리 근처에서는 가이드가 뜨고 자동으로 붙습니다.
+                  팀 분리 간격은 분리 모드에서 팀 사이 핸들을 잡아 조절합니다.
                 </p>
                 <p className="mt-2 text-xs font-black uppercase tracking-wide text-cyan">
                   X {settings.x}% / Y {settings.y}%
@@ -435,7 +467,6 @@ export default function ScoreboardPage() {
               <RangeField label="팀칸 넓이" value={settings.teamWidth} min={100} max={420} onChange={(value) => updateSetting("teamWidth", value)} suffix="px" />
               <RangeField label="점수칸 넓이" value={settings.scoreWidth} min={34} max={150} onChange={(value) => updateSetting("scoreWidth", value)} suffix="px" />
               <RangeField label="칸 높이" value={settings.rowHeight} min={30} max={110} onChange={(value) => updateSetting("rowHeight", value)} suffix="px" />
-              <RangeField label="팀 분리 간격" value={settings.teamGap} min={0} max={120} onChange={(value) => updateSetting("teamGap", value)} suffix="px" />
               <RangeField label="타이머 넓이" value={settings.timerWidth} min={90} max={360} onChange={(value) => updateSetting("timerWidth", value)} suffix="px" />
               <RangeField label="로고 크기" value={settings.logoSize} min={0} max={80} onChange={(value) => updateSetting("logoSize", value)} suffix="px" />
               <RangeField label="팀명 글자" value={settings.fontSize} min={14} max={64} onChange={(value) => updateSetting("fontSize", value)} suffix="px" />
@@ -471,6 +502,7 @@ export default function ScoreboardPage() {
                 settings={settings}
                 onPointerDown={handleScoreboardDragStart}
                 onTimerPointerDown={handleTimerDragStart}
+                onTeamGapPointerDown={handleTeamGapDragStart}
               />
             </div>
           </div>
@@ -484,12 +516,14 @@ function CustomScoreboardOverlay({
   scoreboard,
   settings,
   onPointerDown,
-  onTimerPointerDown
+  onTimerPointerDown,
+  onTeamGapPointerDown
 }: {
   scoreboard: ScoreboardState;
   settings: OverlaySettings;
   onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onTimerPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  onTeamGapPointerDown: (direction: Direction, event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const overlayStyle: CSSProperties = {
     left: `${settings.x}%`,
@@ -527,29 +561,28 @@ function CustomScoreboardOverlay({
 
       <div data-scoreboard-body>
         {settings.direction === "horizontal" ? (
-          <div className="grid" style={{ rowGap: settings.splitTeams ? settings.teamGap : 0 }}>
+          <div className="grid" style={{ rowGap: settings.splitTeams ? Math.max(0, settings.teamGap * 0.4) : 0 }}>
             {chunkTeams(scoreboard.teams, 2).map((teamPair, pairIndex) => (
               <div
                 key={teamPair.map((team) => team.id).join("-")}
                 className="grid"
                 style={{
-                  columnGap: settings.splitTeams ? settings.teamGap : 0,
-                  gridTemplateColumns: `${settings.scoreWidth}px ${availableTeamWidth}px ${availableTeamWidth}px ${settings.scoreWidth}px`,
+                  gridTemplateColumns: settings.splitTeams
+                    ? `${settings.scoreWidth}px ${availableTeamWidth}px ${Math.max(12, settings.teamGap)}px ${availableTeamWidth}px ${settings.scoreWidth}px`
+                    : `${settings.scoreWidth}px ${availableTeamWidth}px ${availableTeamWidth}px ${settings.scoreWidth}px`,
                   marginTop: pairIndex > 0 && !settings.splitTeams ? -1 : 0
                 }}
               >
-                <TeamCell
-                  team={teamPair[0]}
-                  side="left"
-                  scoreFirst
-                  settings={settings}
-                />
-                {teamPair[1] ? (
-                  <TeamCell
-                    team={teamPair[1]}
-                    side="right"
-                    settings={settings}
+                <TeamCell team={teamPair[0]} side="left" scoreFirst settings={settings} />
+                {settings.splitTeams ? (
+                  <TeamGapHandle
+                    direction="horizontal"
+                    value={settings.teamGap}
+                    onPointerDown={onTeamGapPointerDown}
                   />
+                ) : null}
+                {teamPair[1] ? (
+                  <TeamCell team={teamPair[1]} side="right" settings={settings} />
                 ) : (
                   <>
                     <div />
@@ -562,22 +595,63 @@ function CustomScoreboardOverlay({
         ) : (
           <div
             className="grid"
-            style={{
-              gap: settings.splitTeams ? settings.teamGap : 0,
-              gridTemplateColumns: `${availableTeamWidth}px ${settings.scoreWidth}px`
-            }}
+            style={{ gridTemplateColumns: `${availableTeamWidth}px ${settings.scoreWidth}px` }}
           >
             {scoreboard.teams.map((team, index) => (
-              <TeamCell
-                key={team.id}
-                team={team}
-                side={index === 0 ? "left" : "right"}
-                settings={settings}
-              />
+              <Fragment key={team.id}>
+                <TeamCell
+                  team={team}
+                  side={index === 0 ? "left" : "right"}
+                  settings={settings}
+                />
+                {settings.splitTeams && index < scoreboard.teams.length - 1 ? (
+                  <TeamGapHandle
+                    direction="vertical"
+                    value={settings.teamGap}
+                    onPointerDown={onTeamGapPointerDown}
+                  />
+                ) : null}
+              </Fragment>
             ))}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function TeamGapHandle({
+  direction,
+  value,
+  onPointerDown
+}: {
+  direction: Direction;
+  value: number;
+  onPointerDown: (direction: Direction, event: ReactPointerEvent<HTMLDivElement>) => void;
+}) {
+  const size = Math.max(12, value);
+
+  if (direction === "horizontal") {
+    return (
+      <div
+        className="group grid touch-none cursor-col-resize place-items-center bg-cyan/5"
+        onPointerDown={(event) => onPointerDown(direction, event)}
+        style={{ minWidth: size }}
+        title="좌우로 드래그해서 팀 간격 조절"
+      >
+        <div className="h-full w-px bg-cyan/50 shadow-[0_0_12px_rgba(47,230,255,0.55)] transition group-hover:bg-cyan" />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="group col-span-2 grid touch-none cursor-row-resize place-items-center bg-cyan/5"
+      onPointerDown={(event) => onPointerDown(direction, event)}
+      style={{ minHeight: size }}
+      title="위아래로 드래그해서 팀 간격 조절"
+    >
+      <div className="h-px w-full bg-cyan/50 shadow-[0_0_12px_rgba(47,230,255,0.55)] transition group-hover:bg-cyan" />
     </div>
   );
 }
