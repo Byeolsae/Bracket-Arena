@@ -26,9 +26,10 @@ type OverlaySettings = {
   scoreWidth: number;
   rowHeight: number;
   timerWidth: number;
+  timerX: number;
+  timerY: number;
   logoSize: number;
   fontSize: number;
-  scoreSize: number;
   nameMode: NameMode;
   direction: Direction;
   showLogo: boolean;
@@ -56,9 +57,10 @@ const defaultSettings: OverlaySettings = {
   scoreWidth: 54,
   rowHeight: 48,
   timerWidth: 190,
+  timerX: 0,
+  timerY: 0,
   logoSize: 30,
   fontSize: 30,
-  scoreSize: 34,
   nameMode: "short",
   direction: "vertical",
   showLogo: true,
@@ -191,6 +193,8 @@ export default function ScoreboardPage() {
             <div className="grid gap-3">
               <RangeField label="가로 위치" value={settings.x} min={0} max={100} onChange={(value) => updateSetting("x", value)} suffix="%" />
               <RangeField label="세로 위치" value={settings.y} min={0} max={100} onChange={(value) => updateSetting("y", value)} suffix="%" />
+              <RangeField label="타이머 가로 위치" value={settings.timerX} min={-400} max={400} onChange={(value) => updateSetting("timerX", value)} suffix="px" />
+              <RangeField label="타이머 세로 위치" value={settings.timerY} min={-160} max={160} onChange={(value) => updateSetting("timerY", value)} suffix="px" />
             </div>
           </div>
 
@@ -207,7 +211,6 @@ export default function ScoreboardPage() {
               <RangeField label="타이머 넓이" value={settings.timerWidth} min={90} max={360} onChange={(value) => updateSetting("timerWidth", value)} suffix="px" />
               <RangeField label="로고 크기" value={settings.logoSize} min={0} max={80} onChange={(value) => updateSetting("logoSize", value)} suffix="px" />
               <RangeField label="팀명 글자" value={settings.fontSize} min={14} max={64} onChange={(value) => updateSetting("fontSize", value)} suffix="px" />
-              <RangeField label="점수 글자" value={settings.scoreSize} min={18} max={80} onChange={(value) => updateSetting("scoreSize", value)} suffix="px" />
               <RangeField label="불투명도" value={settings.opacity} min={20} max={100} onChange={(value) => updateSetting("opacity", value)} suffix="%" />
             </div>
           </div>
@@ -262,7 +265,10 @@ function CustomScoreboardOverlay({
       {settings.showTimer ? (
         <div
           className="grid grid-cols-[1fr_auto] bg-white text-slate-950"
-          style={{ width: settings.timerWidth }}
+          style={{
+            width: settings.timerWidth,
+            transform: `translate(${settings.timerX}px, ${settings.timerY}px)`
+          }}
         >
           <div className="px-2 py-1 text-center font-black tabular-nums leading-none" style={{ fontSize: Math.max(12, settings.fontSize * 0.62) }}>
             {scoreboard.timer}
@@ -280,7 +286,7 @@ function CustomScoreboardOverlay({
         style={
           settings.direction === "horizontal"
             ? {
-                gridTemplateColumns: `${availableTeamWidth}px ${settings.scoreWidth}px ${availableTeamWidth}px ${settings.scoreWidth}px`
+                gridTemplateColumns: `${settings.scoreWidth}px ${availableTeamWidth}px ${availableTeamWidth}px ${settings.scoreWidth}px`
               }
             : {
                 gridTemplateColumns: `${availableTeamWidth}px ${settings.scoreWidth}px`
@@ -291,14 +297,15 @@ function CustomScoreboardOverlay({
           label={labelA}
           logoLabel={scoreboard.leftShort}
           score={scoreboard.leftScore}
-          accent="border-l-blue-500"
+          side="left"
+          scoreFirst={settings.direction === "horizontal"}
           settings={settings}
         />
         <TeamCell
           label={labelB}
           logoLabel={scoreboard.rightShort}
           score={scoreboard.rightScore}
-          accent="border-l-red-500"
+          side="right"
           settings={settings}
         />
       </div>
@@ -310,38 +317,74 @@ function TeamCell({
   label,
   logoLabel,
   score,
-  accent,
+  side,
+  scoreFirst = false,
   settings
 }: {
   label: string;
   logoLabel: string;
   score: number;
-  accent: string;
+  side: "left" | "right";
+  scoreFirst?: boolean;
   settings: OverlaySettings;
 }) {
+  const scoreCell = (
+    <ScoreCell
+      key="score"
+      score={score}
+      rowHeight={settings.rowHeight}
+      scoreWidth={settings.scoreWidth}
+    />
+  );
+  const teamCell = (
+    <div
+      key="team"
+      className={[
+        "flex min-w-0 items-center gap-2 bg-[#07111f] px-3 text-white",
+        side === "left" ? "border-l-4 border-l-blue-500" : "justify-end border-r-4 border-r-red-500"
+      ].join(" ")}
+      style={{ height: settings.rowHeight }}
+    >
+      {side === "left" && settings.showLogo && settings.logoSize > 0 ? (
+        <LogoBox label={logoLabel} size={settings.logoSize} />
+      ) : null}
+      <span
+        className={["truncate font-black uppercase leading-none", side === "right" ? "text-right" : ""].join(" ")}
+        style={{ fontSize: settings.fontSize }}
+      >
+        {label}
+      </span>
+      {side === "right" && settings.showLogo && settings.logoSize > 0 ? (
+        <LogoBox label={logoLabel} size={settings.logoSize} />
+      ) : null}
+    </div>
+  );
+
+  return <>{scoreFirst ? [scoreCell, teamCell] : [teamCell, scoreCell]}</>;
+}
+
+function ScoreCell({
+  score,
+  rowHeight,
+  scoreWidth
+}: {
+  score: number;
+  rowHeight: number;
+  scoreWidth: number;
+}) {
+  const digits = String(score).length;
+  const scoreFontSize = Math.max(
+    12,
+    Math.min(rowHeight * 0.82, (scoreWidth / Math.max(1, digits)) * 1.12)
+  );
+
   return (
-    <>
-      <div
-        className={`flex min-w-0 items-center gap-2 border-l-4 bg-[#07111f] px-3 text-white ${accent}`}
-        style={{ height: settings.rowHeight }}
-      >
-        {settings.showLogo && settings.logoSize > 0 ? (
-          <LogoBox label={logoLabel} size={settings.logoSize} />
-        ) : null}
-        <span
-          className="truncate font-black uppercase leading-none"
-          style={{ fontSize: settings.fontSize }}
-        >
-          {label}
-        </span>
-      </div>
-      <div
-        className="grid place-items-center bg-white font-black leading-none text-slate-950"
-        style={{ height: settings.rowHeight, fontSize: settings.scoreSize }}
-      >
-        {score}
-      </div>
-    </>
+    <div
+      className="grid place-items-center overflow-hidden bg-white font-black leading-none text-slate-950"
+      style={{ height: rowHeight, fontSize: scoreFontSize }}
+    >
+      {score}
+    </div>
   );
 }
 
