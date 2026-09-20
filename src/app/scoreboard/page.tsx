@@ -7,7 +7,15 @@ import { Eye, MonitorPlay, Move, Plus, Settings2, SlidersHorizontal, Trash2 } fr
 type NameMode = "short" | "full";
 type Direction = "horizontal" | "vertical";
 type ScreenResolution = "fhd" | "qhd" | "uhd" | "custom";
-type ResizeAxis = "width" | "height" | "both";
+type ResizeHandle =
+  | "left"
+  | "right"
+  | "top"
+  | "bottom"
+  | "top-left"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-right";
 type DragGuides = {
   verticalCenter: boolean;
   horizontalCenter: boolean;
@@ -316,35 +324,76 @@ export default function ScoreboardPage() {
 
   const handleBracketResizeStart = (
     teamId: string | null,
-    axis: ResizeAxis,
+    handle: ResizeHandle,
     event: ReactPointerEvent<HTMLDivElement>
   ) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || !previewRef.current) return;
 
+    const previewRect = previewRef.current.getBoundingClientRect();
     const targetTeam = teamId ? scoreboard.teams.find((team) => team.id === teamId) : null;
-    const startPointer = axis === "height" ? event.clientY : event.clientX;
     const startTeamWidth = targetTeam?.teamWidth ?? settings.teamWidth;
     const startRowHeight = targetTeam?.rowHeight ?? settings.rowHeight;
+    const startX = targetTeam?.x ?? settings.x;
+    const startY = targetTeam?.y ?? settings.y;
+    const resizeFromLeft = handle.includes("left");
+    const resizeFromRight = handle.includes("right");
+    const resizeFromTop = handle.includes("top");
+    const resizeFromBottom = handle.includes("bottom");
 
     event.preventDefault();
     event.stopPropagation();
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
-      const currentPointer = axis === "height" ? moveEvent.clientY : moveEvent.clientX;
-      const delta = currentPointer - startPointer;
-      const heightDelta = axis === "both" ? moveEvent.clientY - event.clientY : delta;
-      const nextTeamWidth = axis === "width" || axis === "both" ? Math.round(clamp(startTeamWidth + delta, 80, 620)) : startTeamWidth;
-      const nextRowHeight = axis === "height" || axis === "both" ? Math.round(clamp(startRowHeight + heightDelta, 24, 160)) : startRowHeight;
+      const deltaX = moveEvent.clientX - event.clientX;
+      const deltaY = moveEvent.clientY - event.clientY;
+      const widthDelta = resizeFromLeft ? -deltaX : resizeFromRight ? deltaX : 0;
+      const heightDelta = resizeFromTop ? -deltaY : resizeFromBottom ? deltaY : 0;
+      const nextTeamWidth = Math.round(clamp(startTeamWidth + widthDelta, 80, 620));
+      const nextRowHeight = Math.round(clamp(startRowHeight + heightDelta, 24, 160));
+      const xShift = resizeFromLeft ? startTeamWidth - nextTeamWidth : 0;
+      const yShift = resizeFromTop ? startRowHeight - nextRowHeight : 0;
+      const nextX = Math.round(clamp(startX + (xShift / Math.max(1, previewRect.width)) * 100, 0, 100) * 10) / 10;
+      const nextY = Math.round(clamp(startY + (yShift / Math.max(1, previewRect.height)) * 100, 0, 100) * 10) / 10;
 
       if (!teamId || settings.symmetricSizes) {
         resizeAllTeams(nextTeamWidth, nextRowHeight);
+
+        if (!teamId) {
+          setSettings((current) => ({
+            ...current,
+            x: resizeFromLeft ? nextX : current.x,
+            y: resizeFromTop ? nextY : current.y
+          }));
+        } else if (resizeFromLeft || resizeFromTop) {
+          setScoreboard((current) => ({
+            ...current,
+            teams: current.teams.map((team) =>
+              team.id === teamId
+                ? {
+                    ...team,
+                    x: resizeFromLeft ? nextX : team.x,
+                    y: resizeFromTop ? nextY : team.y
+                  }
+                : team
+            )
+          }));
+        }
+
         return;
       }
 
       setScoreboard((current) => ({
         ...current,
         teams: current.teams.map((team) =>
-          team.id === teamId ? { ...team, teamWidth: nextTeamWidth, rowHeight: nextRowHeight } : team
+          team.id === teamId
+            ? {
+                ...team,
+                teamWidth: nextTeamWidth,
+                rowHeight: nextRowHeight,
+                x: resizeFromLeft ? nextX : team.x,
+                y: resizeFromTop ? nextY : team.y
+              }
+            : team
         )
       }));
     };
@@ -359,27 +408,37 @@ export default function ScoreboardPage() {
   };
 
   const handleTimerResizeStart = (
-    axis: ResizeAxis,
+    handle: ResizeHandle,
     event: ReactPointerEvent<HTMLDivElement>
   ) => {
     if (event.button !== 0) return;
 
-    const startPointer = axis === "height" ? event.clientY : event.clientX;
     const startTimerWidth = settings.timerWidth;
     const startTimerHeight = settings.timerHeight;
+    const startTimerX = settings.timerX;
+    const startTimerY = settings.timerY;
+    const resizeFromLeft = handle.includes("left");
+    const resizeFromRight = handle.includes("right");
+    const resizeFromTop = handle.includes("top");
+    const resizeFromBottom = handle.includes("bottom");
 
     event.preventDefault();
     event.stopPropagation();
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
-      const currentPointer = axis === "height" ? moveEvent.clientY : moveEvent.clientX;
-      const delta = currentPointer - startPointer;
-      const heightDelta = axis === "both" ? moveEvent.clientY - event.clientY : delta;
+      const deltaX = moveEvent.clientX - event.clientX;
+      const deltaY = moveEvent.clientY - event.clientY;
+      const widthDelta = resizeFromLeft ? -deltaX : resizeFromRight ? deltaX : 0;
+      const heightDelta = resizeFromTop ? -deltaY : resizeFromBottom ? deltaY : 0;
+      const nextTimerWidth = Math.round(clamp(startTimerWidth + widthDelta, 70, 520));
+      const nextTimerHeight = Math.round(clamp(startTimerHeight + heightDelta, 20, 120));
 
       setSettings((current) => ({
         ...current,
-        timerWidth: axis === "width" || axis === "both" ? Math.round(clamp(startTimerWidth + delta, 70, 520)) : current.timerWidth,
-        timerHeight: axis === "height" || axis === "both" ? Math.round(clamp(startTimerHeight + heightDelta, 20, 120)) : current.timerHeight
+        timerWidth: nextTimerWidth,
+        timerHeight: nextTimerHeight,
+        timerX: resizeFromLeft ? startTimerX + startTimerWidth - nextTimerWidth : current.timerX,
+        timerY: resizeFromTop ? startTimerY + startTimerHeight - nextTimerHeight : current.timerY
       }));
     };
 
@@ -703,8 +762,8 @@ function CustomScoreboardOverlay({
   settings: OverlaySettings;
   onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onTeamPointerDown: (teamId: string, event: ReactPointerEvent<HTMLDivElement>) => void;
-  onBracketResizePointerDown: (teamId: string | null, axis: ResizeAxis, event: ReactPointerEvent<HTMLDivElement>) => void;
-  onTimerResizePointerDown: (axis: ResizeAxis, event: ReactPointerEvent<HTMLDivElement>) => void;
+  onBracketResizePointerDown: (teamId: string | null, handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
+  onTimerResizePointerDown: (handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
   onTimerPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const overlayStyle: CSSProperties = {
@@ -823,7 +882,7 @@ function TimerBlock({
   timer: string;
   settings: OverlaySettings;
   className?: string;
-  onResizePointerDown: (axis: ResizeAxis, event: ReactPointerEvent<HTMLDivElement>) => void;
+  onResizePointerDown: (handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
   onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   return (
@@ -851,24 +910,54 @@ function TimerBlock({
 function ResizeHandles({
   onResizePointerDown
 }: {
-  onResizePointerDown: (axis: ResizeAxis, event: ReactPointerEvent<HTMLDivElement>) => void;
+  onResizePointerDown: (handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
+  const edgeClass =
+    "absolute z-20 rounded-full bg-white/10 opacity-0 transition hover:bg-white/35 group-hover:opacity-100";
+  const cornerClass =
+    "absolute z-30 h-3 w-3 rounded-sm border border-white/35 bg-white/15 opacity-0 transition hover:bg-white/45 group-hover:opacity-100";
+
   return (
     <>
       <div
-        className="absolute bottom-1 right-[-5px] top-1 z-20 w-2 cursor-ew-resize rounded-full bg-cyan/35 opacity-0 transition hover:bg-cyan/80 group-hover:opacity-100"
-        onPointerDown={(event) => onResizePointerDown("width", event)}
-        title="넓이 조절"
+        className={`${edgeClass} bottom-2 left-[-5px] top-2 w-2 cursor-ew-resize`}
+        onPointerDown={(event) => onResizePointerDown("left", event)}
+        title="왼쪽 넓이 조절"
       />
       <div
-        className="absolute bottom-[-5px] left-1 right-1 z-20 h-2 cursor-ns-resize rounded-full bg-cyan/35 opacity-0 transition hover:bg-cyan/80 group-hover:opacity-100"
-        onPointerDown={(event) => onResizePointerDown("height", event)}
-        title="높이 조절"
+        className={`${edgeClass} bottom-2 right-[-5px] top-2 w-2 cursor-ew-resize`}
+        onPointerDown={(event) => onResizePointerDown("right", event)}
+        title="오른쪽 넓이 조절"
       />
       <div
-        className="absolute bottom-[-6px] right-[-6px] z-30 h-3 w-3 cursor-nwse-resize rounded-sm border border-cyan/60 bg-cyan/45 opacity-0 shadow-[0_0_12px_rgba(47,230,255,0.6)] transition hover:bg-cyan group-hover:opacity-100"
-        onPointerDown={(event) => onResizePointerDown("both", event)}
-        title="넓이와 높이 동시 조절"
+        className={`${edgeClass} left-2 right-2 top-[-5px] h-2 cursor-ns-resize`}
+        onPointerDown={(event) => onResizePointerDown("top", event)}
+        title="위쪽 높이 조절"
+      />
+      <div
+        className={`${edgeClass} bottom-[-5px] left-2 right-2 h-2 cursor-ns-resize`}
+        onPointerDown={(event) => onResizePointerDown("bottom", event)}
+        title="아래쪽 높이 조절"
+      />
+      <div
+        className={`${cornerClass} left-[-6px] top-[-6px] cursor-nwse-resize`}
+        onPointerDown={(event) => onResizePointerDown("top-left", event)}
+        title="좌상단 크기 조절"
+      />
+      <div
+        className={`${cornerClass} right-[-6px] top-[-6px] cursor-nesw-resize`}
+        onPointerDown={(event) => onResizePointerDown("top-right", event)}
+        title="우상단 크기 조절"
+      />
+      <div
+        className={`${cornerClass} bottom-[-6px] left-[-6px] cursor-nesw-resize`}
+        onPointerDown={(event) => onResizePointerDown("bottom-left", event)}
+        title="좌하단 크기 조절"
+      />
+      <div
+        className={`${cornerClass} bottom-[-6px] right-[-6px] cursor-nwse-resize`}
+        onPointerDown={(event) => onResizePointerDown("bottom-right", event)}
+        title="우하단 크기 조절"
       />
     </>
   );
@@ -901,7 +990,7 @@ function SplitTeamBracket({
   index: number;
   settings: OverlaySettings;
   onPointerDown: (teamId: string, event: ReactPointerEvent<HTMLDivElement>) => void;
-  onResizePointerDown: (teamId: string | null, axis: ResizeAxis, event: ReactPointerEvent<HTMLDivElement>) => void;
+  onResizePointerDown: (teamId: string | null, handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const side = index % 2 === 0 ? "left" : "right";
   const scoreFirst = settings.direction === "horizontal" && settings.symmetricBrackets && side === "left";
