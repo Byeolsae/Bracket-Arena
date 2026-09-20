@@ -6,9 +6,9 @@ import { Eye, MonitorPlay, Move, Settings2, SlidersHorizontal } from "lucide-rea
 
 type NameMode = "short" | "full";
 type Direction = "horizontal" | "vertical";
+type ScreenResolution = "fhd" | "qhd" | "uhd";
 
 type ScoreboardState = {
-  title: string;
   timer: string;
   leftName: string;
   leftShort: string;
@@ -32,14 +32,13 @@ type OverlaySettings = {
   fontSize: number;
   nameMode: NameMode;
   direction: Direction;
+  resolution: ScreenResolution;
   showLogo: boolean;
   showTimer: boolean;
-  showTitle: boolean;
   opacity: number;
 };
 
 const defaultScoreboard: ScoreboardState = {
-  title: "GAME",
   timer: "11:38:39",
   leftName: "DRX",
   leftShort: "DRX",
@@ -63,10 +62,16 @@ const defaultSettings: OverlaySettings = {
   fontSize: 30,
   nameMode: "short",
   direction: "vertical",
+  resolution: "fhd",
   showLogo: true,
   showTimer: true,
-  showTitle: true,
   opacity: 100
+};
+
+const resolutionOptions: Record<ScreenResolution, { label: string; width: number; height: number }> = {
+  fhd: { label: "FHD", width: 1920, height: 1080 },
+  qhd: { label: "QHD", width: 2560, height: 1440 },
+  uhd: { label: "UHD", width: 3840, height: 2160 }
 };
 
 export default function ScoreboardPage() {
@@ -108,8 +113,7 @@ export default function ScoreboardPage() {
             </div>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <TextField label="제목" value={scoreboard.title} onChange={(value) => updateScoreboard("title", value)} />
+              <div className="grid gap-3">
                 <TextField label="타이머" value={scoreboard.timer} onChange={(value) => updateScoreboard("timer", value)} />
               </div>
 
@@ -172,17 +176,35 @@ export default function ScoreboardPage() {
               </ToggleButton>
             </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-2">
+            <div className="mt-4 grid grid-cols-2 gap-2">
               <CheckButton active={settings.showLogo} onClick={() => updateSetting("showLogo", !settings.showLogo)}>
                 로고
               </CheckButton>
               <CheckButton active={settings.showTimer} onClick={() => updateSetting("showTimer", !settings.showTimer)}>
                 타이머
               </CheckButton>
-              <CheckButton active={settings.showTitle} onClick={() => updateSetting("showTitle", !settings.showTitle)}>
-                제목
-              </CheckButton>
             </div>
+          </div>
+
+          <div className="arena-card p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <MonitorPlay className="h-5 w-5 text-cyan" aria-hidden="true" />
+              <h2 className="text-lg font-black uppercase tracking-wide text-ink">화면 해상도</h2>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {(Object.keys(resolutionOptions) as ScreenResolution[]).map((resolution) => (
+                <ToggleButton
+                  key={resolution}
+                  active={settings.resolution === resolution}
+                  onClick={() => updateSetting("resolution", resolution)}
+                >
+                  {resolutionOptions[resolution].label}
+                </ToggleButton>
+              ))}
+            </div>
+            <p className="mt-3 text-xs font-bold text-muted">
+              {resolutionOptions[settings.resolution].width} x {resolutionOptions[settings.resolution].height}
+            </p>
           </div>
 
           <div className="arena-card p-5">
@@ -223,12 +245,17 @@ export default function ScoreboardPage() {
               <h2 className="mt-1 text-xl font-black uppercase tracking-wide text-ink">직접 설정형 오버레이</h2>
             </div>
             <div className="rounded-md border border-line bg-panel px-3 py-2 text-xs font-black uppercase tracking-wide text-muted">
-              {settings.nameMode === "short" ? "약칭" : "풀네임"} / {settings.direction === "vertical" ? "위아래" : "좌우"}
+              {resolutionOptions[settings.resolution].label} / {settings.nameMode === "short" ? "약칭" : "풀네임"} / {settings.direction === "vertical" ? "위아래" : "좌우"}
             </div>
           </div>
 
           <div className="grid min-h-[620px] place-items-center bg-[radial-gradient(circle_at_50%_28%,rgba(47,230,255,0.1),transparent_34%),hsl(var(--arena))] p-4 sm:p-6">
-            <div className="relative aspect-video w-full max-w-6xl overflow-hidden rounded-md border border-line bg-[#111318] shadow-panel">
+            <div
+              className="relative w-full max-w-6xl overflow-hidden rounded-md border border-line bg-[#111318] shadow-panel"
+              style={{
+                aspectRatio: `${resolutionOptions[settings.resolution].width} / ${resolutionOptions[settings.resolution].height}`
+              }}
+            >
               <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:52px_52px]" />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_48%_24%,rgba(255,255,255,0.08),transparent_18%)]" />
               <CustomScoreboardOverlay scoreboard={scoreboard} settings={settings} />
@@ -264,7 +291,7 @@ function CustomScoreboardOverlay({
     <div className="absolute z-10" style={overlayStyle}>
       {settings.showTimer ? (
         <div
-          className="grid grid-cols-[1fr_auto] bg-white text-slate-950"
+          className="bg-white text-slate-950"
           style={{
             width: settings.timerWidth,
             transform: `translate(${settings.timerX}px, ${settings.timerY}px)`
@@ -273,11 +300,6 @@ function CustomScoreboardOverlay({
           <div className="px-2 py-1 text-center font-black tabular-nums leading-none" style={{ fontSize: Math.max(12, settings.fontSize * 0.62) }}>
             {scoreboard.timer}
           </div>
-          {settings.showTitle ? (
-            <div className="border-l border-slate-300 px-2 py-1 text-center font-black uppercase leading-none" style={{ fontSize: Math.max(10, settings.fontSize * 0.42) }}>
-              {scoreboard.title}
-            </div>
-          ) : null}
         </div>
       ) : null}
 
@@ -328,6 +350,7 @@ function TeamCell({
   scoreFirst?: boolean;
   settings: OverlaySettings;
 }) {
+  const mirrored = settings.direction === "horizontal" && side === "right";
   const scoreCell = (
     <ScoreCell
       key="score"
@@ -341,20 +364,20 @@ function TeamCell({
       key="team"
       className={[
         "flex min-w-0 items-center gap-2 bg-[#07111f] px-3 text-white",
-        side === "left" ? "border-l-4 border-l-blue-500" : "justify-end border-r-4 border-r-red-500"
+        mirrored ? "justify-end border-r-4 border-r-red-500" : side === "left" ? "border-l-4 border-l-blue-500" : "border-l-4 border-l-red-500"
       ].join(" ")}
       style={{ height: settings.rowHeight }}
     >
-      {side === "left" && settings.showLogo && settings.logoSize > 0 ? (
+      {!mirrored && settings.showLogo && settings.logoSize > 0 ? (
         <LogoBox label={logoLabel} size={settings.logoSize} />
       ) : null}
       <span
-        className={["truncate font-black uppercase leading-none", side === "right" ? "text-right" : ""].join(" ")}
+        className={["truncate font-black uppercase leading-none", mirrored ? "text-right" : ""].join(" ")}
         style={{ fontSize: settings.fontSize }}
       >
         {label}
       </span>
-      {side === "right" && settings.showLogo && settings.logoSize > 0 ? (
+      {mirrored && settings.showLogo && settings.logoSize > 0 ? (
         <LogoBox label={logoLabel} size={settings.logoSize} />
       ) : null}
     </div>
