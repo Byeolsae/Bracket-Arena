@@ -23,6 +23,9 @@ type ScoreboardTeam = {
   score: number;
   x: number;
   y: number;
+  teamWidth: number;
+  scoreWidth: number;
+  rowHeight: number;
 };
 
 type ScoreboardState = {
@@ -39,6 +42,7 @@ type OverlaySettings = {
   scoreWidth: number;
   rowHeight: number;
   timerWidth: number;
+  timerHeight: number;
   logoSize: number;
   fontSize: number;
   nameMode: NameMode;
@@ -46,6 +50,7 @@ type OverlaySettings = {
   resolution: ScreenResolution;
   splitTeams: boolean;
   symmetricBrackets: boolean;
+  symmetricSizes: boolean;
   showLogo: boolean;
   showTimer: boolean;
   opacity: number;
@@ -54,8 +59,8 @@ type OverlaySettings = {
 const defaultScoreboard: ScoreboardState = {
   timer: "11:38:39",
   teams: [
-    { id: "team-1", name: "DRX", shortName: "DRX", score: 0, x: 0, y: 12 },
-    { id: "team-2", name: "Gen.G", shortName: "GEN", score: 0, x: 42, y: 12 }
+    { id: "team-1", name: "DRX", shortName: "DRX", score: 0, x: 0, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
+    { id: "team-2", name: "Gen.G", shortName: "GEN", score: 0, x: 42, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
   ]
 };
 
@@ -68,6 +73,7 @@ const defaultSettings: OverlaySettings = {
   scoreWidth: 54,
   rowHeight: 48,
   timerWidth: 190,
+  timerHeight: 30,
   logoSize: 30,
   fontSize: 30,
   nameMode: "short",
@@ -75,6 +81,7 @@ const defaultSettings: OverlaySettings = {
   resolution: "fhd",
   splitTeams: false,
   symmetricBrackets: true,
+  symmetricSizes: true,
   showLogo: true,
   showTimer: true,
   opacity: 100
@@ -147,7 +154,10 @@ export default function ScoreboardPage() {
             shortName: `T${nextNumber}`,
             score: 0,
             x: (nextNumber - 1) * 8,
-            y: 12 + (nextNumber - 1) * 8
+            y: 12 + (nextNumber - 1) * 8,
+            teamWidth: current.teams[0]?.teamWidth ?? defaultSettings.teamWidth,
+            scoreWidth: current.teams[0]?.scoreWidth ?? defaultSettings.scoreWidth,
+            rowHeight: current.teams[0]?.rowHeight ?? defaultSettings.rowHeight
           }
         ]
       };
@@ -291,6 +301,90 @@ export default function ScoreboardPage() {
     window.addEventListener("pointerup", handlePointerUp);
   };
 
+  const resizeAllTeams = (teamWidth: number, rowHeight: number) => {
+    setSettings((current) => ({ ...current, teamWidth, rowHeight }));
+    setScoreboard((current) => ({
+      ...current,
+      teams: current.teams.map((team) => ({ ...team, teamWidth, rowHeight }))
+    }));
+  };
+
+  const handleBracketResizeStart = (
+    teamId: string | null,
+    axis: "width" | "height",
+    event: ReactPointerEvent<HTMLDivElement>
+  ) => {
+    if (event.button !== 0) return;
+
+    const targetTeam = teamId ? scoreboard.teams.find((team) => team.id === teamId) : null;
+    const startPointer = axis === "width" ? event.clientX : event.clientY;
+    const startTeamWidth = targetTeam?.teamWidth ?? settings.teamWidth;
+    const startRowHeight = targetTeam?.rowHeight ?? settings.rowHeight;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const currentPointer = axis === "width" ? moveEvent.clientX : moveEvent.clientY;
+      const delta = currentPointer - startPointer;
+      const nextTeamWidth = axis === "width" ? Math.round(clamp(startTeamWidth + delta, 80, 620)) : startTeamWidth;
+      const nextRowHeight = axis === "height" ? Math.round(clamp(startRowHeight + delta, 24, 160)) : startRowHeight;
+
+      if (!teamId || settings.symmetricSizes) {
+        resizeAllTeams(nextTeamWidth, nextRowHeight);
+        return;
+      }
+
+      setScoreboard((current) => ({
+        ...current,
+        teams: current.teams.map((team) =>
+          team.id === teamId ? { ...team, teamWidth: nextTeamWidth, rowHeight: nextRowHeight } : team
+        )
+      }));
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+  };
+
+  const handleTimerResizeStart = (
+    axis: "width" | "height",
+    event: ReactPointerEvent<HTMLDivElement>
+  ) => {
+    if (event.button !== 0) return;
+
+    const startPointer = axis === "width" ? event.clientX : event.clientY;
+    const startTimerWidth = settings.timerWidth;
+    const startTimerHeight = settings.timerHeight;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const currentPointer = axis === "width" ? moveEvent.clientX : moveEvent.clientY;
+      const delta = currentPointer - startPointer;
+
+      setSettings((current) => ({
+        ...current,
+        timerWidth: axis === "width" ? Math.round(clamp(startTimerWidth + delta, 70, 520)) : current.timerWidth,
+        timerHeight: axis === "height" ? Math.round(clamp(startTimerHeight + delta, 20, 120)) : current.timerHeight
+      }));
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+  };
+
   return (
     <main className="min-h-[calc(100vh-73px)] px-4 py-8 sm:px-6 2xl:px-8">
       <section className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -402,6 +496,9 @@ export default function ScoreboardPage() {
               <CheckButton active={settings.symmetricBrackets} onClick={() => updateSetting("symmetricBrackets", !settings.symmetricBrackets)}>
                 대칭
               </CheckButton>
+              <CheckButton active={settings.symmetricSizes} onClick={() => updateSetting("symmetricSizes", !settings.symmetricSizes)}>
+                크기 대칭
+              </CheckButton>
             </div>
           </div>
 
@@ -450,6 +547,7 @@ export default function ScoreboardPage() {
                 <p className="text-xs font-bold leading-5 text-muted">
                   미리보기 화면에서 드래그합니다. 중앙과 가장자리 근처에서는 가이드가 뜨고 자동으로 붙습니다.
                   팀 분리 모드에서는 각 팀 브래킷을 따로 드래그할 수 있습니다.
+                  브래킷과 타이머 크기는 가장자리 핸들을 잡아 조절합니다.
                 </p>
                 <p className="mt-2 text-xs font-black uppercase tracking-wide text-cyan">
                   X {settings.x}% / Y {settings.y}%
@@ -464,12 +562,12 @@ export default function ScoreboardPage() {
               <h2 className="text-lg font-black uppercase tracking-wide text-ink">브래킷 크기</h2>
             </div>
             <div className="grid gap-3">
-              <RangeField label="팀칸 넓이" value={settings.teamWidth} min={100} max={420} onChange={(value) => updateSetting("teamWidth", value)} suffix="px" />
-              <RangeField label="점수칸 넓이" value={settings.scoreWidth} min={34} max={150} onChange={(value) => updateSetting("scoreWidth", value)} suffix="px" />
-              <RangeField label="칸 높이" value={settings.rowHeight} min={30} max={110} onChange={(value) => updateSetting("rowHeight", value)} suffix="px" />
               <RangeField label="로고 크기" value={settings.logoSize} min={0} max={80} onChange={(value) => updateSetting("logoSize", value)} suffix="px" />
               <RangeField label="팀명 글자" value={settings.fontSize} min={14} max={64} onChange={(value) => updateSetting("fontSize", value)} suffix="px" />
               <RangeField label="불투명도" value={settings.opacity} min={20} max={100} onChange={(value) => updateSetting("opacity", value)} suffix="%" />
+              <p className="rounded-md border border-line bg-arena/70 px-3 py-3 text-xs font-bold leading-5 text-muted">
+                브래킷 오른쪽 가장자리를 드래그하면 넓이가, 아래쪽 가장자리를 드래그하면 높이가 바뀝니다.
+              </p>
             </div>
           </div>
 
@@ -479,7 +577,9 @@ export default function ScoreboardPage() {
               <h2 className="text-lg font-black uppercase tracking-wide text-ink">타이머 크기</h2>
             </div>
             <div className="grid gap-3">
-              <RangeField label="타이머 넓이" value={settings.timerWidth} min={90} max={360} onChange={(value) => updateSetting("timerWidth", value)} suffix="px" />
+              <p className="rounded-md border border-line bg-arena/70 px-3 py-3 text-xs font-bold leading-5 text-muted">
+                타이머 오른쪽 가장자리로 넓이, 아래쪽 가장자리로 두께를 조절합니다.
+              </p>
             </div>
           </div>
         </aside>
@@ -511,6 +611,8 @@ export default function ScoreboardPage() {
                 settings={settings}
                 onPointerDown={handleScoreboardDragStart}
                 onTeamPointerDown={handleTeamDragStart}
+                onBracketResizePointerDown={handleBracketResizeStart}
+                onTimerResizePointerDown={handleTimerResizeStart}
               />
             </div>
           </div>
@@ -524,12 +626,16 @@ function CustomScoreboardOverlay({
   scoreboard,
   settings,
   onPointerDown,
-  onTeamPointerDown
+  onTeamPointerDown,
+  onBracketResizePointerDown,
+  onTimerResizePointerDown
 }: {
   scoreboard: ScoreboardState;
   settings: OverlaySettings;
   onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onTeamPointerDown: (teamId: string, event: ReactPointerEvent<HTMLDivElement>) => void;
+  onBracketResizePointerDown: (teamId: string | null, axis: "width" | "height", event: ReactPointerEvent<HTMLDivElement>) => void;
+  onTimerResizePointerDown: (axis: "width" | "height", event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const overlayStyle: CSSProperties = {
     left: `${settings.x}%`,
@@ -545,14 +651,12 @@ function CustomScoreboardOverlay({
     return (
       <div className="absolute inset-0 z-10 pointer-events-none" style={{ opacity: settings.opacity / 100 }}>
         {settings.showTimer ? (
-          <div
-            className="pointer-events-auto absolute left-0 top-0 bg-white text-slate-950"
-            style={{ width: settings.timerWidth }}
-          >
-            <div className="px-2 py-1 text-center font-black tabular-nums leading-none" style={{ fontSize: Math.max(12, settings.fontSize * 0.62) }}>
-              {scoreboard.timer}
-            </div>
-          </div>
+          <TimerBlock
+            timer={scoreboard.timer}
+            settings={settings}
+            className="pointer-events-auto absolute left-0 top-0"
+            onResizePointerDown={onTimerResizePointerDown}
+          />
         ) : null}
         {scoreboard.teams.map((team, index) => (
           <SplitTeamBracket
@@ -561,6 +665,7 @@ function CustomScoreboardOverlay({
             index={index}
             settings={settings}
             onPointerDown={onTeamPointerDown}
+            onResizePointerDown={onBracketResizePointerDown}
           />
         ))}
       </div>
@@ -575,17 +680,14 @@ function CustomScoreboardOverlay({
       title="드래그해서 위치 조절"
     >
       {settings.showTimer ? (
-        <div
-          className="bg-white text-slate-950"
-          style={{ width: settings.timerWidth }}
-        >
-          <div className="px-2 py-1 text-center font-black tabular-nums leading-none" style={{ fontSize: Math.max(12, settings.fontSize * 0.62) }}>
-            {scoreboard.timer}
-          </div>
-        </div>
+        <TimerBlock
+          timer={scoreboard.timer}
+          settings={settings}
+          onResizePointerDown={onTimerResizePointerDown}
+        />
       ) : null}
 
-      <div data-scoreboard-body>
+      <div data-scoreboard-body className="group relative inline-block">
         {settings.direction === "horizontal" ? (
           <div className="grid">
             {chunkTeams(scoreboard.teams, 2).map((teamPair, pairIndex) => (
@@ -631,32 +733,102 @@ function CustomScoreboardOverlay({
             ))}
           </div>
         )}
+        <ResizeHandles
+          onResizePointerDown={(axis, event) => onBracketResizePointerDown(null, axis, event)}
+        />
       </div>
     </div>
   );
+}
+
+function TimerBlock({
+  timer,
+  settings,
+  className = "",
+  onResizePointerDown
+}: {
+  timer: string;
+  settings: OverlaySettings;
+  className?: string;
+  onResizePointerDown: (axis: "width" | "height", event: ReactPointerEvent<HTMLDivElement>) => void;
+}) {
+  return (
+    <div
+      className={`group relative bg-white text-slate-950 ${className}`}
+      style={{ width: settings.timerWidth, height: settings.timerHeight }}
+    >
+      <div
+        className="grid h-full place-items-center px-2 text-center font-black tabular-nums leading-none"
+        style={{ fontSize: Math.max(12, settings.timerHeight * 0.62) }}
+      >
+        {timer}
+      </div>
+      <ResizeHandles onResizePointerDown={onResizePointerDown} />
+    </div>
+  );
+}
+
+function ResizeHandles({
+  onResizePointerDown
+}: {
+  onResizePointerDown: (axis: "width" | "height", event: ReactPointerEvent<HTMLDivElement>) => void;
+}) {
+  return (
+    <>
+      <div
+        className="absolute bottom-1 right-[-5px] top-1 z-20 w-2 cursor-ew-resize rounded-full bg-cyan/35 opacity-0 transition hover:bg-cyan/80 group-hover:opacity-100"
+        onPointerDown={(event) => onResizePointerDown("width", event)}
+        title="넓이 조절"
+      />
+      <div
+        className="absolute bottom-[-5px] left-1 right-1 z-20 h-2 cursor-ns-resize rounded-full bg-cyan/35 opacity-0 transition hover:bg-cyan/80 group-hover:opacity-100"
+        onPointerDown={(event) => onResizePointerDown("height", event)}
+        title="높이 조절"
+      />
+    </>
+  );
+}
+
+function getBracketSize(team: ScoreboardTeam, settings: OverlaySettings) {
+  if (settings.splitTeams && !settings.symmetricSizes) {
+    return {
+      teamWidth: team.teamWidth,
+      scoreWidth: team.scoreWidth,
+      rowHeight: team.rowHeight
+    };
+  }
+
+  return {
+    teamWidth: settings.teamWidth,
+    scoreWidth: settings.scoreWidth,
+    rowHeight: settings.rowHeight
+  };
 }
 
 function SplitTeamBracket({
   team,
   index,
   settings,
-  onPointerDown
+  onPointerDown,
+  onResizePointerDown
 }: {
   team: ScoreboardTeam;
   index: number;
   settings: OverlaySettings;
   onPointerDown: (teamId: string, event: ReactPointerEvent<HTMLDivElement>) => void;
+  onResizePointerDown: (teamId: string | null, axis: "width" | "height", event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const side = index % 2 === 0 ? "left" : "right";
   const scoreFirst = settings.direction === "horizontal" && settings.symmetricBrackets && side === "left";
   const teamFirst = settings.direction !== "horizontal" || !scoreFirst;
+  const size = getBracketSize(team, settings);
   const gridTemplateColumns = teamFirst
-    ? `${settings.teamWidth}px ${settings.scoreWidth}px`
-    : `${settings.scoreWidth}px ${settings.teamWidth}px`;
+    ? `${size.teamWidth}px ${size.scoreWidth}px`
+    : `${size.scoreWidth}px ${size.teamWidth}px`;
 
   return (
     <div
-      className="pointer-events-auto absolute z-10 grid cursor-move touch-none select-none"
+      className="group pointer-events-auto absolute z-10 grid cursor-move touch-none select-none"
       onPointerDown={(event) => onPointerDown(team.id, event)}
       style={{
         left: `${team.x}%`,
@@ -670,6 +842,9 @@ function SplitTeamBracket({
         side={side}
         scoreFirst={scoreFirst}
         settings={settings}
+      />
+      <ResizeHandles
+        onResizePointerDown={(axis, event) => onResizePointerDown(team.id, axis, event)}
       />
     </div>
   );
@@ -731,12 +906,13 @@ function TeamCell({
 }) {
   const mirrored = settings.direction === "horizontal" && settings.symmetricBrackets && side === "right";
   const label = settings.nameMode === "short" ? team.shortName : team.name;
+  const size = getBracketSize(team, settings);
   const scoreCell = (
     <ScoreCell
       key="score"
       score={team.score}
-      rowHeight={settings.rowHeight}
-      scoreWidth={settings.scoreWidth}
+      rowHeight={size.rowHeight}
+      scoreWidth={size.scoreWidth}
     />
   );
   const teamCell = (
@@ -746,7 +922,7 @@ function TeamCell({
         "flex min-w-0 items-center gap-2 bg-[#07111f] px-3 text-white",
         mirrored ? "justify-end border-r-4 border-r-red-500" : side === "left" ? "border-l-4 border-l-blue-500" : "border-l-4 border-l-red-500"
       ].join(" ")}
-      style={{ height: settings.rowHeight }}
+      style={{ height: size.rowHeight }}
     >
       {!mirrored && settings.showLogo && settings.logoSize > 0 ? (
         <LogoBox label={team.shortName} size={settings.logoSize} />
