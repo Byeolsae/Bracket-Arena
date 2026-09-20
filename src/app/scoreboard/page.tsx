@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
-import { Fragment, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Eye, MonitorPlay, Move, Plus, Settings2, SlidersHorizontal, Trash2 } from "lucide-react";
 
 type NameMode = "short" | "full";
@@ -21,6 +21,8 @@ type ScoreboardTeam = {
   name: string;
   shortName: string;
   score: number;
+  x: number;
+  y: number;
 };
 
 type ScoreboardState = {
@@ -43,7 +45,6 @@ type OverlaySettings = {
   direction: Direction;
   resolution: ScreenResolution;
   splitTeams: boolean;
-  teamGap: number;
   symmetricBrackets: boolean;
   showLogo: boolean;
   showTimer: boolean;
@@ -53,8 +54,8 @@ type OverlaySettings = {
 const defaultScoreboard: ScoreboardState = {
   timer: "11:38:39",
   teams: [
-    { id: "team-1", name: "DRX", shortName: "DRX", score: 0 },
-    { id: "team-2", name: "Gen.G", shortName: "GEN", score: 0 }
+    { id: "team-1", name: "DRX", shortName: "DRX", score: 0, x: 0, y: 12 },
+    { id: "team-2", name: "Gen.G", shortName: "GEN", score: 0, x: 42, y: 12 }
   ]
 };
 
@@ -73,7 +74,6 @@ const defaultSettings: OverlaySettings = {
   direction: "vertical",
   resolution: "fhd",
   splitTeams: false,
-  teamGap: 0,
   symmetricBrackets: true,
   showLogo: true,
   showTimer: true,
@@ -145,7 +145,9 @@ export default function ScoreboardPage() {
             id: `team-${Date.now()}`,
             name: `Team ${nextNumber}`,
             shortName: `T${nextNumber}`,
-            score: 0
+            score: 0,
+            x: (nextNumber - 1) * 8,
+            y: 12 + (nextNumber - 1) * 8
           }
         ]
       };
@@ -222,31 +224,67 @@ export default function ScoreboardPage() {
     window.addEventListener("pointerup", handlePointerUp);
   };
 
-  const handleTeamGapDragStart = (
-    direction: Direction,
-    event: ReactPointerEvent<HTMLDivElement>
-  ) => {
-    if (event.button !== 0) return;
+  const handleTeamDragStart = (teamId: string, event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || !previewRef.current) return;
 
-    const startGap = settings.teamGap;
-    const startPointer = direction === "horizontal" ? event.clientX : event.clientY;
+    const previewRect = previewRef.current.getBoundingClientRect();
+    const teamRect = event.currentTarget.getBoundingClientRect();
+    const grabOffsetX = event.clientX - teamRect.left;
+    const grabOffsetY = event.clientY - teamRect.top;
 
     event.preventDefault();
     event.stopPropagation();
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
-      const currentPointer = direction === "horizontal" ? moveEvent.clientX : moveEvent.clientY;
-      const nextGap = clamp(startGap + currentPointer - startPointer, 0, 160);
+      const maxLeft = Math.max(0, previewRect.width - teamRect.width);
+      const maxTop = Math.max(0, previewRect.height - teamRect.height);
+      const centerLeft = maxLeft / 2;
+      const centerTop = maxTop / 2;
+      let nextLeft = clamp(moveEvent.clientX - previewRect.left - grabOffsetX, 0, maxLeft);
+      let nextTop = clamp(moveEvent.clientY - previewRect.top - grabOffsetY, 0, maxTop);
+      const nextGuides: DragGuides = { ...hiddenDragGuides };
 
-      setSettings((current) => ({
+      if (Math.abs(nextLeft - centerLeft) <= snapDistance) {
+        nextLeft = centerLeft;
+        nextGuides.verticalCenter = true;
+      } else if (nextLeft <= snapDistance) {
+        nextLeft = 0;
+        nextGuides.leftEdge = true;
+      } else if (Math.abs(nextLeft - maxLeft) <= snapDistance) {
+        nextLeft = maxLeft;
+        nextGuides.rightEdge = true;
+      }
+
+      if (Math.abs(nextTop - centerTop) <= snapDistance) {
+        nextTop = centerTop;
+        nextGuides.horizontalCenter = true;
+      } else if (nextTop <= snapDistance) {
+        nextTop = 0;
+        nextGuides.topEdge = true;
+      } else if (Math.abs(nextTop - maxTop) <= snapDistance) {
+        nextTop = maxTop;
+        nextGuides.bottomEdge = true;
+      }
+
+      setScoreboard((current) => ({
         ...current,
-        teamGap: Math.round(nextGap)
+        teams: current.teams.map((team) =>
+          team.id === teamId
+            ? {
+                ...team,
+                x: Math.round((nextLeft / Math.max(1, previewRect.width)) * 1000) / 10,
+                y: Math.round((nextTop / Math.max(1, previewRect.height)) * 1000) / 10
+              }
+            : team
+        )
       }));
+      setDragGuides(nextGuides);
     };
 
     const handlePointerUp = () => {
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
+      setDragGuides(hiddenDragGuides);
     };
 
     window.addEventListener("pointermove", handlePointerMove);
@@ -411,7 +449,7 @@ export default function ScoreboardPage() {
               <div className="rounded-md border border-line bg-arena/70 px-3 py-3">
                 <p className="text-xs font-bold leading-5 text-muted">
                   미리보기 화면에서 드래그합니다. 중앙과 가장자리 근처에서는 가이드가 뜨고 자동으로 붙습니다.
-                  팀 분리 간격은 분리 모드에서 팀 사이 핸들을 잡아 조절합니다.
+                  팀 분리 모드에서는 각 팀 브래킷을 따로 드래그할 수 있습니다.
                 </p>
                 <p className="mt-2 text-xs font-black uppercase tracking-wide text-cyan">
                   X {settings.x}% / Y {settings.y}%
@@ -472,7 +510,7 @@ export default function ScoreboardPage() {
                 scoreboard={scoreboard}
                 settings={settings}
                 onPointerDown={handleScoreboardDragStart}
-                onTeamGapPointerDown={handleTeamGapDragStart}
+                onTeamPointerDown={handleTeamDragStart}
               />
             </div>
           </div>
@@ -486,12 +524,12 @@ function CustomScoreboardOverlay({
   scoreboard,
   settings,
   onPointerDown,
-  onTeamGapPointerDown
+  onTeamPointerDown
 }: {
   scoreboard: ScoreboardState;
   settings: OverlaySettings;
   onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
-  onTeamGapPointerDown: (direction: Direction, event: ReactPointerEvent<HTMLDivElement>) => void;
+  onTeamPointerDown: (teamId: string, event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const overlayStyle: CSSProperties = {
     left: `${settings.x}%`,
@@ -502,6 +540,32 @@ function CustomScoreboardOverlay({
     settings.direction === "vertical"
       ? settings.teamWidth
       : settings.teamWidth;
+
+  if (settings.splitTeams) {
+    return (
+      <div className="absolute inset-0 z-10 pointer-events-none" style={{ opacity: settings.opacity / 100 }}>
+        {settings.showTimer ? (
+          <div
+            className="pointer-events-auto absolute left-0 top-0 bg-white text-slate-950"
+            style={{ width: settings.timerWidth }}
+          >
+            <div className="px-2 py-1 text-center font-black tabular-nums leading-none" style={{ fontSize: Math.max(12, settings.fontSize * 0.62) }}>
+              {scoreboard.timer}
+            </div>
+          </div>
+        ) : null}
+        {scoreboard.teams.map((team, index) => (
+          <SplitTeamBracket
+            key={team.id}
+            team={team}
+            index={index}
+            settings={settings}
+            onPointerDown={onTeamPointerDown}
+          />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -523,152 +587,90 @@ function CustomScoreboardOverlay({
 
       <div data-scoreboard-body>
         {settings.direction === "horizontal" ? (
-          settings.splitTeams ? (
-            <div className="grid" style={{ rowGap: Math.max(0, settings.teamGap * 0.4) }}>
-              {chunkTeams(scoreboard.teams, 2).map((teamPair) => (
-                <div key={teamPair.map((team) => team.id).join("-")} className="flex items-stretch">
-                  <div
-                    className="grid"
-                    style={{
-                      gridTemplateColumns: settings.symmetricBrackets
-                        ? `${settings.scoreWidth}px ${availableTeamWidth}px`
-                        : `${availableTeamWidth}px ${settings.scoreWidth}px`
-                    }}
-                  >
-                    <TeamCell
-                      team={teamPair[0]}
-                      side="left"
-                      scoreFirst={settings.symmetricBrackets}
-                      settings={settings}
-                    />
-                  </div>
-                  {teamPair[1] ? (
-                    <>
-                      <TeamGapHandle
-                        direction="horizontal"
-                        value={settings.teamGap}
-                        onPointerDown={onTeamGapPointerDown}
-                      />
-                      <div
-                        className="grid"
-                        style={{ gridTemplateColumns: `${availableTeamWidth}px ${settings.scoreWidth}px` }}
-                      >
-                        <TeamCell team={teamPair[1]} side="right" settings={settings} />
-                      </div>
-                    </>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid">
-              {chunkTeams(scoreboard.teams, 2).map((teamPair, pairIndex) => (
-                <div
-                  key={teamPair.map((team) => team.id).join("-")}
-                  className="grid"
-                  style={{
-                    gridTemplateColumns: settings.symmetricBrackets
-                      ? `${settings.scoreWidth}px ${availableTeamWidth}px ${availableTeamWidth}px ${settings.scoreWidth}px`
-                      : `${availableTeamWidth}px ${settings.scoreWidth}px ${availableTeamWidth}px ${settings.scoreWidth}px`,
-                    marginTop: pairIndex > 0 ? -1 : 0
-                  }}
-                >
-                  <TeamCell
-                    team={teamPair[0]}
-                    side="left"
-                    scoreFirst={settings.symmetricBrackets}
-                    settings={settings}
-                  />
-                  {teamPair[1] ? (
-                    <TeamCell team={teamPair[1]} side="right" settings={settings} />
-                  ) : (
-                    <>
-                      <div />
-                      <div />
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          )
-        ) : (
-          settings.splitTeams ? (
-            <div className="grid">
-              {scoreboard.teams.map((team, index) => (
-                <Fragment key={team.id}>
-                  <div
-                    className="grid"
-                    style={{ gridTemplateColumns: `${availableTeamWidth}px ${settings.scoreWidth}px` }}
-                  >
-                    <TeamCell
-                      team={team}
-                      side={index === 0 ? "left" : "right"}
-                      settings={settings}
-                    />
-                  </div>
-                  {index < scoreboard.teams.length - 1 ? (
-                    <TeamGapHandle
-                      direction="vertical"
-                      value={settings.teamGap}
-                      onPointerDown={onTeamGapPointerDown}
-                    />
-                  ) : null}
-                </Fragment>
-              ))}
-            </div>
-          ) : (
-            <div
-              className="grid"
-              style={{ gridTemplateColumns: `${availableTeamWidth}px ${settings.scoreWidth}px` }}
-            >
-              {scoreboard.teams.map((team, index) => (
+          <div className="grid">
+            {chunkTeams(scoreboard.teams, 2).map((teamPair, pairIndex) => (
+              <div
+                key={teamPair.map((team) => team.id).join("-")}
+                className="grid"
+                style={{
+                  gridTemplateColumns: settings.symmetricBrackets
+                    ? `${settings.scoreWidth}px ${availableTeamWidth}px ${availableTeamWidth}px ${settings.scoreWidth}px`
+                    : `${availableTeamWidth}px ${settings.scoreWidth}px ${availableTeamWidth}px ${settings.scoreWidth}px`,
+                  marginTop: pairIndex > 0 ? -1 : 0
+                }}
+              >
                 <TeamCell
-                  key={team.id}
-                  team={team}
-                  side={index === 0 ? "left" : "right"}
+                  team={teamPair[0]}
+                  side="left"
+                  scoreFirst={settings.symmetricBrackets}
                   settings={settings}
                 />
-              ))}
-            </div>
-          )
+                {teamPair[1] ? (
+                  <TeamCell team={teamPair[1]} side="right" settings={settings} />
+                ) : (
+                  <>
+                    <div />
+                    <div />
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div
+            className="grid"
+            style={{ gridTemplateColumns: `${availableTeamWidth}px ${settings.scoreWidth}px` }}
+          >
+            {scoreboard.teams.map((team, index) => (
+              <TeamCell
+                key={team.id}
+                team={team}
+                side={index === 0 ? "left" : "right"}
+                settings={settings}
+              />
+            ))}
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-function TeamGapHandle({
-  direction,
-  value,
+function SplitTeamBracket({
+  team,
+  index,
+  settings,
   onPointerDown
 }: {
-  direction: Direction;
-  value: number;
-  onPointerDown: (direction: Direction, event: ReactPointerEvent<HTMLDivElement>) => void;
+  team: ScoreboardTeam;
+  index: number;
+  settings: OverlaySettings;
+  onPointerDown: (teamId: string, event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
-  const size = Math.max(12, value);
-
-  if (direction === "horizontal") {
-    return (
-      <div
-        className="group grid touch-none cursor-col-resize place-items-center bg-cyan/5"
-        onPointerDown={(event) => onPointerDown(direction, event)}
-        style={{ minWidth: size }}
-        title="좌우로 드래그해서 팀 간격 조절"
-      >
-        <div className="h-full w-px bg-cyan/50 shadow-[0_0_12px_rgba(47,230,255,0.55)] transition group-hover:bg-cyan" />
-      </div>
-    );
-  }
+  const side = index % 2 === 0 ? "left" : "right";
+  const scoreFirst = settings.direction === "horizontal" && settings.symmetricBrackets && side === "left";
+  const teamFirst = settings.direction !== "horizontal" || !scoreFirst;
+  const gridTemplateColumns = teamFirst
+    ? `${settings.teamWidth}px ${settings.scoreWidth}px`
+    : `${settings.scoreWidth}px ${settings.teamWidth}px`;
 
   return (
     <div
-      className="group col-span-2 grid touch-none cursor-row-resize place-items-center bg-cyan/5"
-      onPointerDown={(event) => onPointerDown(direction, event)}
-      style={{ minHeight: size }}
-      title="위아래로 드래그해서 팀 간격 조절"
+      className="pointer-events-auto absolute z-10 grid cursor-move touch-none select-none"
+      onPointerDown={(event) => onPointerDown(team.id, event)}
+      style={{
+        left: `${team.x}%`,
+        top: `${team.y}%`,
+        gridTemplateColumns
+      }}
+      title="팀 브래킷 드래그"
     >
-      <div className="h-px w-full bg-cyan/50 shadow-[0_0_12px_rgba(47,230,255,0.55)] transition group-hover:bg-cyan" />
+      <TeamCell
+        team={team}
+        side={side}
+        scoreFirst={scoreFirst}
+        settings={settings}
+      />
     </div>
   );
 }
