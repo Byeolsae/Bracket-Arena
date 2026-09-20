@@ -6,7 +6,7 @@ import { Eye, MonitorPlay, Move, Plus, Settings2, SlidersHorizontal, Trash2 } fr
 
 type NameMode = "short" | "full";
 type Direction = "horizontal" | "vertical";
-type ScreenResolution = "fhd" | "qhd" | "uhd";
+type ScreenResolution = "fhd" | "qhd" | "uhd" | "custom";
 type DragGuides = {
   verticalCenter: boolean;
   horizontalCenter: boolean;
@@ -31,13 +31,12 @@ type ScoreboardState = {
 type OverlaySettings = {
   x: number;
   y: number;
-  width: number;
+  customWidth: number;
+  customHeight: number;
   teamWidth: number;
   scoreWidth: number;
   rowHeight: number;
   timerWidth: number;
-  timerX: number;
-  timerY: number;
   logoSize: number;
   fontSize: number;
   nameMode: NameMode;
@@ -45,6 +44,7 @@ type OverlaySettings = {
   resolution: ScreenResolution;
   splitTeams: boolean;
   teamGap: number;
+  symmetricBrackets: boolean;
   showLogo: boolean;
   showTimer: boolean;
   opacity: number;
@@ -61,13 +61,12 @@ const defaultScoreboard: ScoreboardState = {
 const defaultSettings: OverlaySettings = {
   x: 0,
   y: 0,
-  width: 360,
+  customWidth: 1920,
+  customHeight: 1080,
   teamWidth: 205,
   scoreWidth: 54,
   rowHeight: 48,
   timerWidth: 190,
-  timerX: 0,
-  timerY: 0,
   logoSize: 30,
   fontSize: 30,
   nameMode: "short",
@@ -75,6 +74,7 @@ const defaultSettings: OverlaySettings = {
   resolution: "fhd",
   splitTeams: false,
   teamGap: 0,
+  symmetricBrackets: true,
   showLogo: true,
   showTimer: true,
   opacity: 100
@@ -83,7 +83,8 @@ const defaultSettings: OverlaySettings = {
 const resolutionOptions: Record<ScreenResolution, { label: string; width: number; height: number }> = {
   fhd: { label: "FHD", width: 1920, height: 1080 },
   qhd: { label: "QHD", width: 2560, height: 1440 },
-  uhd: { label: "UHD", width: 3840, height: 2160 }
+  uhd: { label: "UHD", width: 3840, height: 2160 },
+  custom: { label: "직접", width: 1920, height: 1080 }
 };
 
 const snapDistance = 10;
@@ -95,6 +96,17 @@ const hiddenDragGuides: DragGuides = {
   topEdge: false,
   bottomEdge: false
 };
+
+function getScreenSize(settings: OverlaySettings) {
+  if (settings.resolution === "custom") {
+    return {
+      width: settings.customWidth,
+      height: settings.customHeight
+    };
+  }
+
+  return resolutionOptions[settings.resolution];
+}
 
 export default function ScoreboardPage() {
   const [scoreboard, setScoreboard] = useState<ScoreboardState>(defaultScoreboard);
@@ -204,70 +216,6 @@ export default function ScoreboardPage() {
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
       setDragGuides(hiddenDragGuides);
-    };
-
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", handlePointerUp);
-  };
-
-  const handleTimerDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-
-    const overlayElement = event.currentTarget.parentElement;
-    const bodyElement = overlayElement?.querySelector<HTMLElement>("[data-scoreboard-body]");
-    if (!overlayElement) return;
-
-    const overlayRect = overlayElement.getBoundingClientRect();
-    const timerRect = event.currentTarget.getBoundingClientRect();
-    const bodyRect = bodyElement?.getBoundingClientRect();
-    const startX = settings.timerX;
-    const startY = settings.timerY;
-    const startPointerX = event.clientX;
-    const startPointerY = event.clientY;
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    const handlePointerMove = (moveEvent: PointerEvent) => {
-      const timerWidth = timerRect.width;
-      const timerHeight = timerRect.height;
-      const maxX = overlayRect.width - timerWidth;
-      let nextX = startX + moveEvent.clientX - startPointerX;
-      let nextY = startY + moveEvent.clientY - startPointerY;
-
-      if (Math.abs(nextX) <= snapDistance) {
-        nextX = 0;
-      } else if (Math.abs(nextX - maxX / 2) <= snapDistance) {
-        nextX = maxX / 2;
-      } else if (Math.abs(nextX - maxX) <= snapDistance) {
-        nextX = maxX;
-      }
-
-      if (bodyRect) {
-        const bodyTop = bodyRect.top - overlayRect.top;
-        const bodyBottom = bodyRect.bottom - overlayRect.top;
-
-        if (Math.abs(nextY - bodyTop) <= snapDistance) {
-          nextY = bodyTop;
-        } else if (Math.abs(nextY - (bodyTop - timerHeight)) <= snapDistance) {
-          nextY = bodyTop - timerHeight;
-        } else if (Math.abs(nextY - bodyBottom) <= snapDistance) {
-          nextY = bodyBottom;
-        }
-      } else if (Math.abs(nextY) <= snapDistance) {
-        nextY = 0;
-      }
-
-      setSettings((current) => ({
-        ...current,
-        timerX: Math.round(nextX),
-        timerY: Math.round(nextY)
-      }));
-    };
-
-    const handlePointerUp = () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", handlePointerUp);
     };
 
     window.addEventListener("pointermove", handlePointerMove);
@@ -413,6 +361,9 @@ export default function ScoreboardPage() {
               <CheckButton active={settings.splitTeams} onClick={() => updateSetting("splitTeams", !settings.splitTeams)}>
                 팀 분리
               </CheckButton>
+              <CheckButton active={settings.symmetricBrackets} onClick={() => updateSetting("symmetricBrackets", !settings.symmetricBrackets)}>
+                대칭
+              </CheckButton>
             </div>
           </div>
 
@@ -421,7 +372,7 @@ export default function ScoreboardPage() {
               <MonitorPlay className="h-5 w-5 text-cyan" aria-hidden="true" />
               <h2 className="text-lg font-black uppercase tracking-wide text-ink">화면 해상도</h2>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {(Object.keys(resolutionOptions) as ScreenResolution[]).map((resolution) => (
                 <ToggleButton
                   key={resolution}
@@ -432,8 +383,22 @@ export default function ScoreboardPage() {
                 </ToggleButton>
               ))}
             </div>
+            {settings.resolution === "custom" ? (
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <NumberField
+                  label="가로 해상도"
+                  value={settings.customWidth}
+                  onChange={(value) => updateSetting("customWidth", Math.max(320, value))}
+                />
+                <NumberField
+                  label="세로 해상도"
+                  value={settings.customHeight}
+                  onChange={(value) => updateSetting("customHeight", Math.max(180, value))}
+                />
+              </div>
+            ) : null}
             <p className="mt-3 text-xs font-bold text-muted">
-              {resolutionOptions[settings.resolution].width} x {resolutionOptions[settings.resolution].height}
+              {getScreenSize(settings).width} x {getScreenSize(settings).height}
             </p>
           </div>
 
@@ -452,25 +417,31 @@ export default function ScoreboardPage() {
                   X {settings.x}% / Y {settings.y}%
                 </p>
               </div>
-              <RangeField label="타이머 가로 위치" value={settings.timerX} min={-400} max={400} onChange={(value) => updateSetting("timerX", value)} suffix="px" />
-              <RangeField label="타이머 세로 위치" value={settings.timerY} min={-160} max={160} onChange={(value) => updateSetting("timerY", value)} suffix="px" />
             </div>
           </div>
 
           <div className="arena-card p-5">
             <div className="mb-4 flex items-center gap-2">
               <SlidersHorizontal className="h-5 w-5 text-magenta" aria-hidden="true" />
-              <h2 className="text-lg font-black uppercase tracking-wide text-ink">크기</h2>
+              <h2 className="text-lg font-black uppercase tracking-wide text-ink">브래킷 크기</h2>
             </div>
             <div className="grid gap-3">
-              <RangeField label="전체 넓이" value={settings.width} min={220} max={1000} onChange={(value) => updateSetting("width", value)} suffix="px" />
               <RangeField label="팀칸 넓이" value={settings.teamWidth} min={100} max={420} onChange={(value) => updateSetting("teamWidth", value)} suffix="px" />
               <RangeField label="점수칸 넓이" value={settings.scoreWidth} min={34} max={150} onChange={(value) => updateSetting("scoreWidth", value)} suffix="px" />
               <RangeField label="칸 높이" value={settings.rowHeight} min={30} max={110} onChange={(value) => updateSetting("rowHeight", value)} suffix="px" />
-              <RangeField label="타이머 넓이" value={settings.timerWidth} min={90} max={360} onChange={(value) => updateSetting("timerWidth", value)} suffix="px" />
               <RangeField label="로고 크기" value={settings.logoSize} min={0} max={80} onChange={(value) => updateSetting("logoSize", value)} suffix="px" />
               <RangeField label="팀명 글자" value={settings.fontSize} min={14} max={64} onChange={(value) => updateSetting("fontSize", value)} suffix="px" />
               <RangeField label="불투명도" value={settings.opacity} min={20} max={100} onChange={(value) => updateSetting("opacity", value)} suffix="%" />
+            </div>
+          </div>
+
+          <div className="arena-card p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <SlidersHorizontal className="h-5 w-5 text-cyan" aria-hidden="true" />
+              <h2 className="text-lg font-black uppercase tracking-wide text-ink">타이머 크기</h2>
+            </div>
+            <div className="grid gap-3">
+              <RangeField label="타이머 넓이" value={settings.timerWidth} min={90} max={360} onChange={(value) => updateSetting("timerWidth", value)} suffix="px" />
             </div>
           </div>
         </aside>
@@ -491,7 +462,7 @@ export default function ScoreboardPage() {
               ref={previewRef}
               className="relative w-full max-w-6xl overflow-hidden rounded-md border border-line bg-[#111318] shadow-panel"
               style={{
-                aspectRatio: `${resolutionOptions[settings.resolution].width} / ${resolutionOptions[settings.resolution].height}`
+                aspectRatio: `${getScreenSize(settings).width} / ${getScreenSize(settings).height}`
               }}
             >
               <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:52px_52px]" />
@@ -501,7 +472,6 @@ export default function ScoreboardPage() {
                 scoreboard={scoreboard}
                 settings={settings}
                 onPointerDown={handleScoreboardDragStart}
-                onTimerPointerDown={handleTimerDragStart}
                 onTeamGapPointerDown={handleTeamGapDragStart}
               />
             </div>
@@ -516,24 +486,21 @@ function CustomScoreboardOverlay({
   scoreboard,
   settings,
   onPointerDown,
-  onTimerPointerDown,
   onTeamGapPointerDown
 }: {
   scoreboard: ScoreboardState;
   settings: OverlaySettings;
   onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
-  onTimerPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onTeamGapPointerDown: (direction: Direction, event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const overlayStyle: CSSProperties = {
     left: `${settings.x}%`,
     top: `${settings.y}%`,
-    width: settings.width,
     opacity: settings.opacity / 100
   };
   const availableTeamWidth =
     settings.direction === "vertical"
-      ? Math.max(80, settings.width - settings.scoreWidth)
+      ? settings.teamWidth
       : settings.teamWidth;
 
   return (
@@ -545,13 +512,8 @@ function CustomScoreboardOverlay({
     >
       {settings.showTimer ? (
         <div
-          className="cursor-move bg-white text-slate-950"
-          onPointerDown={onTimerPointerDown}
-          style={{
-            width: settings.timerWidth,
-            transform: `translate(${settings.timerX}px, ${settings.timerY}px)`
-          }}
-          title="타이머 드래그"
+          className="bg-white text-slate-950"
+          style={{ width: settings.timerWidth }}
         >
           <div className="px-2 py-1 text-center font-black tabular-nums leading-none" style={{ fontSize: Math.max(12, settings.fontSize * 0.62) }}>
             {scoreboard.timer}
@@ -561,59 +523,114 @@ function CustomScoreboardOverlay({
 
       <div data-scoreboard-body>
         {settings.direction === "horizontal" ? (
-          <div className="grid" style={{ rowGap: settings.splitTeams ? Math.max(0, settings.teamGap * 0.4) : 0 }}>
-            {chunkTeams(scoreboard.teams, 2).map((teamPair, pairIndex) => (
-              <div
-                key={teamPair.map((team) => team.id).join("-")}
-                className="grid"
-                style={{
-                  gridTemplateColumns: settings.splitTeams
-                    ? `${settings.scoreWidth}px ${availableTeamWidth}px ${Math.max(12, settings.teamGap)}px ${availableTeamWidth}px ${settings.scoreWidth}px`
-                    : `${settings.scoreWidth}px ${availableTeamWidth}px ${availableTeamWidth}px ${settings.scoreWidth}px`,
-                  marginTop: pairIndex > 0 && !settings.splitTeams ? -1 : 0
-                }}
-              >
-                <TeamCell team={teamPair[0]} side="left" scoreFirst settings={settings} />
-                {settings.splitTeams ? (
-                  <TeamGapHandle
-                    direction="horizontal"
-                    value={settings.teamGap}
-                    onPointerDown={onTeamGapPointerDown}
+          settings.splitTeams ? (
+            <div className="grid" style={{ rowGap: Math.max(0, settings.teamGap * 0.4) }}>
+              {chunkTeams(scoreboard.teams, 2).map((teamPair) => (
+                <div key={teamPair.map((team) => team.id).join("-")} className="flex items-stretch">
+                  <div
+                    className="grid"
+                    style={{
+                      gridTemplateColumns: settings.symmetricBrackets
+                        ? `${settings.scoreWidth}px ${availableTeamWidth}px`
+                        : `${availableTeamWidth}px ${settings.scoreWidth}px`
+                    }}
+                  >
+                    <TeamCell
+                      team={teamPair[0]}
+                      side="left"
+                      scoreFirst={settings.symmetricBrackets}
+                      settings={settings}
+                    />
+                  </div>
+                  {teamPair[1] ? (
+                    <>
+                      <TeamGapHandle
+                        direction="horizontal"
+                        value={settings.teamGap}
+                        onPointerDown={onTeamGapPointerDown}
+                      />
+                      <div
+                        className="grid"
+                        style={{ gridTemplateColumns: `${availableTeamWidth}px ${settings.scoreWidth}px` }}
+                      >
+                        <TeamCell team={teamPair[1]} side="right" settings={settings} />
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid">
+              {chunkTeams(scoreboard.teams, 2).map((teamPair, pairIndex) => (
+                <div
+                  key={teamPair.map((team) => team.id).join("-")}
+                  className="grid"
+                  style={{
+                    gridTemplateColumns: settings.symmetricBrackets
+                      ? `${settings.scoreWidth}px ${availableTeamWidth}px ${availableTeamWidth}px ${settings.scoreWidth}px`
+                      : `${availableTeamWidth}px ${settings.scoreWidth}px ${availableTeamWidth}px ${settings.scoreWidth}px`,
+                    marginTop: pairIndex > 0 ? -1 : 0
+                  }}
+                >
+                  <TeamCell
+                    team={teamPair[0]}
+                    side="left"
+                    scoreFirst={settings.symmetricBrackets}
+                    settings={settings}
                   />
-                ) : null}
-                {teamPair[1] ? (
-                  <TeamCell team={teamPair[1]} side="right" settings={settings} />
-                ) : (
-                  <>
-                    <div />
-                    <div />
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
+                  {teamPair[1] ? (
+                    <TeamCell team={teamPair[1]} side="right" settings={settings} />
+                  ) : (
+                    <>
+                      <div />
+                      <div />
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )
         ) : (
-          <div
-            className="grid"
-            style={{ gridTemplateColumns: `${availableTeamWidth}px ${settings.scoreWidth}px` }}
-          >
-            {scoreboard.teams.map((team, index) => (
-              <Fragment key={team.id}>
+          settings.splitTeams ? (
+            <div className="grid">
+              {scoreboard.teams.map((team, index) => (
+                <Fragment key={team.id}>
+                  <div
+                    className="grid"
+                    style={{ gridTemplateColumns: `${availableTeamWidth}px ${settings.scoreWidth}px` }}
+                  >
+                    <TeamCell
+                      team={team}
+                      side={index === 0 ? "left" : "right"}
+                      settings={settings}
+                    />
+                  </div>
+                  {index < scoreboard.teams.length - 1 ? (
+                    <TeamGapHandle
+                      direction="vertical"
+                      value={settings.teamGap}
+                      onPointerDown={onTeamGapPointerDown}
+                    />
+                  ) : null}
+                </Fragment>
+              ))}
+            </div>
+          ) : (
+            <div
+              className="grid"
+              style={{ gridTemplateColumns: `${availableTeamWidth}px ${settings.scoreWidth}px` }}
+            >
+              {scoreboard.teams.map((team, index) => (
                 <TeamCell
+                  key={team.id}
                   team={team}
                   side={index === 0 ? "left" : "right"}
                   settings={settings}
                 />
-                {settings.splitTeams && index < scoreboard.teams.length - 1 ? (
-                  <TeamGapHandle
-                    direction="vertical"
-                    value={settings.teamGap}
-                    onPointerDown={onTeamGapPointerDown}
-                  />
-                ) : null}
-              </Fragment>
-            ))}
-          </div>
+              ))}
+            </div>
+          )
         )}
       </div>
     </div>
@@ -710,7 +727,7 @@ function TeamCell({
   scoreFirst?: boolean;
   settings: OverlaySettings;
 }) {
-  const mirrored = settings.direction === "horizontal" && side === "right";
+  const mirrored = settings.direction === "horizontal" && settings.symmetricBrackets && side === "right";
   const label = settings.nameMode === "short" ? team.shortName : team.name;
   const scoreCell = (
     <ScoreCell
