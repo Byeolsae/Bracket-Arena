@@ -7,6 +7,14 @@ import { Eye, MonitorPlay, Move, Settings2, SlidersHorizontal } from "lucide-rea
 type NameMode = "short" | "full";
 type Direction = "horizontal" | "vertical";
 type ScreenResolution = "fhd" | "qhd" | "uhd";
+type DragGuides = {
+  verticalCenter: boolean;
+  horizontalCenter: boolean;
+  leftEdge: boolean;
+  rightEdge: boolean;
+  topEdge: boolean;
+  bottomEdge: boolean;
+};
 
 type ScoreboardState = {
   timer: string;
@@ -74,9 +82,20 @@ const resolutionOptions: Record<ScreenResolution, { label: string; width: number
   uhd: { label: "UHD", width: 3840, height: 2160 }
 };
 
+const snapDistance = 10;
+const hiddenDragGuides: DragGuides = {
+  verticalCenter: false,
+  horizontalCenter: false,
+  leftEdge: false,
+  rightEdge: false,
+  topEdge: false,
+  bottomEdge: false
+};
+
 export default function ScoreboardPage() {
   const [scoreboard, setScoreboard] = useState<ScoreboardState>(defaultScoreboard);
   const [settings, setSettings] = useState<OverlaySettings>(defaultSettings);
+  const [dragGuides, setDragGuides] = useState<DragGuides>(hiddenDragGuides);
   const previewRef = useRef<HTMLDivElement>(null);
 
   const updateScoreboard = <Key extends keyof ScoreboardState>(key: Key, value: ScoreboardState[Key]) => {
@@ -100,19 +119,46 @@ export default function ScoreboardPage() {
     const handlePointerMove = (moveEvent: PointerEvent) => {
       const maxLeft = Math.max(0, previewRect.width - overlayRect.width);
       const maxTop = Math.max(0, previewRect.height - overlayRect.height);
-      const nextLeft = clamp(moveEvent.clientX - previewRect.left - grabOffsetX, 0, maxLeft);
-      const nextTop = clamp(moveEvent.clientY - previewRect.top - grabOffsetY, 0, maxTop);
+      const centerLeft = maxLeft / 2;
+      const centerTop = maxTop / 2;
+      let nextLeft = clamp(moveEvent.clientX - previewRect.left - grabOffsetX, 0, maxLeft);
+      let nextTop = clamp(moveEvent.clientY - previewRect.top - grabOffsetY, 0, maxTop);
+      const nextGuides: DragGuides = { ...hiddenDragGuides };
+
+      if (Math.abs(nextLeft - centerLeft) <= snapDistance) {
+        nextLeft = centerLeft;
+        nextGuides.verticalCenter = true;
+      } else if (nextLeft <= snapDistance) {
+        nextLeft = 0;
+        nextGuides.leftEdge = true;
+      } else if (Math.abs(nextLeft - maxLeft) <= snapDistance) {
+        nextLeft = maxLeft;
+        nextGuides.rightEdge = true;
+      }
+
+      if (Math.abs(nextTop - centerTop) <= snapDistance) {
+        nextTop = centerTop;
+        nextGuides.horizontalCenter = true;
+      } else if (nextTop <= snapDistance) {
+        nextTop = 0;
+        nextGuides.topEdge = true;
+      } else if (Math.abs(nextTop - maxTop) <= snapDistance) {
+        nextTop = maxTop;
+        nextGuides.bottomEdge = true;
+      }
 
       setSettings((current) => ({
         ...current,
         x: Math.round((nextLeft / Math.max(1, previewRect.width)) * 1000) / 10,
         y: Math.round((nextTop / Math.max(1, previewRect.height)) * 1000) / 10
       }));
+      setDragGuides(nextGuides);
     };
 
     const handlePointerUp = () => {
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
+      setDragGuides(hiddenDragGuides);
     };
 
     window.addEventListener("pointermove", handlePointerMove);
@@ -248,7 +294,7 @@ export default function ScoreboardPage() {
             <div className="grid gap-3">
               <div className="rounded-md border border-line bg-arena/70 px-3 py-3">
                 <p className="text-xs font-bold leading-5 text-muted">
-                  미리보기 화면에서 스코어보드를 직접 드래그해서 위치를 조절합니다.
+                  미리보기 화면에서 드래그합니다. 중앙과 가장자리 근처에서는 가이드가 뜨고 자동으로 붙습니다.
                 </p>
                 <p className="mt-2 text-xs font-black uppercase tracking-wide text-cyan">
                   X {settings.x}% / Y {settings.y}%
@@ -298,6 +344,7 @@ export default function ScoreboardPage() {
             >
               <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:52px_52px]" />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_48%_24%,rgba(255,255,255,0.08),transparent_18%)]" />
+              <AlignmentGuides guides={dragGuides} />
               <CustomScoreboardOverlay
                 scoreboard={scoreboard}
                 settings={settings}
@@ -388,6 +435,35 @@ function CustomScoreboardOverlay({
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+function AlignmentGuides({ guides }: { guides: DragGuides }) {
+  const showAnyGuide = Object.values(guides).some(Boolean);
+
+  if (!showAnyGuide) return null;
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[8]">
+      {guides.verticalCenter ? (
+        <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-cyan shadow-[0_0_18px_rgba(47,230,255,0.95)]" />
+      ) : null}
+      {guides.horizontalCenter ? (
+        <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-cyan shadow-[0_0_18px_rgba(47,230,255,0.95)]" />
+      ) : null}
+      {guides.leftEdge ? (
+        <div className="absolute left-0 top-0 h-full w-px bg-lime shadow-[0_0_16px_rgba(163,230,53,0.9)]" />
+      ) : null}
+      {guides.rightEdge ? (
+        <div className="absolute right-0 top-0 h-full w-px bg-lime shadow-[0_0_16px_rgba(163,230,53,0.9)]" />
+      ) : null}
+      {guides.topEdge ? (
+        <div className="absolute left-0 top-0 h-px w-full bg-lime shadow-[0_0_16px_rgba(163,230,53,0.9)]" />
+      ) : null}
+      {guides.bottomEdge ? (
+        <div className="absolute bottom-0 left-0 h-px w-full bg-lime shadow-[0_0_16px_rgba(163,230,53,0.9)]" />
+      ) : null}
+    </div>
+  );
 }
 
 function TeamCell({
