@@ -2,7 +2,7 @@
 
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { useRef, useState } from "react";
-import { Eye, MonitorPlay, Move, Settings2, SlidersHorizontal } from "lucide-react";
+import { Eye, MonitorPlay, Move, Plus, Settings2, SlidersHorizontal, Trash2 } from "lucide-react";
 
 type NameMode = "short" | "full";
 type Direction = "horizontal" | "vertical";
@@ -16,14 +16,16 @@ type DragGuides = {
   bottomEdge: boolean;
 };
 
+type ScoreboardTeam = {
+  id: string;
+  name: string;
+  shortName: string;
+  score: number;
+};
+
 type ScoreboardState = {
   timer: string;
-  leftName: string;
-  leftShort: string;
-  leftScore: number;
-  rightName: string;
-  rightShort: string;
-  rightScore: number;
+  teams: ScoreboardTeam[];
 };
 
 type OverlaySettings = {
@@ -41,6 +43,8 @@ type OverlaySettings = {
   nameMode: NameMode;
   direction: Direction;
   resolution: ScreenResolution;
+  splitTeams: boolean;
+  teamGap: number;
   showLogo: boolean;
   showTimer: boolean;
   opacity: number;
@@ -48,12 +52,10 @@ type OverlaySettings = {
 
 const defaultScoreboard: ScoreboardState = {
   timer: "11:38:39",
-  leftName: "DRX",
-  leftShort: "DRX",
-  leftScore: 0,
-  rightName: "Gen.G",
-  rightShort: "GEN",
-  rightScore: 0
+  teams: [
+    { id: "team-1", name: "DRX", shortName: "DRX", score: 0 },
+    { id: "team-2", name: "Gen.G", shortName: "GEN", score: 0 }
+  ]
 };
 
 const defaultSettings: OverlaySettings = {
@@ -71,6 +73,8 @@ const defaultSettings: OverlaySettings = {
   nameMode: "short",
   direction: "vertical",
   resolution: "fhd",
+  splitTeams: false,
+  teamGap: 0,
   showLogo: true,
   showTimer: true,
   opacity: 100
@@ -98,12 +102,53 @@ export default function ScoreboardPage() {
   const [dragGuides, setDragGuides] = useState<DragGuides>(hiddenDragGuides);
   const previewRef = useRef<HTMLDivElement>(null);
 
-  const updateScoreboard = <Key extends keyof ScoreboardState>(key: Key, value: ScoreboardState[Key]) => {
-    setScoreboard((current) => ({ ...current, [key]: value }));
-  };
-
   const updateSetting = <Key extends keyof OverlaySettings>(key: Key, value: OverlaySettings[Key]) => {
     setSettings((current) => ({ ...current, [key]: value }));
+  };
+
+  const updateTimer = (timer: string) => {
+    setScoreboard((current) => ({ ...current, timer }));
+  };
+
+  const updateTeam = <Key extends keyof ScoreboardTeam>(
+    teamId: string,
+    key: Key,
+    value: ScoreboardTeam[Key]
+  ) => {
+    setScoreboard((current) => ({
+      ...current,
+      teams: current.teams.map((team) => (team.id === teamId ? { ...team, [key]: value } : team))
+    }));
+  };
+
+  const addTeam = () => {
+    setScoreboard((current) => {
+      const nextNumber = current.teams.length + 1;
+
+      return {
+        ...current,
+        teams: [
+          ...current.teams,
+          {
+            id: `team-${Date.now()}`,
+            name: `Team ${nextNumber}`,
+            shortName: `T${nextNumber}`,
+            score: 0
+          }
+        ]
+      };
+    });
+  };
+
+  const removeTeam = (teamId: string) => {
+    setScoreboard((current) => {
+      if (current.teams.length <= 2) return current;
+
+      return {
+        ...current,
+        teams: current.teams.filter((team) => team.id !== teamId)
+      };
+    });
   };
 
   const handleScoreboardDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -165,6 +210,70 @@ export default function ScoreboardPage() {
     window.addEventListener("pointerup", handlePointerUp);
   };
 
+  const handleTimerDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+
+    const overlayElement = event.currentTarget.parentElement;
+    const bodyElement = overlayElement?.querySelector<HTMLElement>("[data-scoreboard-body]");
+    if (!overlayElement) return;
+
+    const overlayRect = overlayElement.getBoundingClientRect();
+    const timerRect = event.currentTarget.getBoundingClientRect();
+    const bodyRect = bodyElement?.getBoundingClientRect();
+    const startX = settings.timerX;
+    const startY = settings.timerY;
+    const startPointerX = event.clientX;
+    const startPointerY = event.clientY;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const timerWidth = timerRect.width;
+      const timerHeight = timerRect.height;
+      const maxX = overlayRect.width - timerWidth;
+      let nextX = startX + moveEvent.clientX - startPointerX;
+      let nextY = startY + moveEvent.clientY - startPointerY;
+
+      if (Math.abs(nextX) <= snapDistance) {
+        nextX = 0;
+      } else if (Math.abs(nextX - maxX / 2) <= snapDistance) {
+        nextX = maxX / 2;
+      } else if (Math.abs(nextX - maxX) <= snapDistance) {
+        nextX = maxX;
+      }
+
+      if (bodyRect) {
+        const bodyTop = bodyRect.top - overlayRect.top;
+        const bodyBottom = bodyRect.bottom - overlayRect.top;
+
+        if (Math.abs(nextY - bodyTop) <= snapDistance) {
+          nextY = bodyTop;
+        } else if (Math.abs(nextY - (bodyTop - timerHeight)) <= snapDistance) {
+          nextY = bodyTop - timerHeight;
+        } else if (Math.abs(nextY - bodyBottom) <= snapDistance) {
+          nextY = bodyBottom;
+        }
+      } else if (Math.abs(nextY) <= snapDistance) {
+        nextY = 0;
+      }
+
+      setSettings((current) => ({
+        ...current,
+        timerX: Math.round(nextX),
+        timerY: Math.round(nextY)
+      }));
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+  };
+
   return (
     <main className="min-h-[calc(100vh-73px)] px-4 py-8 sm:px-6 2xl:px-8">
       <section className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -193,43 +302,51 @@ export default function ScoreboardPage() {
 
             <div className="space-y-4">
               <div className="grid gap-3">
-                <TextField label="타이머" value={scoreboard.timer} onChange={(value) => updateScoreboard("timer", value)} />
+                <TextField label="타이머" value={scoreboard.timer} onChange={updateTimer} />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <TextField
-                  label="왼쪽 풀네임"
-                  value={scoreboard.leftName}
-                  onChange={(value) => updateScoreboard("leftName", value)}
-                />
-                <TextField
-                  label="오른쪽 풀네임"
-                  value={scoreboard.rightName}
-                  onChange={(value) => updateScoreboard("rightName", value)}
-                />
-                <TextField
-                  label="왼쪽 약칭"
-                  value={scoreboard.leftShort}
-                  onChange={(value) => updateScoreboard("leftShort", value.toUpperCase().slice(0, 8))}
-                />
-                <TextField
-                  label="오른쪽 약칭"
-                  value={scoreboard.rightShort}
-                  onChange={(value) => updateScoreboard("rightShort", value.toUpperCase().slice(0, 8))}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <NumberField
-                  label="왼쪽 점수"
-                  value={scoreboard.leftScore}
-                  onChange={(value) => updateScoreboard("leftScore", value)}
-                />
-                <NumberField
-                  label="오른쪽 점수"
-                  value={scoreboard.rightScore}
-                  onChange={(value) => updateScoreboard("rightScore", value)}
-                />
+              <div className="space-y-3">
+                {scoreboard.teams.map((team, index) => (
+                  <div key={team.id} className="rounded-md border border-line bg-arena/70 p-3">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <p className="text-xs font-black uppercase tracking-wide text-cyan">팀 {index + 1}</p>
+                      <button
+                        type="button"
+                        onClick={() => removeTeam(team.id)}
+                        disabled={scoreboard.teams.length <= 2}
+                        className="inline-grid h-8 w-8 place-items-center rounded-md border border-line bg-panel text-muted transition hover:border-red-400 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-35"
+                        aria-label={`${team.shortName} 팀 삭제`}
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <TextField
+                        label="풀네임"
+                        value={team.name}
+                        onChange={(value) => updateTeam(team.id, "name", value)}
+                      />
+                      <TextField
+                        label="약칭"
+                        value={team.shortName}
+                        onChange={(value) => updateTeam(team.id, "shortName", value.toUpperCase().slice(0, 8))}
+                      />
+                      <NumberField
+                        label="점수"
+                        value={team.score}
+                        onChange={(value) => updateTeam(team.id, "score", value)}
+                      />
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={addTeam}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-cyan/40 bg-cyan/10 px-3 py-2 text-sm font-black uppercase tracking-wide text-cyan transition hover:bg-cyan/20"
+                >
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  팀 추가
+                </button>
               </div>
             </div>
           </div>
@@ -261,6 +378,9 @@ export default function ScoreboardPage() {
               </CheckButton>
               <CheckButton active={settings.showTimer} onClick={() => updateSetting("showTimer", !settings.showTimer)}>
                 타이머
+              </CheckButton>
+              <CheckButton active={settings.splitTeams} onClick={() => updateSetting("splitTeams", !settings.splitTeams)}>
+                팀 분리
               </CheckButton>
             </div>
           </div>
@@ -315,6 +435,7 @@ export default function ScoreboardPage() {
               <RangeField label="팀칸 넓이" value={settings.teamWidth} min={100} max={420} onChange={(value) => updateSetting("teamWidth", value)} suffix="px" />
               <RangeField label="점수칸 넓이" value={settings.scoreWidth} min={34} max={150} onChange={(value) => updateSetting("scoreWidth", value)} suffix="px" />
               <RangeField label="칸 높이" value={settings.rowHeight} min={30} max={110} onChange={(value) => updateSetting("rowHeight", value)} suffix="px" />
+              <RangeField label="팀 분리 간격" value={settings.teamGap} min={0} max={120} onChange={(value) => updateSetting("teamGap", value)} suffix="px" />
               <RangeField label="타이머 넓이" value={settings.timerWidth} min={90} max={360} onChange={(value) => updateSetting("timerWidth", value)} suffix="px" />
               <RangeField label="로고 크기" value={settings.logoSize} min={0} max={80} onChange={(value) => updateSetting("logoSize", value)} suffix="px" />
               <RangeField label="팀명 글자" value={settings.fontSize} min={14} max={64} onChange={(value) => updateSetting("fontSize", value)} suffix="px" />
@@ -349,6 +470,7 @@ export default function ScoreboardPage() {
                 scoreboard={scoreboard}
                 settings={settings}
                 onPointerDown={handleScoreboardDragStart}
+                onTimerPointerDown={handleTimerDragStart}
               />
             </div>
           </div>
@@ -361,14 +483,14 @@ export default function ScoreboardPage() {
 function CustomScoreboardOverlay({
   scoreboard,
   settings,
-  onPointerDown
+  onPointerDown,
+  onTimerPointerDown
 }: {
   scoreboard: ScoreboardState;
   settings: OverlaySettings;
   onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  onTimerPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
-  const labelA = settings.nameMode === "short" ? scoreboard.leftShort : scoreboard.leftName;
-  const labelB = settings.nameMode === "short" ? scoreboard.rightShort : scoreboard.rightName;
   const overlayStyle: CSSProperties = {
     left: `${settings.x}%`,
     top: `${settings.y}%`,
@@ -389,11 +511,13 @@ function CustomScoreboardOverlay({
     >
       {settings.showTimer ? (
         <div
-          className="bg-white text-slate-950"
+          className="cursor-move bg-white text-slate-950"
+          onPointerDown={onTimerPointerDown}
           style={{
             width: settings.timerWidth,
             transform: `translate(${settings.timerX}px, ${settings.timerY}px)`
           }}
+          title="타이머 드래그"
         >
           <div className="px-2 py-1 text-center font-black tabular-nums leading-none" style={{ fontSize: Math.max(12, settings.fontSize * 0.62) }}>
             {scoreboard.timer}
@@ -401,36 +525,71 @@ function CustomScoreboardOverlay({
         </div>
       ) : null}
 
-      <div
-        className={settings.direction === "horizontal" ? "grid" : "grid"}
-        style={
-          settings.direction === "horizontal"
-            ? {
-                gridTemplateColumns: `${settings.scoreWidth}px ${availableTeamWidth}px ${availableTeamWidth}px ${settings.scoreWidth}px`
-              }
-            : {
-                gridTemplateColumns: `${availableTeamWidth}px ${settings.scoreWidth}px`
-              }
-        }
-      >
-        <TeamCell
-          label={labelA}
-          logoLabel={scoreboard.leftShort}
-          score={scoreboard.leftScore}
-          side="left"
-          scoreFirst={settings.direction === "horizontal"}
-          settings={settings}
-        />
-        <TeamCell
-          label={labelB}
-          logoLabel={scoreboard.rightShort}
-          score={scoreboard.rightScore}
-          side="right"
-          settings={settings}
-        />
+      <div data-scoreboard-body>
+        {settings.direction === "horizontal" ? (
+          <div className="grid" style={{ rowGap: settings.splitTeams ? settings.teamGap : 0 }}>
+            {chunkTeams(scoreboard.teams, 2).map((teamPair, pairIndex) => (
+              <div
+                key={teamPair.map((team) => team.id).join("-")}
+                className="grid"
+                style={{
+                  columnGap: settings.splitTeams ? settings.teamGap : 0,
+                  gridTemplateColumns: `${settings.scoreWidth}px ${availableTeamWidth}px ${availableTeamWidth}px ${settings.scoreWidth}px`,
+                  marginTop: pairIndex > 0 && !settings.splitTeams ? -1 : 0
+                }}
+              >
+                <TeamCell
+                  team={teamPair[0]}
+                  side="left"
+                  scoreFirst
+                  settings={settings}
+                />
+                {teamPair[1] ? (
+                  <TeamCell
+                    team={teamPair[1]}
+                    side="right"
+                    settings={settings}
+                  />
+                ) : (
+                  <>
+                    <div />
+                    <div />
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div
+            className="grid"
+            style={{
+              gap: settings.splitTeams ? settings.teamGap : 0,
+              gridTemplateColumns: `${availableTeamWidth}px ${settings.scoreWidth}px`
+            }}
+          >
+            {scoreboard.teams.map((team, index) => (
+              <TeamCell
+                key={team.id}
+                team={team}
+                side={index === 0 ? "left" : "right"}
+                settings={settings}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
+}
+
+function chunkTeams(teams: ScoreboardTeam[], size: number) {
+  const chunks: ScoreboardTeam[][] = [];
+
+  for (let index = 0; index < teams.length; index += size) {
+    chunks.push(teams.slice(index, index + size));
+  }
+
+  return chunks;
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -467,25 +626,22 @@ function AlignmentGuides({ guides }: { guides: DragGuides }) {
 }
 
 function TeamCell({
-  label,
-  logoLabel,
-  score,
+  team,
   side,
   scoreFirst = false,
   settings
 }: {
-  label: string;
-  logoLabel: string;
-  score: number;
+  team: ScoreboardTeam;
   side: "left" | "right";
   scoreFirst?: boolean;
   settings: OverlaySettings;
 }) {
   const mirrored = settings.direction === "horizontal" && side === "right";
+  const label = settings.nameMode === "short" ? team.shortName : team.name;
   const scoreCell = (
     <ScoreCell
       key="score"
-      score={score}
+      score={team.score}
       rowHeight={settings.rowHeight}
       scoreWidth={settings.scoreWidth}
     />
@@ -500,7 +656,7 @@ function TeamCell({
       style={{ height: settings.rowHeight }}
     >
       {!mirrored && settings.showLogo && settings.logoSize > 0 ? (
-        <LogoBox label={logoLabel} size={settings.logoSize} />
+        <LogoBox label={team.shortName} size={settings.logoSize} />
       ) : null}
       <span
         className={["truncate font-black uppercase leading-none", mirrored ? "text-right" : ""].join(" ")}
@@ -509,7 +665,7 @@ function TeamCell({
         {label}
       </span>
       {mirrored && settings.showLogo && settings.logoSize > 0 ? (
-        <LogoBox label={logoLabel} size={settings.logoSize} />
+        <LogoBox label={team.shortName} size={settings.logoSize} />
       ) : null}
     </div>
   );
