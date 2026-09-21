@@ -24,6 +24,13 @@ type DragGuides = {
   topEdge: boolean;
   bottomEdge: boolean;
 };
+type SnapRect = {
+  id: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
 
 type ScoreboardTeam = {
   id: string;
@@ -188,6 +195,105 @@ export default function ScoreboardPage() {
     });
   };
 
+  const getTeamSnapRect = (team: ScoreboardTeam): SnapRect => {
+    const size = getBracketSize(team, settings);
+    const previewRect = previewRef.current?.getBoundingClientRect();
+    const previewWidth = previewRect?.width ?? 1;
+    const previewHeight = previewRect?.height ?? 1;
+
+    return {
+      id: team.id,
+      left: (team.x / 100) * previewWidth,
+      top: (team.y / 100) * previewHeight,
+      width: size.teamWidth + size.scoreWidth,
+      height: size.rowHeight
+    };
+  };
+
+  const getTimerSnapRect = (): SnapRect => ({
+    id: "timer",
+    left: settings.timerX,
+    top: settings.timerY,
+    width: settings.timerWidth,
+    height: settings.timerHeight
+  });
+
+  const getAttachmentSnapRects = ({
+    excludedTeamId,
+    includeTimer
+  }: {
+    excludedTeamId?: string;
+    includeTimer: boolean;
+  }) => [
+    ...scoreboard.teams
+      .filter((team) => team.id !== excludedTeamId)
+      .map((team) => getTeamSnapRect(team)),
+    ...(includeTimer && settings.showTimer ? [getTimerSnapRect()] : [])
+  ];
+
+  const snapToAttachmentRects = (
+    left: number,
+    top: number,
+    width: number,
+    height: number,
+    targets: SnapRect[]
+  ) => {
+    let nextLeft = left;
+    let nextTop = top;
+    const nextGuides: DragGuides = { ...hiddenDragGuides };
+    const rangesAreClose = (startA: number, endA: number, startB: number, endB: number) =>
+      Math.max(startA, startB) <= Math.min(endA, endB) + snapDistance;
+
+    for (const target of targets) {
+      const targetRight = target.left + target.width;
+      const targetBottom = target.top + target.height;
+      const movingRight = nextLeft + width;
+      const movingBottom = nextTop + height;
+      const horizontalRangesClose = rangesAreClose(nextLeft, movingRight, target.left, targetRight);
+      const verticalRangesClose = rangesAreClose(nextTop, movingBottom, target.top, targetBottom);
+      const xCandidates = [
+        target.left,
+        targetRight,
+        target.left - width,
+        targetRight - width,
+        target.left + target.width / 2 - width / 2
+      ];
+      const yCandidates = [
+        target.top,
+        targetBottom,
+        target.top - height,
+        targetBottom - height,
+        target.top + target.height / 2 - height / 2
+      ];
+
+      if (verticalRangesClose) {
+        for (const candidate of xCandidates) {
+          if (Math.abs(nextLeft - candidate) <= snapDistance) {
+            nextLeft = candidate;
+            nextGuides.verticalCenter = true;
+            break;
+          }
+        }
+      }
+
+      if (horizontalRangesClose) {
+        for (const candidate of yCandidates) {
+          if (Math.abs(nextTop - candidate) <= snapDistance) {
+            nextTop = candidate;
+            nextGuides.horizontalCenter = true;
+            break;
+          }
+        }
+      }
+    }
+
+    return {
+      left: nextLeft,
+      top: nextTop,
+      guides: nextGuides
+    };
+  };
+
   const handleScoreboardDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || !previewRef.current) return;
 
@@ -287,6 +393,20 @@ export default function ScoreboardPage() {
       } else if (Math.abs(nextTop - maxTop) <= snapDistance) {
         nextTop = maxTop;
         nextGuides.bottomEdge = true;
+      }
+
+      if (settings.splitTeams) {
+        const attachmentSnap = snapToAttachmentRects(
+          nextLeft,
+          nextTop,
+          teamRect.width,
+          teamRect.height,
+          getAttachmentSnapRects({ excludedTeamId: teamId, includeTimer: true })
+        );
+        nextLeft = clamp(attachmentSnap.left, 0, maxLeft);
+        nextTop = clamp(attachmentSnap.top, 0, maxTop);
+        nextGuides.verticalCenter = nextGuides.verticalCenter || attachmentSnap.guides.verticalCenter;
+        nextGuides.horizontalCenter = nextGuides.horizontalCenter || attachmentSnap.guides.horizontalCenter;
       }
 
       setScoreboard((current) => ({
@@ -493,6 +613,20 @@ export default function ScoreboardPage() {
         nextGuides.bottomEdge = true;
       }
 
+      if (settings.splitTeams) {
+        const attachmentSnap = snapToAttachmentRects(
+          nextLeft,
+          nextTop,
+          timerRect.width,
+          timerRect.height,
+          getAttachmentSnapRects({ includeTimer: false })
+        );
+        nextLeft = clamp(attachmentSnap.left, 0, maxLeft);
+        nextTop = clamp(attachmentSnap.top, 0, maxTop);
+        nextGuides.verticalCenter = nextGuides.verticalCenter || attachmentSnap.guides.verticalCenter;
+        nextGuides.horizontalCenter = nextGuides.horizontalCenter || attachmentSnap.guides.horizontalCenter;
+      }
+
       setSettings((current) => ({
         ...current,
         timerX: Math.round(nextLeft),
@@ -673,7 +807,7 @@ export default function ScoreboardPage() {
                 <p className="text-xs font-bold leading-5 text-muted">
                   미리보기 화면에서 드래그합니다. 중앙과 가장자리 근처에서는 가이드가 뜨고 자동으로 붙습니다.
                   팀 분리 모드에서는 각 팀 브래킷을 따로 드래그할 수 있습니다.
-                  브래킷과 타이머 크기는 가장자리 핸들을 잡아 조절합니다.
+                  분리된 타이머와 브래킷도 서로 가까워지면 붙습니다. 브래킷과 타이머 크기는 가장자리 핸들을 잡아 조절합니다.
                 </p>
                 <p className="mt-2 text-xs font-black uppercase tracking-wide text-cyan">
                   X {settings.x}% / Y {settings.y}%
