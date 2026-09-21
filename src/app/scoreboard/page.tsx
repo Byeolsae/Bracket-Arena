@@ -7,6 +7,7 @@ import { Eye, MonitorPlay, Move, Plus, Settings2, SlidersHorizontal, Trash2 } fr
 type NameMode = "short" | "full";
 type Direction = "horizontal" | "vertical";
 type ScreenResolution = "fhd" | "qhd" | "uhd" | "custom";
+type AccentSide = "left" | "right";
 type ResizeHandle =
   | "left"
   | "right"
@@ -38,6 +39,7 @@ type ScoreboardTeam = {
   name: string;
   shortName: string;
   score: number;
+  accentSide: AccentSide;
   x: number;
   y: number;
   teamWidth: number;
@@ -68,7 +70,6 @@ type OverlaySettings = {
   direction: Direction;
   resolution: ScreenResolution;
   splitTeams: boolean;
-  symmetricBrackets: boolean;
   symmetricSizes: boolean;
   showLogo: boolean;
   showTimer: boolean;
@@ -78,8 +79,8 @@ type OverlaySettings = {
 const defaultScoreboard: ScoreboardState = {
   timer: "11:38:39",
   teams: [
-    { id: "team-1", name: "DRX", shortName: "DRX", score: 0, x: 0, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
-    { id: "team-2", name: "Gen.G", shortName: "GEN", score: 0, x: 42, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
+    { id: "team-1", name: "DRX", shortName: "DRX", score: 0, accentSide: "left", x: 0, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
+    { id: "team-2", name: "Gen.G", shortName: "GEN", score: 0, accentSide: "right", x: 42, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
   ]
 };
 
@@ -101,7 +102,6 @@ const defaultSettings: OverlaySettings = {
   direction: "vertical",
   resolution: "fhd",
   splitTeams: false,
-  symmetricBrackets: true,
   symmetricSizes: true,
   showLogo: true,
   showTimer: true,
@@ -174,6 +174,7 @@ export default function ScoreboardPage() {
             name: `Team ${nextNumber}`,
             shortName: `T${nextNumber}`,
             score: 0,
+            accentSide: nextNumber % 2 === 1 ? "left" : "right",
             x: (nextNumber - 1) * 8,
             y: 12 + (nextNumber - 1) * 8,
             teamWidth: current.teams[0]?.teamWidth ?? defaultSettings.teamWidth,
@@ -780,6 +781,23 @@ export default function ScoreboardPage() {
                         onChange={(value) => updateTeam(team.id, "score", value)}
                       />
                     </div>
+                    <div className="mt-3">
+                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">브래킷 색 / 로고 / 이름 위치</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <ToggleButton
+                          active={team.accentSide === "left"}
+                          onClick={() => updateTeam(team.id, "accentSide", "left")}
+                        >
+                          왼쪽
+                        </ToggleButton>
+                        <ToggleButton
+                          active={team.accentSide === "right"}
+                          onClick={() => updateTeam(team.id, "accentSide", "right")}
+                        >
+                          오른쪽
+                        </ToggleButton>
+                      </div>
+                    </div>
                   </div>
                 ))}
                 <button
@@ -824,9 +842,6 @@ export default function ScoreboardPage() {
               </CheckButton>
               <CheckButton active={settings.splitTeams} onClick={() => updateSetting("splitTeams", !settings.splitTeams)}>
                 팀 분리
-              </CheckButton>
-              <CheckButton active={settings.symmetricBrackets} onClick={() => updateSetting("symmetricBrackets", !settings.symmetricBrackets)}>
-                대칭
               </CheckButton>
               <CheckButton active={settings.symmetricSizes} onClick={() => updateSetting("symmetricSizes", !settings.symmetricSizes)}>
                 크기 대칭
@@ -980,10 +995,10 @@ function CustomScoreboardOverlay({
     top: `${settings.y}%`,
     opacity: settings.opacity / 100
   };
-  const availableTeamWidth =
-    settings.direction === "vertical"
-      ? settings.teamWidth
-      : settings.teamWidth;
+  const getColumns = (team: ScoreboardTeam) =>
+    team.accentSide === "right"
+      ? `${settings.scoreWidth}px ${settings.teamWidth}px`
+      : `${settings.teamWidth}px ${settings.scoreWidth}px`;
 
   if (settings.splitTeams) {
     return (
@@ -1036,41 +1051,38 @@ function CustomScoreboardOverlay({
                 key={teamPair.map((team) => team.id).join("-")}
                 className="grid"
                 style={{
-                  gridTemplateColumns: settings.symmetricBrackets
-                    ? `${settings.scoreWidth}px ${availableTeamWidth}px ${availableTeamWidth}px ${settings.scoreWidth}px`
-                    : `${availableTeamWidth}px ${settings.scoreWidth}px ${availableTeamWidth}px ${settings.scoreWidth}px`,
+                  gridTemplateColumns: teamPair.map((team) => getColumns(team)).join(" "),
                   marginTop: pairIndex > 0 ? -1 : 0
                 }}
               >
                 <TeamCell
                   team={teamPair[0]}
                   side="left"
-                  scoreFirst={settings.symmetricBrackets}
                   settings={settings}
                 />
                 {teamPair[1] ? (
                   <TeamCell team={teamPair[1]} side="right" settings={settings} />
-                ) : (
-                  <>
-                    <div />
-                    <div />
-                  </>
-                )}
+                ) : null}
               </div>
             ))}
           </div>
         ) : (
-          <div
-            className="grid"
-            style={{ gridTemplateColumns: `${availableTeamWidth}px ${settings.scoreWidth}px` }}
-          >
+          <div className="grid">
             {scoreboard.teams.map((team, index) => (
-              <TeamCell
+              <div
                 key={team.id}
-                team={team}
-                side={index === 0 ? "left" : "right"}
-                settings={settings}
-              />
+                className="grid"
+                style={{
+                  gridTemplateColumns: getColumns(team),
+                  marginTop: index > 0 ? -1 : 0
+                }}
+              >
+                <TeamCell
+                  team={team}
+                  side={index === 0 ? "left" : "right"}
+                  settings={settings}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -1205,8 +1217,7 @@ function SplitTeamBracket({
   onScoreResizePointerDown: (teamId: string, handle: ScoreResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const side = index % 2 === 0 ? "left" : "right";
-  const scoreFirst = settings.direction === "horizontal" && settings.symmetricBrackets && side === "left";
-  const teamFirst = settings.direction !== "horizontal" || !scoreFirst;
+  const teamFirst = team.accentSide === "left";
   const size = getBracketSize(team, settings);
   const gridTemplateColumns = teamFirst
     ? `${size.teamWidth}px ${size.scoreWidth}px`
@@ -1226,7 +1237,6 @@ function SplitTeamBracket({
       <TeamCell
         team={team}
         side={side}
-        scoreFirst={scoreFirst}
         settings={settings}
       />
       <ResizeHandles
@@ -1313,17 +1323,23 @@ function AlignmentGuides({ guides }: { guides: DragGuides }) {
 function TeamCell({
   team,
   side,
-  scoreFirst = false,
   settings
 }: {
   team: ScoreboardTeam;
   side: "left" | "right";
-  scoreFirst?: boolean;
   settings: OverlaySettings;
 }) {
-  const mirrored = settings.direction === "horizontal" && settings.symmetricBrackets && side === "right";
+  const accentRight = team.accentSide === "right";
+  const scoreFirst = accentRight;
   const label = settings.nameMode === "short" ? team.shortName : team.name;
   const size = getBracketSize(team, settings);
+  const accentBorder = accentRight
+    ? side === "left"
+      ? "border-r-blue-500"
+      : "border-r-red-500"
+    : side === "left"
+      ? "border-l-blue-500"
+      : "border-l-red-500";
   const scoreCell = (
     <ScoreCell
       key="score"
@@ -1337,20 +1353,20 @@ function TeamCell({
       key="team"
       className={[
         "flex min-w-0 items-center gap-2 bg-[#07111f] px-3 text-white",
-        mirrored ? "justify-end border-r-4 border-r-red-500" : side === "left" ? "border-l-4 border-l-blue-500" : "border-l-4 border-l-red-500"
+        accentRight ? `justify-end border-r-4 ${accentBorder}` : `border-l-4 ${accentBorder}`
       ].join(" ")}
       style={{ height: size.rowHeight }}
     >
-      {!mirrored && settings.showLogo && settings.logoSize > 0 ? (
+      {!accentRight && settings.showLogo && settings.logoSize > 0 ? (
         <LogoBox label={team.shortName} size={settings.logoSize} />
       ) : null}
       <span
-        className={["truncate font-black uppercase leading-none", mirrored ? "text-right" : ""].join(" ")}
+        className={["truncate font-black uppercase leading-none", accentRight ? "text-right" : ""].join(" ")}
         style={{ fontSize: settings.fontSize }}
       >
         {label}
       </span>
-      {mirrored && settings.showLogo && settings.logoSize > 0 ? (
+      {accentRight && settings.showLogo && settings.logoSize > 0 ? (
         <LogoBox label={team.shortName} size={settings.logoSize} />
       ) : null}
     </div>
