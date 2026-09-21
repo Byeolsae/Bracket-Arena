@@ -8,6 +8,7 @@ type NameMode = "short" | "full";
 type Direction = "horizontal" | "vertical";
 type ScreenResolution = "fhd" | "qhd" | "uhd" | "custom";
 type AccentSide = "left" | "right";
+type ScoreSide = "left" | "right";
 type ResizeHandle =
   | "left"
   | "right"
@@ -40,6 +41,7 @@ type ScoreboardTeam = {
   shortName: string;
   score: number;
   accentSide: AccentSide;
+  scoreSide: ScoreSide;
   x: number;
   y: number;
   teamWidth: number;
@@ -79,8 +81,8 @@ type OverlaySettings = {
 const defaultScoreboard: ScoreboardState = {
   timer: "11:38:39",
   teams: [
-    { id: "team-1", name: "DRX", shortName: "DRX", score: 0, accentSide: "left", x: 0, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
-    { id: "team-2", name: "Gen.G", shortName: "GEN", score: 0, accentSide: "right", x: 42, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
+    { id: "team-1", name: "DRX", shortName: "DRX", score: 0, accentSide: "left", scoreSide: "right", x: 0, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
+    { id: "team-2", name: "Gen.G", shortName: "GEN", score: 0, accentSide: "right", scoreSide: "left", x: 42, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
   ]
 };
 
@@ -175,6 +177,7 @@ export default function ScoreboardPage() {
             shortName: `T${nextNumber}`,
             score: 0,
             accentSide: nextNumber % 2 === 1 ? "left" : "right",
+            scoreSide: nextNumber % 2 === 1 ? "right" : "left",
             x: (nextNumber - 1) * 8,
             y: 12 + (nextNumber - 1) * 8,
             teamWidth: current.teams[0]?.teamWidth ?? defaultSettings.teamWidth,
@@ -798,6 +801,23 @@ export default function ScoreboardPage() {
                         </ToggleButton>
                       </div>
                     </div>
+                    <div className="mt-3">
+                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">점수칸 위치</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <ToggleButton
+                          active={team.scoreSide === "left"}
+                          onClick={() => updateTeam(team.id, "scoreSide", "left")}
+                        >
+                          왼쪽
+                        </ToggleButton>
+                        <ToggleButton
+                          active={team.scoreSide === "right"}
+                          onClick={() => updateTeam(team.id, "scoreSide", "right")}
+                        >
+                          오른쪽
+                        </ToggleButton>
+                      </div>
+                    </div>
                   </div>
                 ))}
                 <button
@@ -996,7 +1016,7 @@ function CustomScoreboardOverlay({
     opacity: settings.opacity / 100
   };
   const getColumns = (team: ScoreboardTeam) =>
-    team.accentSide === "right"
+    (team.scoreSide ?? (team.accentSide === "right" ? "left" : "right")) === "left"
       ? `${settings.scoreWidth}px ${settings.teamWidth}px`
       : `${settings.teamWidth}px ${settings.scoreWidth}px`;
 
@@ -1217,7 +1237,8 @@ function SplitTeamBracket({
   onScoreResizePointerDown: (teamId: string, handle: ScoreResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const side = index % 2 === 0 ? "left" : "right";
-  const teamFirst = team.accentSide === "left";
+  const scoreSide = team.scoreSide ?? (team.accentSide === "right" ? "left" : "right");
+  const teamFirst = scoreSide === "right";
   const size = getBracketSize(team, settings);
   const gridTemplateColumns = teamFirst
     ? `${size.teamWidth}px ${size.scoreWidth}px`
@@ -1330,7 +1351,8 @@ function TeamCell({
   settings: OverlaySettings;
 }) {
   const accentRight = team.accentSide === "right";
-  const scoreFirst = accentRight;
+  const scoreSide = team.scoreSide ?? (team.accentSide === "right" ? "left" : "right");
+  const scoreFirst = scoreSide === "left";
   const label = settings.nameMode === "short" ? team.shortName : team.name;
   const size = getBracketSize(team, settings);
   const accentBorder = accentRight
