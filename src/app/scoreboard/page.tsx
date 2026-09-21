@@ -16,6 +16,7 @@ type ResizeHandle =
   | "top-right"
   | "bottom-left"
   | "bottom-right";
+type ScoreResizeHandle = "left" | "right";
 type DragGuides = {
   verticalCenter: boolean;
   horizontalCenter: boolean;
@@ -442,6 +443,14 @@ export default function ScoreboardPage() {
     }));
   };
 
+  const resizeAllScoreCells = (scoreWidth: number) => {
+    setSettings((current) => ({ ...current, scoreWidth }));
+    setScoreboard((current) => ({
+      ...current,
+      teams: current.teams.map((team) => ({ ...team, scoreWidth }))
+    }));
+  };
+
   const handleBracketResizeStart = (
     teamId: string | null,
     handle: ResizeHandle,
@@ -512,6 +521,69 @@ export default function ScoreboardPage() {
                 rowHeight: nextRowHeight,
                 x: resizeFromLeft ? nextX : team.x,
                 y: resizeFromTop ? nextY : team.y
+              }
+            : team
+        )
+      }));
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+  };
+
+  const handleScoreResizeStart = (
+    teamId: string,
+    handle: ScoreResizeHandle,
+    event: ReactPointerEvent<HTMLDivElement>
+  ) => {
+    if (event.button !== 0 || !previewRef.current) return;
+
+    const previewRect = previewRef.current.getBoundingClientRect();
+    const targetTeam = scoreboard.teams.find((team) => team.id === teamId);
+    if (!targetTeam) return;
+
+    const startScoreWidth = targetTeam.scoreWidth;
+    const startX = targetTeam.x;
+    const resizeFromLeft = handle === "left";
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const deltaX = moveEvent.clientX - event.clientX;
+      const widthDelta = resizeFromLeft ? -deltaX : deltaX;
+      const nextScoreWidth = Math.round(clamp(startScoreWidth + widthDelta, 28, 220));
+      const xShift = resizeFromLeft ? startScoreWidth - nextScoreWidth : 0;
+      const nextX = Math.round(clamp(startX + (xShift / Math.max(1, previewRect.width)) * 100, 0, 100) * 10) / 10;
+
+      if (settings.symmetricSizes) {
+        resizeAllScoreCells(nextScoreWidth);
+
+        if (resizeFromLeft) {
+          setScoreboard((current) => ({
+            ...current,
+            teams: current.teams.map((team) =>
+              team.id === teamId ? { ...team, x: nextX } : team
+            )
+          }));
+        }
+
+        return;
+      }
+
+      setScoreboard((current) => ({
+        ...current,
+        teams: current.teams.map((team) =>
+          team.id === teamId
+            ? {
+                ...team,
+                scoreWidth: nextScoreWidth,
+                x: resizeFromLeft ? nextX : team.x
               }
             : team
         )
@@ -807,7 +879,7 @@ export default function ScoreboardPage() {
                 <p className="text-xs font-bold leading-5 text-muted">
                   미리보기 화면에서 드래그합니다. 중앙과 가장자리 근처에서는 가이드가 뜨고 자동으로 붙습니다.
                   팀 분리 모드에서는 각 팀 브래킷을 따로 드래그할 수 있습니다.
-                  분리된 타이머와 브래킷도 서로 가까워지면 붙습니다. 브래킷과 타이머 크기는 가장자리 핸들을 잡아 조절합니다.
+                  분리된 타이머와 브래킷도 서로 가까워지면 붙습니다. 브래킷, 점수칸, 타이머 크기는 가장자리 핸들을 잡아 조절합니다.
                 </p>
                 <p className="mt-2 text-xs font-black uppercase tracking-wide text-cyan">
                   X {settings.x}% / Y {settings.y}%
@@ -872,6 +944,7 @@ export default function ScoreboardPage() {
                 onPointerDown={handleScoreboardDragStart}
                 onTeamPointerDown={handleTeamDragStart}
                 onBracketResizePointerDown={handleBracketResizeStart}
+                onScoreResizePointerDown={handleScoreResizeStart}
                 onTimerResizePointerDown={handleTimerResizeStart}
                 onTimerPointerDown={handleTimerDragStart}
               />
@@ -889,6 +962,7 @@ function CustomScoreboardOverlay({
   onPointerDown,
   onTeamPointerDown,
   onBracketResizePointerDown,
+  onScoreResizePointerDown,
   onTimerResizePointerDown,
   onTimerPointerDown
 }: {
@@ -897,6 +971,7 @@ function CustomScoreboardOverlay({
   onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onTeamPointerDown: (teamId: string, event: ReactPointerEvent<HTMLDivElement>) => void;
   onBracketResizePointerDown: (teamId: string | null, handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
+  onScoreResizePointerDown: (teamId: string, handle: ScoreResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
   onTimerResizePointerDown: (handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
   onTimerPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
@@ -930,6 +1005,7 @@ function CustomScoreboardOverlay({
             settings={settings}
             onPointerDown={onTeamPointerDown}
             onResizePointerDown={onBracketResizePointerDown}
+            onScoreResizePointerDown={onScoreResizePointerDown}
           />
         ))}
       </div>
@@ -1118,13 +1194,15 @@ function SplitTeamBracket({
   index,
   settings,
   onPointerDown,
-  onResizePointerDown
+  onResizePointerDown,
+  onScoreResizePointerDown
 }: {
   team: ScoreboardTeam;
   index: number;
   settings: OverlaySettings;
   onPointerDown: (teamId: string, event: ReactPointerEvent<HTMLDivElement>) => void;
   onResizePointerDown: (teamId: string | null, handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
+  onScoreResizePointerDown: (teamId: string, handle: ScoreResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   const side = index % 2 === 0 ? "left" : "right";
   const scoreFirst = settings.direction === "horizontal" && settings.symmetricBrackets && side === "left";
@@ -1154,7 +1232,38 @@ function SplitTeamBracket({
       <ResizeHandles
         onResizePointerDown={(axis, event) => onResizePointerDown(team.id, axis, event)}
       />
+      <ScoreResizeHandle
+        scoreFirst={!teamFirst}
+        scoreWidth={size.scoreWidth}
+        teamWidth={size.teamWidth}
+        onResizePointerDown={(handle, event) => onScoreResizePointerDown(team.id, handle, event)}
+      />
     </div>
+  );
+}
+
+function ScoreResizeHandle({
+  scoreFirst,
+  scoreWidth,
+  teamWidth,
+  onResizePointerDown
+}: {
+  scoreFirst: boolean;
+  scoreWidth: number;
+  teamWidth: number;
+  onResizePointerDown: (handle: ScoreResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
+}) {
+  const handle = scoreFirst ? "left" : "right";
+
+  return (
+    <div
+      className="absolute bottom-1 top-1 z-40 w-2 cursor-ew-resize rounded-full bg-gold/20 opacity-0 transition hover:bg-gold/55 group-hover:opacity-100"
+      style={{
+        left: scoreFirst ? -5 : teamWidth + scoreWidth - 3
+      }}
+      onPointerDown={(event) => onResizePointerDown(handle, event)}
+      title="점수칸 넓이 조절"
+    />
   );
 }
 
