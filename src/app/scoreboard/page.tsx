@@ -74,6 +74,7 @@ type OverlaySettings = {
   timerY: number;
   logoSize: number;
   fontSize: number;
+  scoreFontSize: number;
   fontFamily: FontFamily;
   nameMode: NameMode;
   timerMode: TimerMode;
@@ -109,6 +110,7 @@ const defaultSettings: OverlaySettings = {
   timerY: 0,
   logoSize: 30,
   fontSize: 30,
+  scoreFontSize: 40,
   fontFamily: "condensed",
   nameMode: "short",
   timerMode: "manual",
@@ -1015,6 +1017,7 @@ export default function ScoreboardPage() {
             <div className="grid gap-3">
               <RangeField label="로고 크기" value={settings.logoSize} min={0} max={80} onChange={(value) => updateSetting("logoSize", value)} suffix="px" />
               <RangeField label="팀명 글자" value={settings.fontSize} min={14} max={64} onChange={(value) => updateSetting("fontSize", value)} suffix="px" />
+              <RangeField label="점수 숫자" value={settings.scoreFontSize} min={16} max={96} onChange={(value) => updateSetting("scoreFontSize", value)} suffix="px" />
               <RangeField label="불투명도" value={settings.opacity} min={20} max={100} onChange={(value) => updateSetting("opacity", value)} suffix="%" />
               <p className="rounded-md border border-line bg-arena/70 px-3 py-3 text-xs font-bold leading-5 text-muted">
                 브래킷 오른쪽 가장자리를 드래그하면 넓이가, 아래쪽 가장자리를 드래그하면 높이가 바뀝니다.
@@ -1398,6 +1401,7 @@ function TeamCell({
       score={team.score}
       rowHeight={size.rowHeight}
       scoreWidth={size.scoreWidth}
+      scoreFontSize={settings.scoreFontSize}
       fontFamily={settings.fontFamily}
     />
   );
@@ -1446,23 +1450,26 @@ function ScoreCell({
   score,
   rowHeight,
   scoreWidth,
+  scoreFontSize,
   fontFamily
 }: {
   score: number;
   rowHeight: number;
   scoreWidth: number;
+  scoreFontSize: number;
   fontFamily: FontFamily;
 }) {
   const digits = String(score).length;
-  const scoreFontSize = Math.max(
+  const autoFitFontSize = Math.max(
     12,
     Math.min(rowHeight * 0.82, (scoreWidth / Math.max(1, digits)) * 1.12)
   );
+  const visibleScoreFontSize = Math.max(12, Math.min(scoreFontSize, autoFitFontSize));
 
   return (
     <div
       className={`grid place-items-center overflow-hidden bg-white font-black leading-none text-slate-950 ${getFontFamilyClass(fontFamily)}`}
-      style={{ height: rowHeight, fontSize: scoreFontSize }}
+      style={{ height: rowHeight, fontSize: visibleScoreFontSize }}
     >
       {score}
     </div>
