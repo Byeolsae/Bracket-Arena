@@ -1697,7 +1697,7 @@ function ScoreCell({
   );
   const visibleScoreFontSize = Math.max(12, Math.min(scoreFontSize, autoFitFontSize));
   const scoreThemeClass = overlayTheme === "light"
-    ? "bg-white text-slate-950"
+    ? "bg-slate-100 text-slate-950 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.22)]"
     : "bg-[#020617] text-white";
 
   return (
