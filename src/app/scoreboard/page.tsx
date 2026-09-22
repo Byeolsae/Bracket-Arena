@@ -1,13 +1,17 @@
 "use client";
 
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Eye, MonitorPlay, Move, Plus, Settings2, SlidersHorizontal, Trash2 } from "lucide-react";
 
 type NameMode = "short" | "full";
 type ScreenResolution = "fhd" | "qhd" | "uhd" | "custom";
 type AccentSide = "left" | "right";
 type ScoreSide = "left" | "right";
+type LabelAlign = "left" | "center" | "right";
+type LogoSide = "left" | "right";
+type FontFamily = "sans" | "condensed" | "mono" | "serif";
+type TimerMode = "manual" | "countUp";
 type ResizeHandle =
   | "left"
   | "right"
@@ -39,8 +43,11 @@ type ScoreboardTeam = {
   name: string;
   shortName: string;
   score: number;
+  setScore: number;
   accentSide: AccentSide;
   scoreSide: ScoreSide;
+  labelAlign: LabelAlign;
+  logoSide: LogoSide;
   x: number;
   y: number;
   teamWidth: number;
@@ -50,6 +57,8 @@ type ScoreboardTeam = {
 
 type ScoreboardState = {
   timer: string;
+  elapsedSeconds: number;
+  timerRunning: boolean;
   teams: ScoreboardTeam[];
 };
 
@@ -65,7 +74,12 @@ type OverlaySettings = {
   timerY: number;
   logoSize: number;
   fontSize: number;
+  fontFamily: FontFamily;
   nameMode: NameMode;
+  timerMode: TimerMode;
+  timerShowHours: boolean;
+  timerShowMinutes: boolean;
+  timerShowSeconds: boolean;
   resolution: ScreenResolution;
   symmetricSizes: boolean;
   showLogo: boolean;
@@ -74,10 +88,12 @@ type OverlaySettings = {
 };
 
 const defaultScoreboard: ScoreboardState = {
-  timer: "11:38:39",
+  timer: "00:00:00",
+  elapsedSeconds: 0,
+  timerRunning: false,
   teams: [
-    { id: "team-1", name: "DRX", shortName: "DRX", score: 0, accentSide: "left", scoreSide: "right", x: 0, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
-    { id: "team-2", name: "Gen.G", shortName: "GEN", score: 0, accentSide: "right", scoreSide: "left", x: 42, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
+    { id: "team-1", name: "Team 1", shortName: "TM1", score: 0, setScore: 0, accentSide: "left", scoreSide: "right", labelAlign: "left", logoSide: "left", x: 0, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
+    { id: "team-2", name: "Team 2", shortName: "TM2", score: 0, setScore: 0, accentSide: "right", scoreSide: "left", labelAlign: "right", logoSide: "right", x: 42, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
   ]
 };
 
@@ -93,7 +109,12 @@ const defaultSettings: OverlaySettings = {
   timerY: 0,
   logoSize: 30,
   fontSize: 30,
+  fontFamily: "condensed",
   nameMode: "short",
+  timerMode: "manual",
+  timerShowHours: true,
+  timerShowMinutes: true,
+  timerShowSeconds: true,
   resolution: "fhd",
   symmetricSizes: true,
   showLogo: true,
@@ -135,12 +156,54 @@ export default function ScoreboardPage() {
   const [dragGuides, setDragGuides] = useState<DragGuides>(hiddenDragGuides);
   const previewRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    if (settings.timerMode !== "countUp" || !scoreboard.timerRunning) return;
+
+    const intervalId = window.setInterval(() => {
+      setScoreboard((current) => ({
+        ...current,
+        elapsedSeconds: current.elapsedSeconds + 1
+      }));
+    }, 1000);
+
+    return () => window.clearInterval(intervalId);
+  }, [scoreboard.timerRunning, settings.timerMode]);
+
+  const displayTimer =
+    settings.timerMode === "countUp"
+      ? formatTimer(scoreboard.elapsedSeconds, settings)
+      : scoreboard.timer;
+
   const updateSetting = <Key extends keyof OverlaySettings>(key: Key, value: OverlaySettings[Key]) => {
     setSettings((current) => ({ ...current, [key]: value }));
   };
 
   const updateTimer = (timer: string) => {
     setScoreboard((current) => ({ ...current, timer }));
+  };
+
+  const updateElapsedPart = (part: "hours" | "minutes" | "seconds", value: number) => {
+    setScoreboard((current) => {
+      const hours = Math.floor(current.elapsedSeconds / 3600);
+      const minutes = Math.floor((current.elapsedSeconds % 3600) / 60);
+      const seconds = current.elapsedSeconds % 60;
+      const nextHours = part === "hours" ? Math.max(0, Math.floor(value)) : hours;
+      const nextMinutes = part === "minutes" ? clamp(Math.floor(value), 0, 59) : minutes;
+      const nextSeconds = part === "seconds" ? clamp(Math.floor(value), 0, 59) : seconds;
+
+      return {
+        ...current,
+        elapsedSeconds: nextHours * 3600 + nextMinutes * 60 + nextSeconds
+      };
+    });
+  };
+
+  const setTimerRunning = (timerRunning: boolean) => {
+    setScoreboard((current) => ({ ...current, timerRunning }));
+  };
+
+  const resetElapsedTimer = () => {
+    setScoreboard((current) => ({ ...current, elapsedSeconds: 0, timerRunning: false }));
   };
 
   const updateTeam = <Key extends keyof ScoreboardTeam>(
@@ -165,10 +228,13 @@ export default function ScoreboardPage() {
           {
             id: `team-${Date.now()}`,
             name: `Team ${nextNumber}`,
-            shortName: `T${nextNumber}`,
+            shortName: `TM${nextNumber}`,
             score: 0,
+            setScore: 0,
             accentSide: nextNumber % 2 === 1 ? "left" : "right",
             scoreSide: nextNumber % 2 === 1 ? "right" : "left",
+            labelAlign: nextNumber % 2 === 1 ? "left" : "right",
+            logoSide: nextNumber % 2 === 1 ? "left" : "right",
             x: (nextNumber - 1) * 8,
             y: 12 + (nextNumber - 1) * 8,
             teamWidth: current.teams[0]?.teamWidth ?? defaultSettings.teamWidth,
@@ -670,10 +736,6 @@ export default function ScoreboardPage() {
             </div>
 
             <div className="space-y-4">
-              <div className="grid gap-3">
-                <TextField label="타이머" value={scoreboard.timer} onChange={updateTimer} />
-              </div>
-
               <div className="space-y-3">
                 {scoreboard.teams.map((team, index) => (
                   <div key={team.id} className="rounded-md border border-line bg-arena/70 p-3">
@@ -705,9 +767,14 @@ export default function ScoreboardPage() {
                         value={team.score}
                         onChange={(value) => updateTeam(team.id, "score", value)}
                       />
+                      <NumberField
+                        label="세트점수"
+                        value={team.setScore}
+                        onChange={(value) => updateTeam(team.id, "setScore", value)}
+                      />
                     </div>
                     <div className="mt-3">
-                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">브래킷 색 / 로고 / 이름 위치</p>
+                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">브래킷 색 위치</p>
                       <div className="grid grid-cols-2 gap-2">
                         <ToggleButton
                           active={team.accentSide === "left"}
@@ -719,6 +786,31 @@ export default function ScoreboardPage() {
                           active={team.accentSide === "right"}
                           onClick={() => updateTeam(team.id, "accentSide", "right")}
                         >
+                          오른쪽
+                        </ToggleButton>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">약칭 / 팀이름 정렬</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <ToggleButton active={team.labelAlign === "left"} onClick={() => updateTeam(team.id, "labelAlign", "left")}>
+                          좌
+                        </ToggleButton>
+                        <ToggleButton active={team.labelAlign === "center"} onClick={() => updateTeam(team.id, "labelAlign", "center")}>
+                          중
+                        </ToggleButton>
+                        <ToggleButton active={team.labelAlign === "right"} onClick={() => updateTeam(team.id, "labelAlign", "right")}>
+                          우
+                        </ToggleButton>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">로고 위치</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <ToggleButton active={team.logoSide === "left"} onClick={() => updateTeam(team.id, "logoSide", "left")}>
+                          왼쪽
+                        </ToggleButton>
+                        <ToggleButton active={team.logoSide === "right"} onClick={() => updateTeam(team.id, "logoSide", "right")}>
                           오른쪽
                         </ToggleButton>
                       </div>
@@ -779,6 +871,89 @@ export default function ScoreboardPage() {
               <CheckButton active={settings.symmetricSizes} onClick={() => updateSetting("symmetricSizes", !settings.symmetricSizes)}>
                 크기 대칭
               </CheckButton>
+            </div>
+
+            <div className="mt-4">
+              <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">폰트</p>
+              <div className="grid grid-cols-2 gap-2">
+                <ToggleButton active={settings.fontFamily === "condensed"} onClick={() => updateSetting("fontFamily", "condensed")}>
+                  방송체
+                </ToggleButton>
+                <ToggleButton active={settings.fontFamily === "sans"} onClick={() => updateSetting("fontFamily", "sans")}>
+                  기본
+                </ToggleButton>
+                <ToggleButton active={settings.fontFamily === "mono"} onClick={() => updateSetting("fontFamily", "mono")}>
+                  숫자체
+                </ToggleButton>
+                <ToggleButton active={settings.fontFamily === "serif"} onClick={() => updateSetting("fontFamily", "serif")}>
+                  세리프
+                </ToggleButton>
+              </div>
+            </div>
+          </div>
+
+          <div className="arena-card p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <SlidersHorizontal className="h-5 w-5 text-cyan" aria-hidden="true" />
+              <h2 className="text-lg font-black uppercase tracking-wide text-ink">타이머</h2>
+            </div>
+            <div className="grid gap-3">
+              <div className="grid grid-cols-2 gap-2">
+                <ToggleButton active={settings.timerMode === "manual"} onClick={() => updateSetting("timerMode", "manual")}>
+                  직접입력
+                </ToggleButton>
+                <ToggleButton active={settings.timerMode === "countUp"} onClick={() => updateSetting("timerMode", "countUp")}>
+                  0부터 진행
+                </ToggleButton>
+              </div>
+              {settings.timerMode === "manual" ? (
+                <TextField label="타이머 표시" value={scoreboard.timer} onChange={updateTimer} />
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 gap-2">
+                    <NumberField
+                      label="시작 시"
+                      value={Math.floor(scoreboard.elapsedSeconds / 3600)}
+                      onChange={(value) => updateElapsedPart("hours", value)}
+                    />
+                    <NumberField
+                      label="시작 분"
+                      value={Math.floor((scoreboard.elapsedSeconds % 3600) / 60)}
+                      onChange={(value) => updateElapsedPart("minutes", value)}
+                    />
+                    <NumberField
+                      label="시작 초"
+                      value={scoreboard.elapsedSeconds % 60}
+                      onChange={(value) => updateElapsedPart("seconds", value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button type="button" onClick={() => setTimerRunning(true)} className="rounded-md border border-lime bg-lime/15 px-3 py-2 text-xs font-black uppercase tracking-wide text-lime transition hover:bg-lime hover:text-arena">
+                      시작
+                    </button>
+                    <button type="button" onClick={() => setTimerRunning(false)} className="rounded-md border border-line bg-field px-3 py-2 text-xs font-black uppercase tracking-wide text-muted transition hover:border-cyan hover:text-cyan">
+                      정지
+                    </button>
+                    <button type="button" onClick={resetElapsedTimer} className="rounded-md border border-line bg-field px-3 py-2 text-xs font-black uppercase tracking-wide text-muted transition hover:border-red-400 hover:text-red-300">
+                      리셋
+                    </button>
+                  </div>
+                </>
+              )}
+              <div className="grid grid-cols-3 gap-2">
+                <CheckButton active={settings.timerShowHours} onClick={() => updateSetting("timerShowHours", !settings.timerShowHours)}>
+                  시
+                </CheckButton>
+                <CheckButton active={settings.timerShowMinutes} onClick={() => updateSetting("timerShowMinutes", !settings.timerShowMinutes)}>
+                  분
+                </CheckButton>
+                <CheckButton active={settings.timerShowSeconds} onClick={() => updateSetting("timerShowSeconds", !settings.timerShowSeconds)}>
+                  초
+                </CheckButton>
+              </div>
+              <p className="rounded-md border border-line bg-arena/70 px-3 py-3 text-xs font-bold leading-5 text-muted">
+                현재 표시: {displayTimer}
+              </p>
             </div>
           </div>
 
@@ -884,6 +1059,7 @@ export default function ScoreboardPage() {
               <AlignmentGuides guides={dragGuides} />
               <CustomScoreboardOverlay
                 scoreboard={scoreboard}
+                displayTimer={displayTimer}
                 settings={settings}
                 onTeamPointerDown={handleTeamDragStart}
                 onBracketResizePointerDown={handleBracketResizeStart}
@@ -901,6 +1077,7 @@ export default function ScoreboardPage() {
 
 function CustomScoreboardOverlay({
   scoreboard,
+  displayTimer,
   settings,
   onTeamPointerDown,
   onBracketResizePointerDown,
@@ -909,6 +1086,7 @@ function CustomScoreboardOverlay({
   onTimerPointerDown
 }: {
   scoreboard: ScoreboardState;
+  displayTimer: string;
   settings: OverlaySettings;
   onTeamPointerDown: (teamId: string, event: ReactPointerEvent<HTMLDivElement>) => void;
   onBracketResizePointerDown: (teamId: string | null, handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
@@ -920,7 +1098,7 @@ function CustomScoreboardOverlay({
     <div className="absolute inset-0 z-10 pointer-events-none" style={{ opacity: settings.opacity / 100 }}>
       {settings.showTimer ? (
         <TimerBlock
-          timer={scoreboard.timer}
+          timer={displayTimer}
           settings={settings}
           className="pointer-events-auto absolute left-0 top-0"
           onResizePointerDown={onTimerResizePointerDown}
@@ -967,7 +1145,7 @@ function TimerBlock({
       title="타이머 드래그"
     >
       <div
-        className="grid h-full place-items-center px-2 text-center font-black tabular-nums leading-none"
+        className={`grid h-full place-items-center px-2 text-center font-black tabular-nums leading-none ${getFontFamilyClass(settings.fontFamily)}`}
         style={{ fontSize: Math.max(12, settings.timerHeight * 0.62) }}
       >
         {timer}
@@ -1130,6 +1308,34 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+function getFontFamilyClass(fontFamily: FontFamily) {
+  if (fontFamily === "mono") return "font-mono";
+  if (fontFamily === "serif") return "font-serif";
+  if (fontFamily === "condensed") return "font-sans tracking-wide";
+  return "font-sans";
+}
+
+function formatTimer(totalSeconds: number, settings: OverlaySettings) {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const showHours = settings.timerShowHours;
+  const showMinutes = settings.timerShowMinutes;
+  const showSeconds = settings.timerShowSeconds;
+  const enabledCount = [showHours, showMinutes, showSeconds].filter(Boolean).length;
+
+  if (enabledCount === 0) return String(safeSeconds);
+
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = showHours ? Math.floor((safeSeconds % 3600) / 60) : Math.floor(safeSeconds / 60);
+  const seconds = showHours || showMinutes ? safeSeconds % 60 : safeSeconds;
+  const parts: string[] = [];
+
+  if (showHours) parts.push(String(hours).padStart(2, "0"));
+  if (showMinutes) parts.push(String(minutes).padStart(2, "0"));
+  if (showSeconds) parts.push(String(seconds).padStart(2, "0"));
+
+  return parts.join(":");
+}
+
 function AlignmentGuides({ guides }: { guides: DragGuides }) {
   const showAnyGuide = Object.values(guides).some(Boolean);
 
@@ -1184,29 +1390,45 @@ function TeamCell({
     <ScoreCell
       key="score"
       score={team.score}
+      setScore={team.setScore}
       rowHeight={size.rowHeight}
       scoreWidth={size.scoreWidth}
+      fontFamily={settings.fontFamily}
     />
   );
+  const labelAlignClass =
+    team.labelAlign === "center"
+      ? "text-center"
+      : team.labelAlign === "right"
+        ? "text-right"
+        : "text-left";
+  const justifyClass =
+    team.labelAlign === "center"
+      ? "justify-center"
+      : team.labelAlign === "right"
+        ? "justify-end"
+        : "justify-start";
+  const logoFirst = team.logoSide === "left";
   const teamCell = (
     <div
       key="team"
       className={[
         "flex min-w-0 items-center gap-2 bg-[#07111f] px-3 text-white",
-        accentRight ? `justify-end border-r-4 ${accentBorder}` : `border-l-4 ${accentBorder}`
+        justifyClass,
+        accentRight ? `border-r-4 ${accentBorder}` : `border-l-4 ${accentBorder}`
       ].join(" ")}
       style={{ height: size.rowHeight }}
     >
-      {!accentRight && settings.showLogo && settings.logoSize > 0 ? (
+      {logoFirst && settings.showLogo && settings.logoSize > 0 ? (
         <LogoBox label={team.shortName} size={settings.logoSize} />
       ) : null}
       <span
-        className={["truncate font-black uppercase leading-none", accentRight ? "text-right" : ""].join(" ")}
+        className={["min-w-0 flex-1 truncate font-black uppercase leading-none", labelAlignClass, getFontFamilyClass(settings.fontFamily)].join(" ")}
         style={{ fontSize: settings.fontSize }}
       >
         {label}
       </span>
-      {accentRight && settings.showLogo && settings.logoSize > 0 ? (
+      {!logoFirst && settings.showLogo && settings.logoSize > 0 ? (
         <LogoBox label={team.shortName} size={settings.logoSize} />
       ) : null}
     </div>
@@ -1217,12 +1439,16 @@ function TeamCell({
 
 function ScoreCell({
   score,
+  setScore,
   rowHeight,
-  scoreWidth
+  scoreWidth,
+  fontFamily
 }: {
   score: number;
+  setScore: number;
   rowHeight: number;
   scoreWidth: number;
+  fontFamily: FontFamily;
 }) {
   const digits = String(score).length;
   const scoreFontSize = Math.max(
@@ -1232,9 +1458,15 @@ function ScoreCell({
 
   return (
     <div
-      className="grid place-items-center overflow-hidden bg-white font-black leading-none text-slate-950"
+      className={`relative grid place-items-center overflow-hidden bg-white font-black leading-none text-slate-950 ${getFontFamilyClass(fontFamily)}`}
       style={{ height: rowHeight, fontSize: scoreFontSize }}
     >
+      <span
+        className="absolute left-1 top-1 rounded-sm bg-slate-950 px-1 font-black leading-none text-white"
+        style={{ fontSize: Math.max(8, rowHeight * 0.2) }}
+      >
+        {setScore}
+      </span>
       {score}
     </div>
   );
