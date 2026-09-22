@@ -279,11 +279,8 @@ export default function ScoreboardPage() {
     const previewRect = previewRef.current?.getBoundingClientRect();
     const previewWidth = previewRect?.width ?? 1;
     const previewHeight = previewRect?.height ?? 1;
-
     const width = size.teamWidth + size.scoreWidth;
-    const left = team.xAnchor === "right"
-      ? previewWidth - width - (team.x / 100) * previewWidth
-      : (team.x / 100) * previewWidth;
+    const left = getAnchoredLeft(team, width, previewWidth);
 
     return {
       id: team.id,
@@ -319,6 +316,42 @@ export default function ScoreboardPage() {
       .map((team) => getTeamSnapRect(team)),
     ...(includeTimer && settings.showTimer ? [getTimerSnapRect()] : [])
   ];
+
+  const resetOverlayLayout = () => {
+    setSettings((current) => ({
+      ...current,
+      timerCentered: defaultSettings.timerCentered,
+      timerX: defaultSettings.timerX,
+      timerY: defaultSettings.timerY,
+      timerWidth: defaultSettings.timerWidth,
+      timerHeight: defaultSettings.timerHeight
+    }));
+    setScoreboard((current) => ({
+      ...current,
+      teams: current.teams.map((team, index) => {
+        const defaultTeam = defaultScoreboard.teams[index];
+
+        if (!defaultTeam) {
+          return {
+            ...team,
+            xAnchor: "left" as const,
+            x: (index - 1) * 8,
+            y: 12 + (index - 1) * 8
+          };
+        }
+
+        return {
+          ...team,
+          xAnchor: defaultTeam.xAnchor,
+          x: defaultTeam.x,
+          y: defaultTeam.y,
+          teamWidth: defaultTeam.teamWidth,
+          scoreWidth: defaultTeam.scoreWidth,
+          rowHeight: defaultTeam.rowHeight
+        };
+      })
+    }));
+  };
 
   const snapToAttachmentRects = (
     left: number,
@@ -489,9 +522,13 @@ export default function ScoreboardPage() {
     const previewRect = previewRef.current.getBoundingClientRect();
     const targetTeam = teamId ? scoreboard.teams.find((team) => team.id === teamId) : null;
     const startTeamWidth = targetTeam?.teamWidth ?? settings.teamWidth;
+    const startScoreWidth = targetTeam?.scoreWidth ?? settings.scoreWidth;
     const startRowHeight = targetTeam?.rowHeight ?? settings.rowHeight;
-    const startX = targetTeam?.x ?? 0;
-    const startY = targetTeam?.y ?? 0;
+    const startWidth = startTeamWidth + startScoreWidth;
+    const startLeft = targetTeam
+      ? getAnchoredLeft(targetTeam, startWidth, previewRect.width)
+      : 0;
+    const startTop = targetTeam ? (targetTeam.y / 100) * previewRect.height : 0;
     const resizeFromLeft = handle.includes("left");
     const resizeFromRight = handle.includes("right");
     const resizeFromTop = handle.includes("top");
@@ -507,10 +544,13 @@ export default function ScoreboardPage() {
       const heightDelta = resizeFromTop ? -deltaY : resizeFromBottom ? deltaY : 0;
       const nextTeamWidth = Math.round(clamp(startTeamWidth + widthDelta, 80, 620));
       const nextRowHeight = Math.round(clamp(startRowHeight + heightDelta, 24, 160));
+      const nextWidth = nextTeamWidth + startScoreWidth;
       const xShift = resizeFromLeft ? startTeamWidth - nextTeamWidth : 0;
       const yShift = resizeFromTop ? startRowHeight - nextRowHeight : 0;
-      const nextX = Math.round(clamp(startX + (xShift / Math.max(1, previewRect.width)) * 100, 0, 100) * 10) / 10;
-      const nextY = Math.round(clamp(startY + (yShift / Math.max(1, previewRect.height)) * 100, 0, 100) * 10) / 10;
+      const nextLeft = clamp(startLeft + xShift, 0, Math.max(0, previewRect.width - nextWidth));
+      const nextTop = clamp(startTop + yShift, 0, Math.max(0, previewRect.height - nextRowHeight));
+      const nextX = Math.round((nextLeft / Math.max(1, previewRect.width)) * 1000) / 10;
+      const nextY = Math.round((nextTop / Math.max(1, previewRect.height)) * 1000) / 10;
 
       if (!teamId || settings.symmetricSizes) {
         resizeAllTeams(nextTeamWidth, nextRowHeight);
@@ -522,8 +562,9 @@ export default function ScoreboardPage() {
               team.id === teamId
                 ? {
                     ...team,
-                    x: resizeFromLeft ? nextX : team.x,
-                    y: resizeFromTop ? nextY : team.y
+                    xAnchor: "left" as const,
+                    x: nextX,
+                    y: nextY
                   }
                 : team
             )
@@ -541,8 +582,9 @@ export default function ScoreboardPage() {
                 ...team,
                 teamWidth: nextTeamWidth,
                 rowHeight: nextRowHeight,
-                x: resizeFromLeft ? nextX : team.x,
-                y: resizeFromTop ? nextY : team.y
+                xAnchor: "left" as const,
+                x: nextX,
+                y: nextY
               }
             : team
         )
@@ -570,7 +612,8 @@ export default function ScoreboardPage() {
     if (!targetTeam) return;
 
     const startScoreWidth = targetTeam.scoreWidth;
-    const startX = targetTeam.x;
+    const startWidth = targetTeam.teamWidth + targetTeam.scoreWidth;
+    const startLeft = getAnchoredLeft(targetTeam, startWidth, previewRect.width);
     const resizeFromLeft = handle === "left";
 
     event.preventDefault();
@@ -580,8 +623,10 @@ export default function ScoreboardPage() {
       const deltaX = moveEvent.clientX - event.clientX;
       const widthDelta = resizeFromLeft ? -deltaX : deltaX;
       const nextScoreWidth = Math.round(clamp(startScoreWidth + widthDelta, 28, 220));
+      const nextWidth = targetTeam.teamWidth + nextScoreWidth;
       const xShift = resizeFromLeft ? startScoreWidth - nextScoreWidth : 0;
-      const nextX = Math.round(clamp(startX + (xShift / Math.max(1, previewRect.width)) * 100, 0, 100) * 10) / 10;
+      const nextLeft = clamp(startLeft + xShift, 0, Math.max(0, previewRect.width - nextWidth));
+      const nextX = Math.round((nextLeft / Math.max(1, previewRect.width)) * 1000) / 10;
 
       if (settings.symmetricSizes) {
         resizeAllScoreCells(nextScoreWidth);
@@ -590,7 +635,7 @@ export default function ScoreboardPage() {
           setScoreboard((current) => ({
             ...current,
             teams: current.teams.map((team) =>
-              team.id === teamId ? { ...team, x: nextX } : team
+              team.id === teamId ? { ...team, xAnchor: "left" as const, x: nextX } : team
             )
           }));
         }
@@ -605,7 +650,8 @@ export default function ScoreboardPage() {
             ? {
                 ...team,
                 scoreWidth: nextScoreWidth,
-                x: resizeFromLeft ? nextX : team.x
+                xAnchor: "left" as const,
+                x: nextX
               }
             : team
         )
@@ -625,11 +671,14 @@ export default function ScoreboardPage() {
     handle: ResizeHandle,
     event: ReactPointerEvent<HTMLDivElement>
   ) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || !previewRef.current) return;
 
+    const previewRect = previewRef.current.getBoundingClientRect();
     const startTimerWidth = settings.timerWidth;
     const startTimerHeight = settings.timerHeight;
-    const startTimerX = settings.timerX;
+    const startTimerX = settings.timerCentered
+      ? Math.max(0, (previewRect.width - settings.timerWidth) / 2)
+      : settings.timerX;
     const startTimerY = settings.timerY;
     const resizeFromLeft = handle.includes("left");
     const resizeFromRight = handle.includes("right");
@@ -646,14 +695,24 @@ export default function ScoreboardPage() {
       const heightDelta = resizeFromTop ? -deltaY : resizeFromBottom ? deltaY : 0;
       const nextTimerWidth = Math.round(clamp(startTimerWidth + widthDelta, 70, 520));
       const nextTimerHeight = Math.round(clamp(startTimerHeight + heightDelta, 20, 120));
+      const nextTimerX = clamp(
+        resizeFromLeft ? startTimerX + startTimerWidth - nextTimerWidth : startTimerX,
+        0,
+        Math.max(0, previewRect.width - nextTimerWidth)
+      );
+      const nextTimerY = clamp(
+        resizeFromTop ? startTimerY + startTimerHeight - nextTimerHeight : startTimerY,
+        0,
+        Math.max(0, previewRect.height - nextTimerHeight)
+      );
 
       setSettings((current) => ({
         ...current,
         timerCentered: false,
         timerWidth: nextTimerWidth,
         timerHeight: nextTimerHeight,
-        timerX: resizeFromLeft ? startTimerX + startTimerWidth - nextTimerWidth : current.timerX,
-        timerY: resizeFromTop ? startTimerY + startTimerHeight - nextTimerHeight : current.timerY
+        timerX: Math.round(nextTimerX),
+        timerY: Math.round(nextTimerY)
       }));
     };
 
@@ -1077,6 +1136,13 @@ export default function ScoreboardPage() {
                   서로 가까이 가져가면 자석처럼 가장자리끼리 붙습니다. 브래킷, 점수칸, 타이머 크기는 가장자리 핸들을 잡아 조절합니다.
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={resetOverlayLayout}
+                className="rounded-md border border-gold/50 bg-gold/10 px-3 py-2 text-xs font-black uppercase tracking-wide text-gold transition hover:bg-gold hover:text-arena"
+              >
+                위치 / 크기 리셋
+              </button>
             </div>
           </div>
 
@@ -1295,6 +1361,14 @@ function getBracketSize(team: ScoreboardTeam, settings: OverlaySettings) {
     scoreWidth: settings.scoreWidth,
     rowHeight: settings.rowHeight
   };
+}
+
+function getAnchoredLeft(team: ScoreboardTeam, width: number, previewWidth: number) {
+  const left = team.xAnchor === "right"
+    ? previewWidth - width - (team.x / 100) * previewWidth
+    : (team.x / 100) * previewWidth;
+
+  return clamp(left, 0, Math.max(0, previewWidth - width));
 }
 
 function updateSymmetricTeamPositions(
