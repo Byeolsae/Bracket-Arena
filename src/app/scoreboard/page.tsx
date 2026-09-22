@@ -101,7 +101,7 @@ const defaultScoreboard: ScoreboardState = {
   timerRunning: false,
   teams: [
     { id: "team-1", name: "Team 1", shortName: "TM1", score: 0, setScore: 0, accentSide: "left", scoreSide: "right", setScoreEdge: "top", setScoreAlign: "center", labelAlign: "center", logoSide: "left", x: 0, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
-    { id: "team-2", name: "Team 2", shortName: "TM2", score: 0, setScore: 0, accentSide: "right", scoreSide: "left", setScoreEdge: "top", setScoreAlign: "center", labelAlign: "center", logoSide: "right", x: 72, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
+    { id: "team-2", name: "Team 2", shortName: "TM2", score: 0, setScore: 0, accentSide: "right", scoreSide: "left", setScoreEdge: "top", setScoreAlign: "center", labelAlign: "center", logoSide: "right", x: 66, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
   ]
 };
 
