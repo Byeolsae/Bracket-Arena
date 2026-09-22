@@ -1,8 +1,12 @@
 "use client";
 
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Eye, MonitorPlay, Move, Plus, Settings2, SlidersHorizontal, Trash2 } from "lucide-react";
+import { resolveStoredLogo } from "@/lib/browser/logoStorage";
+import { getTeamBracketAccentColor, getTeamThemeTextColor } from "@/lib/core/color";
+import type { Team, TeamFolder } from "@/lib/core/models";
+import { useTeamStore } from "@/store/teamStore";
 
 type NameMode = "short" | "full";
 type ScreenResolution = "fhd" | "qhd" | "uhd" | "custom";
@@ -42,10 +46,17 @@ type SnapRect = {
   height: number;
 };
 
+type ManagedTeamGroup = {
+  id: string;
+  name: string;
+  teams: Team[];
+};
+
 type ScoreboardTeam = {
   id: string;
   name: string;
   shortName: string;
+  linkedTeamId?: string;
   score: number;
   setScore: number;
   accentSide: AccentSide;
@@ -60,7 +71,23 @@ type ScoreboardTeam = {
   teamWidth: number;
   scoreWidth: number;
   rowHeight: number;
-};
+} & Partial<
+  Pick<
+    Team,
+    | "logoDefault"
+    | "logoLight"
+    | "logoDark"
+    | "primaryColor"
+    | "primaryColorLight"
+    | "primaryColorDark"
+    | "bracketAccentColor"
+    | "bracketAccentColorLight"
+    | "bracketAccentColorDark"
+    | "textColor"
+    | "textColorLight"
+    | "textColorDark"
+  >
+>;
 
 type ScoreboardState = {
   timer: string;
@@ -167,11 +194,72 @@ function getScreenSize(settings: OverlaySettings) {
   return resolutionOptions[settings.resolution];
 }
 
+function normalizeShortName(team: Team) {
+  return (team.shortName?.trim() || team.name.slice(0, 3) || "TM").toUpperCase().slice(0, 8);
+}
+
+function pickScoreboardTeamVisuals(team: Team) {
+  return {
+    logoDefault: team.logoDefault,
+    logoLight: team.logoLight,
+    logoDark: team.logoDark,
+    primaryColor: team.primaryColor,
+    primaryColorLight: team.primaryColorLight,
+    primaryColorDark: team.primaryColorDark,
+    bracketAccentColor: team.bracketAccentColor,
+    bracketAccentColorLight: team.bracketAccentColorLight,
+    bracketAccentColorDark: team.bracketAccentColorDark,
+    textColor: team.textColor,
+    textColorLight: team.textColorLight,
+    textColorDark: team.textColorDark
+  };
+}
+
+function buildManagedTeamGroups(folders: TeamFolder[], teams: Team[]): ManagedTeamGroup[] {
+  const teamsById = new Map(teams.map((team) => [team.id, team]));
+  const usedTeamIds = new Set<string>();
+  const groups = folders
+    .map((folder) => {
+      const ids = (folder.itemIds?.length ? folder.itemIds : folder.teamIds.map((teamId) => `team:${teamId}`))
+        .filter((itemId) => itemId.startsWith("team:"))
+        .map((itemId) => itemId.slice("team:".length));
+      const folderTeams = ids
+        .map((teamId) => teamsById.get(teamId))
+        .filter((team): team is Team => Boolean(team));
+
+      folderTeams.forEach((team) => usedTeamIds.add(team.id));
+
+      return {
+        id: folder.id,
+        name: folder.name,
+        teams: folderTeams
+      };
+    })
+    .filter((group) => group.teams.length > 0);
+
+  const ungroupedTeams = teams.filter((team) => !usedTeamIds.has(team.id));
+  if (ungroupedTeams.length) {
+    groups.push({ id: "ungrouped", name: "미분류", teams: ungroupedTeams });
+  }
+
+  if (!groups.length && teams.length) {
+    return [{ id: "all", name: "전체 팀", teams }];
+  }
+
+  return groups;
+}
+
 export default function ScoreboardPage() {
+  const managedTeams = useTeamStore((state) => state.teams);
+  const managedFolders = useTeamStore((state) => state.folders);
   const [scoreboard, setScoreboard] = useState<ScoreboardState>(defaultScoreboard);
   const [settings, setSettings] = useState<OverlaySettings>(defaultSettings);
   const [dragGuides, setDragGuides] = useState<DragGuides>(hiddenDragGuides);
   const previewRef = useRef<HTMLDivElement>(null);
+  const managedTeamGroups = useMemo(
+    () => buildManagedTeamGroups(managedFolders, managedTeams),
+    [managedFolders, managedTeams]
+  );
 
   useEffect(() => {
     if (settings.timerMode !== "countUp" || !scoreboard.timerRunning) return;
@@ -231,6 +319,36 @@ export default function ScoreboardPage() {
     setScoreboard((current) => ({
       ...current,
       teams: current.teams.map((team) => (team.id === teamId ? { ...team, [key]: value } : team))
+    }));
+  };
+
+  const applyManagedTeam = (scoreboardTeamId: string, managedTeamId: string) => {
+    if (!managedTeamId) {
+      setScoreboard((current) => ({
+        ...current,
+        teams: current.teams.map((team) =>
+          team.id === scoreboardTeamId ? { ...team, linkedTeamId: undefined } : team
+        )
+      }));
+      return;
+    }
+
+    const managedTeam = managedTeams.find((team) => team.id === managedTeamId);
+    if (!managedTeam) return;
+
+    setScoreboard((current) => ({
+      ...current,
+      teams: current.teams.map((team) =>
+        team.id === scoreboardTeamId
+          ? {
+              ...team,
+              ...pickScoreboardTeamVisuals(managedTeam),
+              linkedTeamId: managedTeam.id,
+              name: managedTeam.name,
+              shortName: normalizeShortName(managedTeam)
+            }
+          : team
+      )
     }));
   };
 
@@ -848,6 +966,27 @@ export default function ScoreboardPage() {
                     </div>
                     <div className="rounded-md border border-line/80 bg-arena/60 p-3">
                       <p className="mb-3 text-xs font-black uppercase tracking-wide text-gold">팀 정보</p>
+                      <label className="mb-3 block">
+                        <span className="mb-2 block text-xs font-black uppercase tracking-wide text-ink">
+                          팀 관리에서 불러오기
+                        </span>
+                        <select
+                          className="input"
+                          value={team.linkedTeamId ?? ""}
+                          onChange={(event) => applyManagedTeam(team.id, event.target.value)}
+                        >
+                          <option value="">{managedTeams.length ? "직접 입력" : "저장된 팀 없음"}</option>
+                          {managedTeamGroups.map((group) => (
+                            <optgroup key={group.id} label={group.name}>
+                              {group.teams.map((managedTeam) => (
+                                <option key={managedTeam.id} value={managedTeam.id}>
+                                  {normalizeShortName(managedTeam)} · {managedTeam.name}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
+                      </label>
                       <div className="grid grid-cols-2 gap-3">
                       <TextField
                         label="풀네임"
@@ -1618,13 +1757,9 @@ function TeamCell({
   const scoreFirst = scoreSide === "left";
   const label = settings.nameMode === "short" ? team.shortName : team.name;
   const size = getBracketSize(team, settings);
-  const accentBorder = accentRight
-    ? side === "left"
-      ? "border-r-blue-500"
-      : "border-r-red-500"
-    : side === "left"
-      ? "border-l-blue-500"
-      : "border-l-red-500";
+  const fallbackAccentColor = side === "left" ? "#3b82f6" : "#ef4444";
+  const accentColor = getTeamBracketAccentColor(team) ?? fallbackAccentColor;
+  const textColor = getTeamThemeTextColor(team, settings.overlayTheme === "light" ? "#ffffff" : "#07111f");
   const scoreCell = (
     <ScoreCell
       key="score"
@@ -1659,12 +1794,17 @@ function TeamCell({
         "flex min-w-0 items-center gap-2 px-3",
         teamThemeClass,
         justifyClass,
-        accentRight ? `border-r-4 ${accentBorder}` : `border-l-4 ${accentBorder}`
+        accentRight ? "border-r-4" : "border-l-4"
       ].join(" ")}
-      style={{ height: size.rowHeight }}
+      style={{
+        height: size.rowHeight,
+        borderLeftColor: accentRight ? undefined : accentColor,
+        borderRightColor: accentRight ? accentColor : undefined,
+        color: textColor
+      }}
     >
       {logoFirst && settings.showLogo && settings.logoSize > 0 ? (
-        <LogoBox label={team.shortName} size={settings.logoSize} />
+        <LogoBox label={team.shortName} size={settings.logoSize} team={team} theme={settings.overlayTheme} />
       ) : null}
       <span
         className={["min-w-0 flex-1 truncate font-black uppercase leading-none", labelAlignClass, getFontFamilyClass(settings.fontFamily)].join(" ")}
@@ -1673,7 +1813,7 @@ function TeamCell({
         {label}
       </span>
       {!logoFirst && settings.showLogo && settings.logoSize > 0 ? (
-        <LogoBox label={team.shortName} size={settings.logoSize} />
+        <LogoBox label={team.shortName} size={settings.logoSize} team={team} theme={settings.overlayTheme} />
       ) : null}
     </div>
   );
@@ -1880,13 +2020,62 @@ function CheckButton({
   );
 }
 
-function LogoBox({ label, size }: { label: string; size: number }) {
+function LogoBox({
+  label,
+  size,
+  team,
+  theme
+}: {
+  label: string;
+  size: number;
+  team: ScoreboardTeam;
+  theme: OverlayTheme;
+}) {
+  const [resolvedLogo, setResolvedLogo] = useState("");
+  const logoCandidates = useMemo(() => getScoreboardLogoCandidates(team, theme), [team, theme]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!logoCandidates.length) {
+      setResolvedLogo("");
+      return;
+    }
+
+    setResolvedLogo("");
+    Promise.all(logoCandidates.map((candidate) => resolveStoredLogo(candidate)))
+      .then((logos) => {
+        if (!cancelled) setResolvedLogo(logos.find(Boolean) ?? "");
+      })
+      .catch(() => {
+        if (!cancelled) setResolvedLogo("");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [logoCandidates]);
+
   return (
     <span
-      className="grid shrink-0 place-items-center rounded-sm border border-white/20 bg-white/10 font-black uppercase text-white"
+      className="grid shrink-0 place-items-center overflow-hidden rounded-sm border border-white/20 bg-white/10 font-black uppercase text-white"
       style={{ width: size, height: size, fontSize: Math.max(8, size * 0.34) }}
     >
-      {label.slice(0, 2)}
+      {resolvedLogo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={resolvedLogo} alt={`${team.name} 로고`} className="h-full w-full object-contain p-0.5" />
+      ) : (
+        label.slice(0, 2)
+      )}
     </span>
   );
+}
+
+function getScoreboardLogoCandidates(team: ScoreboardTeam, theme: OverlayTheme) {
+  const candidates =
+    theme === "light"
+      ? [team.logoLight, team.logoDefault, team.logoDark]
+      : [team.logoDark, team.logoDefault, team.logoLight];
+
+  return candidates.filter((candidate): candidate is string => Boolean(candidate));
 }
