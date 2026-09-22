@@ -8,7 +8,8 @@ type NameMode = "short" | "full";
 type ScreenResolution = "fhd" | "qhd" | "uhd" | "custom";
 type AccentSide = "left" | "right";
 type ScoreSide = "left" | "right";
-type SetScoreSide = "left" | "right";
+type SetScoreEdge = "top" | "bottom";
+type SetScoreAlign = "left" | "center" | "right";
 type LabelAlign = "left" | "center" | "right";
 type LogoSide = "left" | "right";
 type FontFamily = "sans" | "condensed" | "mono" | "serif";
@@ -47,7 +48,8 @@ type ScoreboardTeam = {
   setScore: number;
   accentSide: AccentSide;
   scoreSide: ScoreSide;
-  setScoreSide: SetScoreSide;
+  setScoreEdge: SetScoreEdge;
+  setScoreAlign: SetScoreAlign;
   labelAlign: LabelAlign;
   logoSide: LogoSide;
   x: number;
@@ -72,6 +74,7 @@ type OverlaySettings = {
   rowHeight: number;
   timerWidth: number;
   timerHeight: number;
+  timerCentered: boolean;
   timerX: number;
   timerY: number;
   logoSize: number;
@@ -86,6 +89,7 @@ type OverlaySettings = {
   timerShowSeconds: boolean;
   resolution: ScreenResolution;
   symmetricSizes: boolean;
+  symmetricPositions: boolean;
   showLogo: boolean;
   showTimer: boolean;
   opacity: number;
@@ -96,8 +100,8 @@ const defaultScoreboard: ScoreboardState = {
   elapsedSeconds: 0,
   timerRunning: false,
   teams: [
-    { id: "team-1", name: "Team 1", shortName: "TM1", score: 0, setScore: 0, accentSide: "left", scoreSide: "right", setScoreSide: "left", labelAlign: "left", logoSide: "left", x: 0, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
-    { id: "team-2", name: "Team 2", shortName: "TM2", score: 0, setScore: 0, accentSide: "right", scoreSide: "left", setScoreSide: "right", labelAlign: "right", logoSide: "right", x: 42, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
+    { id: "team-1", name: "Team 1", shortName: "TM1", score: 0, setScore: 0, accentSide: "left", scoreSide: "right", setScoreEdge: "top", setScoreAlign: "center", labelAlign: "center", logoSide: "left", x: 0, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
+    { id: "team-2", name: "Team 2", shortName: "TM2", score: 0, setScore: 0, accentSide: "right", scoreSide: "left", setScoreEdge: "top", setScoreAlign: "center", labelAlign: "center", logoSide: "right", x: 78, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
   ]
 };
 
@@ -109,13 +113,14 @@ const defaultSettings: OverlaySettings = {
   rowHeight: 48,
   timerWidth: 190,
   timerHeight: 30,
+  timerCentered: true,
   timerX: 0,
   timerY: 0,
   logoSize: 30,
   fontSize: 30,
   scoreFontSize: 40,
   maxSetScore: 3,
-  fontFamily: "condensed",
+  fontFamily: "sans",
   nameMode: "short",
   timerMode: "manual",
   timerShowHours: true,
@@ -123,6 +128,7 @@ const defaultSettings: OverlaySettings = {
   timerShowSeconds: true,
   resolution: "fhd",
   symmetricSizes: true,
+  symmetricPositions: true,
   showLogo: true,
   showTimer: true,
   opacity: 100
@@ -239,8 +245,9 @@ export default function ScoreboardPage() {
             setScore: 0,
             accentSide: nextNumber % 2 === 1 ? "left" : "right",
             scoreSide: nextNumber % 2 === 1 ? "right" : "left",
-            setScoreSide: nextNumber % 2 === 1 ? "left" : "right",
-            labelAlign: nextNumber % 2 === 1 ? "left" : "right",
+            setScoreEdge: "top",
+            setScoreAlign: "center",
+            labelAlign: "center",
             logoSide: nextNumber % 2 === 1 ? "left" : "right",
             x: (nextNumber - 1) * 8,
             y: 12 + (nextNumber - 1) * 8,
@@ -279,13 +286,18 @@ export default function ScoreboardPage() {
     };
   };
 
-  const getTimerSnapRect = (): SnapRect => ({
-    id: "timer",
-    left: settings.timerX,
-    top: settings.timerY,
-    width: settings.timerWidth,
-    height: settings.timerHeight
-  });
+  const getTimerSnapRect = (): SnapRect => {
+    const previewRect = previewRef.current?.getBoundingClientRect();
+    const previewWidth = previewRect?.width ?? settings.timerWidth;
+
+    return {
+      id: "timer",
+      left: settings.timerCentered ? (previewWidth - settings.timerWidth) / 2 : settings.timerX,
+      top: settings.timerY,
+      width: settings.timerWidth,
+      height: settings.timerHeight
+    };
+  };
 
   const getAttachmentSnapRects = ({
     excludedTeamId,
@@ -419,14 +431,15 @@ export default function ScoreboardPage() {
 
       setScoreboard((current) => ({
         ...current,
-        teams: current.teams.map((team) =>
-          team.id === teamId
-            ? {
-                ...team,
-                x: Math.round((nextLeft / Math.max(1, previewRect.width)) * 1000) / 10,
-                y: Math.round((nextTop / Math.max(1, previewRect.height)) * 1000) / 10
-              }
-            : team
+        teams: updateSymmetricTeamPositions(
+          current.teams,
+          teamId,
+          nextLeft,
+          nextTop,
+          previewRect.width,
+          previewRect.height,
+          settings,
+          settings.symmetricPositions
         )
       }));
       setDragGuides(nextGuides);
@@ -628,6 +641,7 @@ export default function ScoreboardPage() {
 
       setSettings((current) => ({
         ...current,
+        timerCentered: false,
         timerWidth: nextTimerWidth,
         timerHeight: nextTimerHeight,
         timerX: resizeFromLeft ? startTimerX + startTimerWidth - nextTimerWidth : current.timerX,
@@ -700,6 +714,7 @@ export default function ScoreboardPage() {
 
       setSettings((current) => ({
         ...current,
+        timerCentered: false,
         timerX: Math.round(nextLeft),
         timerY: Math.round(nextTop)
       }));
@@ -840,19 +855,42 @@ export default function ScoreboardPage() {
                       </div>
                     </div>
                     <div className="mt-3">
-                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">세트점수 표시 위치</p>
+                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">세트점수 상하</p>
                       <div className="grid grid-cols-2 gap-2">
                         <ToggleButton
-                          active={team.setScoreSide === "left"}
-                          onClick={() => updateTeam(team.id, "setScoreSide", "left")}
+                          active={team.setScoreEdge === "top"}
+                          onClick={() => updateTeam(team.id, "setScoreEdge", "top")}
                         >
-                          왼쪽
+                          위
                         </ToggleButton>
                         <ToggleButton
-                          active={team.setScoreSide === "right"}
-                          onClick={() => updateTeam(team.id, "setScoreSide", "right")}
+                          active={team.setScoreEdge === "bottom"}
+                          onClick={() => updateTeam(team.id, "setScoreEdge", "bottom")}
                         >
-                          오른쪽
+                          아래
+                        </ToggleButton>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">세트점수 정렬</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <ToggleButton
+                          active={team.setScoreAlign === "left"}
+                          onClick={() => updateTeam(team.id, "setScoreAlign", "left")}
+                        >
+                          좌
+                        </ToggleButton>
+                        <ToggleButton
+                          active={team.setScoreAlign === "center"}
+                          onClick={() => updateTeam(team.id, "setScoreAlign", "center")}
+                        >
+                          중
+                        </ToggleButton>
+                        <ToggleButton
+                          active={team.setScoreAlign === "right"}
+                          onClick={() => updateTeam(team.id, "setScoreAlign", "right")}
+                        >
+                          우
                         </ToggleButton>
                       </div>
                     </div>
@@ -894,6 +932,9 @@ export default function ScoreboardPage() {
               </CheckButton>
               <CheckButton active={settings.symmetricSizes} onClick={() => updateSetting("symmetricSizes", !settings.symmetricSizes)}>
                 크기 대칭
+              </CheckButton>
+              <CheckButton active={settings.symmetricPositions} onClick={() => updateSetting("symmetricPositions", !settings.symmetricPositions)}>
+                위치 대칭
               </CheckButton>
             </div>
 
@@ -1152,9 +1193,12 @@ function TimerBlock({
       className={`group relative cursor-move touch-none select-none bg-white text-slate-950 ${className}`}
       onPointerDown={onPointerDown}
       style={{
+        left: settings.timerCentered ? "50%" : 0,
         width: settings.timerWidth,
         height: settings.timerHeight,
-        transform: `translate(${settings.timerX}px, ${settings.timerY}px)`
+        transform: settings.timerCentered
+          ? `translate(-50%, ${settings.timerY}px)`
+          : `translate(${settings.timerX}px, ${settings.timerY}px)`
       }}
       title="타이머 드래그"
     >
@@ -1241,6 +1285,45 @@ function getBracketSize(team: ScoreboardTeam, settings: OverlaySettings) {
   };
 }
 
+function updateSymmetricTeamPositions(
+  teams: ScoreboardTeam[],
+  movedTeamId: string,
+  nextLeft: number,
+  nextTop: number,
+  previewWidth: number,
+  previewHeight: number,
+  settings: OverlaySettings,
+  symmetricPositions: boolean
+) {
+  const movedIndex = teams.findIndex((team) => team.id === movedTeamId);
+  const movedX = Math.round((nextLeft / Math.max(1, previewWidth)) * 1000) / 10;
+  const movedY = Math.round((nextTop / Math.max(1, previewHeight)) * 1000) / 10;
+
+  if (movedIndex < 0) return teams;
+
+  const pairIndex = movedIndex % 2 === 0 ? movedIndex + 1 : movedIndex - 1;
+
+  return teams.map((team, index) => {
+    if (index === movedIndex) {
+      return { ...team, x: movedX, y: movedY };
+    }
+
+    if (!symmetricPositions || index !== pairIndex || !teams[pairIndex]) {
+      return team;
+    }
+
+    const pairSize = getBracketSize(team, settings);
+    const pairWidth = pairSize.teamWidth + pairSize.scoreWidth;
+    const mirroredLeft = clamp(previewWidth - nextLeft - pairWidth, 0, Math.max(0, previewWidth - pairWidth));
+
+    return {
+      ...team,
+      x: Math.round((mirroredLeft / Math.max(1, previewWidth)) * 1000) / 10,
+      y: movedY
+    };
+  });
+}
+
 function SplitTeamBracket({
   team,
   index,
@@ -1292,8 +1375,8 @@ function SplitTeamBracket({
       <SetScoreMarkers
         setScore={team.setScore}
         maxSetScore={settings.maxSetScore}
-        side={team.setScoreSide}
-        rowHeight={size.rowHeight}
+        edge={team.setScoreEdge}
+        align={team.setScoreAlign}
       />
     </div>
   );
@@ -1513,26 +1596,30 @@ function ScoreCell({
 function SetScoreMarkers({
   setScore,
   maxSetScore,
-  side,
-  rowHeight
+  edge,
+  align
 }: {
   setScore: number;
   maxSetScore: number;
-  side: SetScoreSide;
-  rowHeight: number;
+  edge: SetScoreEdge;
+  align: SetScoreAlign;
 }) {
   const markerCount = clamp(Math.floor(maxSetScore), 1, 7);
   const filledCount = clamp(Math.floor(setScore), 0, markerCount);
+  const alignClass =
+    align === "center"
+      ? "left-1/2 -translate-x-1/2 justify-center"
+      : align === "right"
+        ? "right-1 justify-end"
+        : "left-1 justify-start";
 
   return (
     <div
-      className="pointer-events-none absolute z-20 flex flex-col items-center justify-center gap-1"
-      style={{
-        left: side === "left" ? -14 : "auto",
-        right: side === "right" ? -14 : "auto",
-        top: 0,
-        height: rowHeight
-      }}
+      className={[
+        "pointer-events-none absolute z-20 flex h-2 items-center gap-1",
+        edge === "top" ? "-top-3" : "-bottom-3",
+        alignClass
+      ].join(" ")}
       aria-label={`세트점수 ${filledCount}`}
     >
       {Array.from({ length: markerCount }).map((_, index) => (
