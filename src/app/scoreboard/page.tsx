@@ -1275,6 +1275,12 @@ function SplitTeamBracket({
         teamWidth={size.teamWidth}
         onResizePointerDown={(handle, event) => onScoreResizePointerDown(team.id, handle, event)}
       />
+      <SetScoreMarkers
+        setScore={team.setScore}
+        scoreFirst={!teamFirst}
+        scoreWidth={size.scoreWidth}
+        teamWidth={size.teamWidth}
+      />
     </div>
   );
 }
@@ -1390,7 +1396,6 @@ function TeamCell({
     <ScoreCell
       key="score"
       score={team.score}
-      setScore={team.setScore}
       rowHeight={size.rowHeight}
       scoreWidth={size.scoreWidth}
       fontFamily={settings.fontFamily}
@@ -1439,13 +1444,11 @@ function TeamCell({
 
 function ScoreCell({
   score,
-  setScore,
   rowHeight,
   scoreWidth,
   fontFamily
 }: {
   score: number;
-  setScore: number;
   rowHeight: number;
   scoreWidth: number;
   fontFamily: FontFamily;
@@ -1458,16 +1461,46 @@ function ScoreCell({
 
   return (
     <div
-      className={`relative grid place-items-center overflow-hidden bg-white font-black leading-none text-slate-950 ${getFontFamilyClass(fontFamily)}`}
+      className={`grid place-items-center overflow-hidden bg-white font-black leading-none text-slate-950 ${getFontFamilyClass(fontFamily)}`}
       style={{ height: rowHeight, fontSize: scoreFontSize }}
     >
-      <span
-        className="absolute left-1 top-1 rounded-sm bg-slate-950 px-1 font-black leading-none text-white"
-        style={{ fontSize: Math.max(8, rowHeight * 0.2) }}
-      >
-        {setScore}
-      </span>
       {score}
+    </div>
+  );
+}
+
+function SetScoreMarkers({
+  setScore,
+  scoreFirst,
+  scoreWidth,
+  teamWidth
+}: {
+  setScore: number;
+  scoreFirst: boolean;
+  scoreWidth: number;
+  teamWidth: number;
+}) {
+  const filledCount = clamp(Math.floor(setScore), 0, 5);
+  const markerCount = Math.max(3, filledCount);
+
+  return (
+    <div
+      className="pointer-events-none absolute -bottom-3 z-20 flex h-2 items-center justify-center gap-1"
+      style={{
+        left: scoreFirst ? 0 : teamWidth,
+        width: scoreWidth
+      }}
+      aria-label={`세트점수 ${filledCount}`}
+    >
+      {Array.from({ length: markerCount }).map((_, index) => (
+        <span
+          key={index}
+          className={[
+            "h-1.5 w-1.5 rounded-full border border-white/70 shadow-[0_0_5px_rgba(255,255,255,0.35)]",
+            index < filledCount ? "bg-gold" : "bg-slate-950/80"
+          ].join(" ")}
+        />
+      ))}
     </div>
   );
 }
