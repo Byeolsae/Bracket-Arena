@@ -126,6 +126,7 @@ type OverlaySettings = {
   symmetricPositions: boolean;
   showLogo: boolean;
   showTimer: boolean;
+  showSetScore: boolean;
   opacity: number;
 };
 
@@ -166,6 +167,7 @@ const defaultSettings: OverlaySettings = {
   symmetricPositions: true,
   showLogo: true,
   showTimer: true,
+  showSetScore: true,
   opacity: 100
 };
 
@@ -1191,6 +1193,9 @@ export default function ScoreboardPage() {
               <CheckButton active={settings.showTimer} onClick={() => updateSetting("showTimer", !settings.showTimer)}>
                 타이머
               </CheckButton>
+              <CheckButton active={settings.showSetScore} onClick={() => updateSetting("showSetScore", !settings.showSetScore)}>
+                세트점수
+              </CheckButton>
               <CheckButton active={settings.symmetricSizes} onClick={() => updateSetting("symmetricSizes", !settings.symmetricSizes)}>
                 크기 대칭
               </CheckButton>
@@ -1658,12 +1663,14 @@ function SplitTeamBracket({
         teamWidth={size.teamWidth}
         onResizePointerDown={(handle, event) => onScoreResizePointerDown(team.id, handle, event)}
       />
-      <SetScoreMarkers
-        setScore={team.setScore}
-        maxSetScore={settings.maxSetScore}
-        edge={team.setScoreEdge}
-        align={team.setScoreAlign}
-      />
+      {settings.showSetScore ? (
+        <SetScoreMarkers
+          setScore={team.setScore}
+          maxSetScore={settings.maxSetScore}
+          edge={team.setScoreEdge}
+          align={team.setScoreAlign}
+        />
+      ) : null}
     </div>
   );
 }
