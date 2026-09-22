@@ -113,7 +113,7 @@ const defaultSettings: OverlaySettings = {
   teamWidth: 205,
   scoreWidth: 54,
   rowHeight: 48,
-  timerWidth: 190,
+  timerWidth: 150,
   timerHeight: 30,
   timerCentered: true,
   timerX: 0,
