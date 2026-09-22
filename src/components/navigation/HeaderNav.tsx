@@ -25,6 +25,9 @@ export function HeaderNav() {
         <Link className="rounded-md border border-transparent px-3 py-2 text-ink/75 hover:border-cyan hover:text-cyan" href="/draw">
           추첨 및 참가팀 선택
         </Link>
+        <Link className="rounded-md border border-transparent px-3 py-2 text-ink/75 hover:border-cyan hover:text-cyan" href="/login">
+          로그인
+        </Link>
         <ThemeToggle />
       </nav>
     </div>

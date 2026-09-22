@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Brackets, Layers3, MonitorPlay, Shuffle, Users } from "lucide-react";
+import { ArrowRight, Brackets, Cloud, Layers3, MonitorPlay, Shuffle, Users } from "lucide-react";
 
 const entryPoints = [
   {
@@ -36,6 +36,13 @@ const entryPoints = [
     href: "/draw",
     icon: Shuffle,
     cta: "참가팀 준비하기"
+  },
+  {
+    title: "로그인 / 클라우드",
+    description: "팀 관리에서 만든 팀과 폴더를 클라우드에 저장하고 다른 기기에서 불러옵니다.",
+    href: "/login",
+    icon: Cloud,
+    cta: "로그인하기"
   }
 ];
 
