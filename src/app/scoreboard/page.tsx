@@ -1,11 +1,10 @@
 "use client";
 
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { useRef, useState } from "react";
 import { Eye, MonitorPlay, Move, Plus, Settings2, SlidersHorizontal, Trash2 } from "lucide-react";
 
 type NameMode = "short" | "full";
-type Direction = "horizontal" | "vertical";
 type ScreenResolution = "fhd" | "qhd" | "uhd" | "custom";
 type AccentSide = "left" | "right";
 type ScoreSide = "left" | "right";
@@ -55,8 +54,6 @@ type ScoreboardState = {
 };
 
 type OverlaySettings = {
-  x: number;
-  y: number;
   customWidth: number;
   customHeight: number;
   teamWidth: number;
@@ -69,9 +66,7 @@ type OverlaySettings = {
   logoSize: number;
   fontSize: number;
   nameMode: NameMode;
-  direction: Direction;
   resolution: ScreenResolution;
-  splitTeams: boolean;
   symmetricSizes: boolean;
   showLogo: boolean;
   showTimer: boolean;
@@ -87,8 +82,6 @@ const defaultScoreboard: ScoreboardState = {
 };
 
 const defaultSettings: OverlaySettings = {
-  x: 0,
-  y: 0,
   customWidth: 1920,
   customHeight: 1080,
   teamWidth: 205,
@@ -101,9 +94,7 @@ const defaultSettings: OverlaySettings = {
   logoSize: 30,
   fontSize: 30,
   nameMode: "short",
-  direction: "vertical",
   resolution: "fhd",
-  splitTeams: false,
   symmetricSizes: true,
   showLogo: true,
   showTimer: true,
@@ -117,7 +108,7 @@ const resolutionOptions: Record<ScreenResolution, { label: string; width: number
   custom: { label: "직접", width: 1920, height: 1080 }
 };
 
-const snapDistance = 10;
+const snapDistance = 24;
 const hiddenDragGuides: DragGuides = {
   verticalCenter: false,
   horizontalCenter: false,
@@ -257,16 +248,16 @@ export default function ScoreboardPage() {
       const horizontalRangesClose = rangesAreClose(nextLeft, movingRight, target.left, targetRight);
       const verticalRangesClose = rangesAreClose(nextTop, movingBottom, target.top, targetBottom);
       const xCandidates = [
-        target.left,
         targetRight,
         target.left - width,
+        target.left,
         targetRight - width,
         target.left + target.width / 2 - width / 2
       ];
       const yCandidates = [
-        target.top,
         targetBottom,
         target.top - height,
+        target.top,
         targetBottom - height,
         target.top + target.height / 2 - height / 2
       ];
@@ -297,65 +288,6 @@ export default function ScoreboardPage() {
       top: nextTop,
       guides: nextGuides
     };
-  };
-
-  const handleScoreboardDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || !previewRef.current) return;
-
-    const previewRect = previewRef.current.getBoundingClientRect();
-    const overlayRect = event.currentTarget.getBoundingClientRect();
-    const grabOffsetX = event.clientX - overlayRect.left;
-    const grabOffsetY = event.clientY - overlayRect.top;
-
-    event.preventDefault();
-
-    const handlePointerMove = (moveEvent: PointerEvent) => {
-      const maxLeft = Math.max(0, previewRect.width - overlayRect.width);
-      const maxTop = Math.max(0, previewRect.height - overlayRect.height);
-      const centerLeft = maxLeft / 2;
-      const centerTop = maxTop / 2;
-      let nextLeft = clamp(moveEvent.clientX - previewRect.left - grabOffsetX, 0, maxLeft);
-      let nextTop = clamp(moveEvent.clientY - previewRect.top - grabOffsetY, 0, maxTop);
-      const nextGuides: DragGuides = { ...hiddenDragGuides };
-
-      if (Math.abs(nextLeft - centerLeft) <= snapDistance) {
-        nextLeft = centerLeft;
-        nextGuides.verticalCenter = true;
-      } else if (nextLeft <= snapDistance) {
-        nextLeft = 0;
-        nextGuides.leftEdge = true;
-      } else if (Math.abs(nextLeft - maxLeft) <= snapDistance) {
-        nextLeft = maxLeft;
-        nextGuides.rightEdge = true;
-      }
-
-      if (Math.abs(nextTop - centerTop) <= snapDistance) {
-        nextTop = centerTop;
-        nextGuides.horizontalCenter = true;
-      } else if (nextTop <= snapDistance) {
-        nextTop = 0;
-        nextGuides.topEdge = true;
-      } else if (Math.abs(nextTop - maxTop) <= snapDistance) {
-        nextTop = maxTop;
-        nextGuides.bottomEdge = true;
-      }
-
-      setSettings((current) => ({
-        ...current,
-        x: Math.round((nextLeft / Math.max(1, previewRect.width)) * 1000) / 10,
-        y: Math.round((nextTop / Math.max(1, previewRect.height)) * 1000) / 10
-      }));
-      setDragGuides(nextGuides);
-    };
-
-    const handlePointerUp = () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", handlePointerUp);
-      setDragGuides(hiddenDragGuides);
-    };
-
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", handlePointerUp);
   };
 
   const handleTeamDragStart = (teamId: string, event: ReactPointerEvent<HTMLDivElement>) => {
@@ -400,19 +332,17 @@ export default function ScoreboardPage() {
         nextGuides.bottomEdge = true;
       }
 
-      if (settings.splitTeams) {
-        const attachmentSnap = snapToAttachmentRects(
-          nextLeft,
-          nextTop,
-          teamRect.width,
-          teamRect.height,
-          getAttachmentSnapRects({ excludedTeamId: teamId, includeTimer: true })
-        );
-        nextLeft = clamp(attachmentSnap.left, 0, maxLeft);
-        nextTop = clamp(attachmentSnap.top, 0, maxTop);
-        nextGuides.verticalCenter = nextGuides.verticalCenter || attachmentSnap.guides.verticalCenter;
-        nextGuides.horizontalCenter = nextGuides.horizontalCenter || attachmentSnap.guides.horizontalCenter;
-      }
+      const attachmentSnap = snapToAttachmentRects(
+        nextLeft,
+        nextTop,
+        teamRect.width,
+        teamRect.height,
+        getAttachmentSnapRects({ excludedTeamId: teamId, includeTimer: true })
+      );
+      nextLeft = clamp(attachmentSnap.left, 0, maxLeft);
+      nextTop = clamp(attachmentSnap.top, 0, maxTop);
+      nextGuides.verticalCenter = nextGuides.verticalCenter || attachmentSnap.guides.verticalCenter;
+      nextGuides.horizontalCenter = nextGuides.horizontalCenter || attachmentSnap.guides.horizontalCenter;
 
       setScoreboard((current) => ({
         ...current,
@@ -466,8 +396,8 @@ export default function ScoreboardPage() {
     const targetTeam = teamId ? scoreboard.teams.find((team) => team.id === teamId) : null;
     const startTeamWidth = targetTeam?.teamWidth ?? settings.teamWidth;
     const startRowHeight = targetTeam?.rowHeight ?? settings.rowHeight;
-    const startX = targetTeam?.x ?? settings.x;
-    const startY = targetTeam?.y ?? settings.y;
+    const startX = targetTeam?.x ?? 0;
+    const startY = targetTeam?.y ?? 0;
     const resizeFromLeft = handle.includes("left");
     const resizeFromRight = handle.includes("right");
     const resizeFromTop = handle.includes("top");
@@ -491,13 +421,7 @@ export default function ScoreboardPage() {
       if (!teamId || settings.symmetricSizes) {
         resizeAllTeams(nextTeamWidth, nextRowHeight);
 
-        if (!teamId) {
-          setSettings((current) => ({
-            ...current,
-            x: resizeFromLeft ? nextX : current.x,
-            y: resizeFromTop ? nextY : current.y
-          }));
-        } else if (resizeFromLeft || resizeFromTop) {
+        if (teamId && (resizeFromLeft || resizeFromTop)) {
           setScoreboard((current) => ({
             ...current,
             teams: current.teams.map((team) =>
@@ -689,19 +613,17 @@ export default function ScoreboardPage() {
         nextGuides.bottomEdge = true;
       }
 
-      if (settings.splitTeams) {
-        const attachmentSnap = snapToAttachmentRects(
-          nextLeft,
-          nextTop,
-          timerRect.width,
-          timerRect.height,
-          getAttachmentSnapRects({ includeTimer: false })
-        );
-        nextLeft = clamp(attachmentSnap.left, 0, maxLeft);
-        nextTop = clamp(attachmentSnap.top, 0, maxTop);
-        nextGuides.verticalCenter = nextGuides.verticalCenter || attachmentSnap.guides.verticalCenter;
-        nextGuides.horizontalCenter = nextGuides.horizontalCenter || attachmentSnap.guides.horizontalCenter;
-      }
+      const attachmentSnap = snapToAttachmentRects(
+        nextLeft,
+        nextTop,
+        timerRect.width,
+        timerRect.height,
+        getAttachmentSnapRects({ includeTimer: false })
+      );
+      nextLeft = clamp(attachmentSnap.left, 0, maxLeft);
+      nextTop = clamp(attachmentSnap.top, 0, maxTop);
+      nextGuides.verticalCenter = nextGuides.verticalCenter || attachmentSnap.guides.verticalCenter;
+      nextGuides.horizontalCenter = nextGuides.horizontalCenter || attachmentSnap.guides.horizontalCenter;
 
       setSettings((current) => ({
         ...current,
@@ -845,12 +767,6 @@ export default function ScoreboardPage() {
               <ToggleButton active={settings.nameMode === "full"} onClick={() => updateSetting("nameMode", "full")}>
                 풀네임
               </ToggleButton>
-              <ToggleButton active={settings.direction === "vertical"} onClick={() => updateSetting("direction", "vertical")}>
-                위아래
-              </ToggleButton>
-              <ToggleButton active={settings.direction === "horizontal"} onClick={() => updateSetting("direction", "horizontal")}>
-                좌우
-              </ToggleButton>
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-2">
@@ -859,9 +775,6 @@ export default function ScoreboardPage() {
               </CheckButton>
               <CheckButton active={settings.showTimer} onClick={() => updateSetting("showTimer", !settings.showTimer)}>
                 타이머
-              </CheckButton>
-              <CheckButton active={settings.splitTeams} onClick={() => updateSetting("splitTeams", !settings.splitTeams)}>
-                팀 분리
               </CheckButton>
               <CheckButton active={settings.symmetricSizes} onClick={() => updateSetting("symmetricSizes", !settings.symmetricSizes)}>
                 크기 대칭
@@ -912,12 +825,8 @@ export default function ScoreboardPage() {
             <div className="grid gap-3">
               <div className="rounded-md border border-line bg-arena/70 px-3 py-3">
                 <p className="text-xs font-bold leading-5 text-muted">
-                  미리보기 화면에서 드래그합니다. 중앙과 가장자리 근처에서는 가이드가 뜨고 자동으로 붙습니다.
-                  팀 분리 모드에서는 각 팀 브래킷을 따로 드래그할 수 있습니다.
-                  분리된 타이머와 브래킷도 서로 가까워지면 붙습니다. 브래킷, 점수칸, 타이머 크기는 가장자리 핸들을 잡아 조절합니다.
-                </p>
-                <p className="mt-2 text-xs font-black uppercase tracking-wide text-cyan">
-                  X {settings.x}% / Y {settings.y}%
+                  미리보기 화면에서 타이머와 각 팀 브래킷을 따로 드래그합니다.
+                  서로 가까이 가져가면 자석처럼 가장자리끼리 붙습니다. 브래킷, 점수칸, 타이머 크기는 가장자리 핸들을 잡아 조절합니다.
                 </p>
               </div>
             </div>
@@ -958,7 +867,7 @@ export default function ScoreboardPage() {
               <h2 className="mt-1 text-xl font-black uppercase tracking-wide text-ink">직접 설정형 오버레이</h2>
             </div>
             <div className="rounded-md border border-line bg-panel px-3 py-2 text-xs font-black uppercase tracking-wide text-muted">
-              {resolutionOptions[settings.resolution].label} / {settings.nameMode === "short" ? "약칭" : "풀네임"} / {settings.direction === "vertical" ? "위아래" : "좌우"}
+              {resolutionOptions[settings.resolution].label} / {settings.nameMode === "short" ? "약칭" : "풀네임"} / 분리형
             </div>
           </div>
 
@@ -976,7 +885,6 @@ export default function ScoreboardPage() {
               <CustomScoreboardOverlay
                 scoreboard={scoreboard}
                 settings={settings}
-                onPointerDown={handleScoreboardDragStart}
                 onTeamPointerDown={handleTeamDragStart}
                 onBracketResizePointerDown={handleBracketResizeStart}
                 onScoreResizePointerDown={handleScoreResizeStart}
@@ -994,7 +902,6 @@ export default function ScoreboardPage() {
 function CustomScoreboardOverlay({
   scoreboard,
   settings,
-  onPointerDown,
   onTeamPointerDown,
   onBracketResizePointerDown,
   onScoreResizePointerDown,
@@ -1003,113 +910,34 @@ function CustomScoreboardOverlay({
 }: {
   scoreboard: ScoreboardState;
   settings: OverlaySettings;
-  onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onTeamPointerDown: (teamId: string, event: ReactPointerEvent<HTMLDivElement>) => void;
   onBracketResizePointerDown: (teamId: string | null, handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
   onScoreResizePointerDown: (teamId: string, handle: ScoreResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
   onTimerResizePointerDown: (handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
   onTimerPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
-  const overlayStyle: CSSProperties = {
-    left: `${settings.x}%`,
-    top: `${settings.y}%`,
-    opacity: settings.opacity / 100
-  };
-  const getColumns = (team: ScoreboardTeam) =>
-    (team.scoreSide ?? (team.accentSide === "right" ? "left" : "right")) === "left"
-      ? `${settings.scoreWidth}px ${settings.teamWidth}px`
-      : `${settings.teamWidth}px ${settings.scoreWidth}px`;
-
-  if (settings.splitTeams) {
-    return (
-      <div className="absolute inset-0 z-10 pointer-events-none" style={{ opacity: settings.opacity / 100 }}>
-        {settings.showTimer ? (
-          <TimerBlock
-            timer={scoreboard.timer}
-            settings={settings}
-            className="pointer-events-auto absolute left-0 top-0"
-            onResizePointerDown={onTimerResizePointerDown}
-            onPointerDown={onTimerPointerDown}
-          />
-        ) : null}
-        {scoreboard.teams.map((team, index) => (
-          <SplitTeamBracket
-            key={team.id}
-            team={team}
-            index={index}
-            settings={settings}
-            onPointerDown={onTeamPointerDown}
-            onResizePointerDown={onBracketResizePointerDown}
-            onScoreResizePointerDown={onScoreResizePointerDown}
-          />
-        ))}
-      </div>
-    );
-  }
-
   return (
-    <div
-      className="absolute z-10 cursor-move touch-none select-none"
-      onPointerDown={onPointerDown}
-      style={overlayStyle}
-      title="드래그해서 위치 조절"
-    >
+    <div className="absolute inset-0 z-10 pointer-events-none" style={{ opacity: settings.opacity / 100 }}>
       {settings.showTimer ? (
         <TimerBlock
           timer={scoreboard.timer}
           settings={settings}
+          className="pointer-events-auto absolute left-0 top-0"
           onResizePointerDown={onTimerResizePointerDown}
           onPointerDown={onTimerPointerDown}
         />
       ) : null}
-
-      <div data-scoreboard-body className="group relative inline-block">
-        {settings.direction === "horizontal" ? (
-          <div className="grid">
-            {chunkTeams(scoreboard.teams, 2).map((teamPair, pairIndex) => (
-              <div
-                key={teamPair.map((team) => team.id).join("-")}
-                className="grid"
-                style={{
-                  gridTemplateColumns: teamPair.map((team) => getColumns(team)).join(" "),
-                  marginTop: pairIndex > 0 ? -1 : 0
-                }}
-              >
-                <TeamCell
-                  team={teamPair[0]}
-                  side="left"
-                  settings={settings}
-                />
-                {teamPair[1] ? (
-                  <TeamCell team={teamPair[1]} side="right" settings={settings} />
-                ) : null}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid">
-            {scoreboard.teams.map((team, index) => (
-              <div
-                key={team.id}
-                className="grid"
-                style={{
-                  gridTemplateColumns: getColumns(team),
-                  marginTop: index > 0 ? -1 : 0
-                }}
-              >
-                <TeamCell
-                  team={team}
-                  side={index === 0 ? "left" : "right"}
-                  settings={settings}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-        <ResizeHandles
-          onResizePointerDown={(axis, event) => onBracketResizePointerDown(null, axis, event)}
+      {scoreboard.teams.map((team, index) => (
+        <SplitTeamBracket
+          key={team.id}
+          team={team}
+          index={index}
+          settings={settings}
+          onPointerDown={onTeamPointerDown}
+          onResizePointerDown={onBracketResizePointerDown}
+          onScoreResizePointerDown={onScoreResizePointerDown}
         />
-      </div>
+      ))}
     </div>
   );
 }
@@ -1206,7 +1034,7 @@ function ResizeHandles({
 }
 
 function getBracketSize(team: ScoreboardTeam, settings: OverlaySettings) {
-  if (settings.splitTeams && !settings.symmetricSizes) {
+  if (!settings.symmetricSizes) {
     return {
       teamWidth: team.teamWidth,
       scoreWidth: team.scoreWidth,
@@ -1296,16 +1124,6 @@ function ScoreResizeHandle({
       title="점수칸 넓이 조절"
     />
   );
-}
-
-function chunkTeams(teams: ScoreboardTeam[], size: number) {
-  const chunks: ScoreboardTeam[][] = [];
-
-  for (let index = 0; index < teams.length; index += size) {
-    chunks.push(teams.slice(index, index + size));
-  }
-
-  return chunks;
 }
 
 function clamp(value: number, min: number, max: number) {
