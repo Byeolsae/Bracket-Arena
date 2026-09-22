@@ -15,6 +15,7 @@ type LabelAlign = "left" | "center" | "right";
 type LogoSide = "left" | "right";
 type FontFamily = "sans" | "condensed" | "mono" | "serif";
 type TimerMode = "manual" | "countUp";
+type OverlayTheme = "dark" | "light";
 type ResizeHandle =
   | "left"
   | "right"
@@ -84,6 +85,7 @@ type OverlaySettings = {
   scoreFontSize: number;
   maxSetScore: number;
   fontFamily: FontFamily;
+  overlayTheme: OverlayTheme;
   nameMode: NameMode;
   timerMode: TimerMode;
   timerShowHours: boolean;
@@ -123,6 +125,7 @@ const defaultSettings: OverlaySettings = {
   scoreFontSize: 40,
   maxSetScore: 3,
   fontFamily: "sans",
+  overlayTheme: "dark",
   nameMode: "short",
   timerMode: "manual",
   timerShowHours: true,
@@ -990,6 +993,18 @@ export default function ScoreboardPage() {
               </ToggleButton>
             </div>
 
+            <div className="mt-4">
+              <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">브래킷 / 타이머 모드</p>
+              <div className="grid grid-cols-2 gap-2">
+                <ToggleButton active={settings.overlayTheme === "dark"} onClick={() => updateSetting("overlayTheme", "dark")}>
+                  다크
+                </ToggleButton>
+                <ToggleButton active={settings.overlayTheme === "light"} onClick={() => updateSetting("overlayTheme", "light")}>
+                  라이트
+                </ToggleButton>
+              </div>
+            </div>
+
             <div className="mt-4 grid grid-cols-2 gap-2">
               <CheckButton active={settings.showLogo} onClick={() => updateSetting("showLogo", !settings.showLogo)}>
                 로고
@@ -1266,9 +1281,13 @@ function TimerBlock({
   onResizePointerDown: (handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
   onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
+  const timerThemeClass = settings.overlayTheme === "light"
+    ? "border border-slate-300 bg-white text-slate-950 shadow-[0_8px_20px_rgba(15,23,42,0.16)]"
+    : "border border-white/10 bg-[#07111f] text-white shadow-[0_8px_20px_rgba(0,0,0,0.45)]";
+
   return (
     <div
-      className={`group relative cursor-move touch-none select-none bg-white text-slate-950 ${className}`}
+      className={`group relative cursor-move touch-none select-none ${timerThemeClass} ${className}`}
       onPointerDown={onPointerDown}
       style={{
         left: settings.timerCentered ? "50%" : 0,
@@ -1608,8 +1627,12 @@ function TeamCell({
       scoreWidth={size.scoreWidth}
       scoreFontSize={settings.scoreFontSize}
       fontFamily={settings.fontFamily}
+      overlayTheme={settings.overlayTheme}
     />
   );
+  const teamThemeClass = settings.overlayTheme === "light"
+    ? "bg-white text-slate-950 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.08)]"
+    : "bg-[#07111f] text-white";
   const labelAlignClass =
     team.labelAlign === "center"
       ? "text-center"
@@ -1627,7 +1650,8 @@ function TeamCell({
     <div
       key="team"
       className={[
-        "flex min-w-0 items-center gap-2 bg-[#07111f] px-3 text-white",
+        "flex min-w-0 items-center gap-2 px-3",
+        teamThemeClass,
         justifyClass,
         accentRight ? `border-r-4 ${accentBorder}` : `border-l-4 ${accentBorder}`
       ].join(" ")}
@@ -1656,13 +1680,15 @@ function ScoreCell({
   rowHeight,
   scoreWidth,
   scoreFontSize,
-  fontFamily
+  fontFamily,
+  overlayTheme
 }: {
   score: number;
   rowHeight: number;
   scoreWidth: number;
   scoreFontSize: number;
   fontFamily: FontFamily;
+  overlayTheme: OverlayTheme;
 }) {
   const digits = String(score).length;
   const autoFitFontSize = Math.max(
@@ -1670,10 +1696,13 @@ function ScoreCell({
     Math.min(rowHeight * 0.82, (scoreWidth / Math.max(1, digits)) * 1.12)
   );
   const visibleScoreFontSize = Math.max(12, Math.min(scoreFontSize, autoFitFontSize));
+  const scoreThemeClass = overlayTheme === "light"
+    ? "bg-white text-slate-950"
+    : "bg-[#020617] text-white";
 
   return (
     <div
-      className={`grid place-items-center overflow-hidden bg-white font-black leading-none text-slate-950 ${getFontFamilyClass(fontFamily)}`}
+      className={`grid place-items-center overflow-hidden font-black leading-none ${scoreThemeClass} ${getFontFamilyClass(fontFamily)}`}
       style={{ height: rowHeight, fontSize: visibleScoreFontSize }}
     >
       {score}
