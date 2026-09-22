@@ -101,7 +101,7 @@ const defaultScoreboard: ScoreboardState = {
   timerRunning: false,
   teams: [
     { id: "team-1", name: "Team 1", shortName: "TM1", score: 0, setScore: 0, accentSide: "left", scoreSide: "right", setScoreEdge: "top", setScoreAlign: "center", labelAlign: "center", logoSide: "left", x: 0, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
-    { id: "team-2", name: "Team 2", shortName: "TM2", score: 0, setScore: 0, accentSide: "right", scoreSide: "left", setScoreEdge: "top", setScoreAlign: "center", labelAlign: "center", logoSide: "right", x: 78, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
+    { id: "team-2", name: "Team 2", shortName: "TM2", score: 0, setScore: 0, accentSide: "right", scoreSide: "left", setScoreEdge: "top", setScoreAlign: "center", labelAlign: "center", logoSide: "right", x: 72, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
   ]
 };
 
@@ -1081,7 +1081,11 @@ export default function ScoreboardPage() {
               <RangeField label="로고 크기" value={settings.logoSize} min={0} max={80} onChange={(value) => updateSetting("logoSize", value)} suffix="px" />
               <RangeField label="팀명 글자" value={settings.fontSize} min={14} max={64} onChange={(value) => updateSetting("fontSize", value)} suffix="px" />
               <RangeField label="점수 숫자" value={settings.scoreFontSize} min={16} max={96} onChange={(value) => updateSetting("scoreFontSize", value)} suffix="px" />
-              <RangeField label="최대 세트" value={settings.maxSetScore} min={1} max={7} onChange={(value) => updateSetting("maxSetScore", value)} suffix="세트" />
+              <NumberField
+                label="최대 세트"
+                value={settings.maxSetScore}
+                onChange={(value) => updateSetting("maxSetScore", Math.max(1, Math.floor(value)))}
+              />
               <RangeField label="불투명도" value={settings.opacity} min={20} max={100} onChange={(value) => updateSetting("opacity", value)} suffix="%" />
               <p className="rounded-md border border-line bg-arena/70 px-3 py-3 text-xs font-bold leading-5 text-muted">
                 브래킷 오른쪽 가장자리를 드래그하면 넓이가, 아래쪽 가장자리를 드래그하면 높이가 바뀝니다.
@@ -1604,7 +1608,7 @@ function SetScoreMarkers({
   edge: SetScoreEdge;
   align: SetScoreAlign;
 }) {
-  const markerCount = clamp(Math.floor(maxSetScore), 1, 7);
+  const markerCount = clamp(Math.floor(maxSetScore), 1, 20);
   const filledCount = clamp(Math.floor(setScore), 0, markerCount);
   const alignClass =
     align === "center"
