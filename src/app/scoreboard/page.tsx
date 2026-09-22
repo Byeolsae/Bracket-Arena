@@ -1035,7 +1035,7 @@ export default function ScoreboardPage() {
           </div>
         </aside>
 
-        <div className="arena-card overflow-hidden">
+        <div className="arena-card overflow-hidden xl:sticky xl:top-5 xl:self-start">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-arena/80 px-5 py-4">
             <div>
               <p className="section-kicker">미리보기</p>
@@ -1046,7 +1046,7 @@ export default function ScoreboardPage() {
             </div>
           </div>
 
-          <div className="grid min-h-[620px] place-items-center bg-[radial-gradient(circle_at_50%_28%,rgba(47,230,255,0.1),transparent_34%),hsl(var(--arena))] p-4 sm:p-6">
+          <div className="grid min-h-[520px] place-items-center bg-[radial-gradient(circle_at_50%_28%,rgba(47,230,255,0.1),transparent_34%),hsl(var(--arena))] p-4 sm:min-h-[620px] sm:p-6 xl:min-h-[calc(100vh-170px)]">
             <div
               ref={previewRef}
               className="relative w-full max-w-6xl overflow-hidden rounded-md border border-line bg-[#111318] shadow-panel"
