@@ -10,6 +10,7 @@ type AccentSide = "left" | "right";
 type ScoreSide = "left" | "right";
 type SetScoreEdge = "top" | "bottom";
 type SetScoreAlign = "left" | "center" | "right";
+type XAnchor = "left" | "right";
 type LabelAlign = "left" | "center" | "right";
 type LogoSide = "left" | "right";
 type FontFamily = "sans" | "condensed" | "mono" | "serif";
@@ -52,6 +53,7 @@ type ScoreboardTeam = {
   setScoreAlign: SetScoreAlign;
   labelAlign: LabelAlign;
   logoSide: LogoSide;
+  xAnchor: XAnchor;
   x: number;
   y: number;
   teamWidth: number;
@@ -100,8 +102,8 @@ const defaultScoreboard: ScoreboardState = {
   elapsedSeconds: 0,
   timerRunning: false,
   teams: [
-    { id: "team-1", name: "Team 1", shortName: "TM1", score: 0, setScore: 0, accentSide: "left", scoreSide: "right", setScoreEdge: "top", setScoreAlign: "center", labelAlign: "center", logoSide: "left", x: 0, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
-    { id: "team-2", name: "Team 2", shortName: "TM2", score: 0, setScore: 0, accentSide: "right", scoreSide: "left", setScoreEdge: "top", setScoreAlign: "center", labelAlign: "center", logoSide: "right", x: 66, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
+    { id: "team-1", name: "Team 1", shortName: "TM1", score: 0, setScore: 0, accentSide: "left", scoreSide: "right", setScoreEdge: "bottom", setScoreAlign: "right", labelAlign: "center", logoSide: "left", xAnchor: "left", x: 0, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
+    { id: "team-2", name: "Team 2", shortName: "TM2", score: 0, setScore: 0, accentSide: "right", scoreSide: "left", setScoreEdge: "bottom", setScoreAlign: "left", labelAlign: "center", logoSide: "right", xAnchor: "right", x: 0, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
   ]
 };
 
@@ -249,6 +251,7 @@ export default function ScoreboardPage() {
             setScoreAlign: "center",
             labelAlign: "center",
             logoSide: nextNumber % 2 === 1 ? "left" : "right",
+            xAnchor: "left",
             x: (nextNumber - 1) * 8,
             y: 12 + (nextNumber - 1) * 8,
             teamWidth: current.teams[0]?.teamWidth ?? defaultSettings.teamWidth,
@@ -277,11 +280,16 @@ export default function ScoreboardPage() {
     const previewWidth = previewRect?.width ?? 1;
     const previewHeight = previewRect?.height ?? 1;
 
+    const width = size.teamWidth + size.scoreWidth;
+    const left = team.xAnchor === "right"
+      ? previewWidth - width - (team.x / 100) * previewWidth
+      : (team.x / 100) * previewWidth;
+
     return {
       id: team.id,
-      left: (team.x / 100) * previewWidth,
+      left,
       top: (team.y / 100) * previewHeight,
-      width: size.teamWidth + size.scoreWidth,
+      width,
       height: size.rowHeight
     };
   };
@@ -1309,7 +1317,7 @@ function updateSymmetricTeamPositions(
 
   return teams.map((team, index) => {
     if (index === movedIndex) {
-      return { ...team, x: movedX, y: movedY };
+      return { ...team, xAnchor: "left" as const, x: movedX, y: movedY };
     }
 
     if (!symmetricPositions || index !== pairIndex || !teams[pairIndex]) {
@@ -1322,6 +1330,7 @@ function updateSymmetricTeamPositions(
 
     return {
       ...team,
+      xAnchor: "left" as const,
       x: Math.round((mirroredLeft / Math.max(1, previewWidth)) * 1000) / 10,
       y: movedY
     };
@@ -1356,7 +1365,8 @@ function SplitTeamBracket({
       className="group pointer-events-auto absolute z-10 grid cursor-move touch-none select-none"
       onPointerDown={(event) => onPointerDown(team.id, event)}
       style={{
-        left: `${team.x}%`,
+        left: team.xAnchor === "left" ? `${team.x}%` : "auto",
+        right: team.xAnchor === "right" ? `${team.x}%` : "auto",
         top: `${team.y}%`,
         gridTemplateColumns
       }}
