@@ -15,6 +15,7 @@ type TeamStore = {
   folders: TeamFolder[];
   presets: TeamSetPreset[];
   setTeams: (teams: Team[]) => void;
+  setTeamLibrary: (library: { teams: Team[]; folders?: TeamFolder[]; presets?: TeamSetPreset[] }) => void;
   addTeam: (input: TeamInput, folderId?: string) => void;
   updateTeam: (id: string, input: TeamInput) => void;
   deleteTeam: (id: string) => void;
@@ -377,6 +378,18 @@ export const useTeamStore = create<TeamStore>()(
       setTeams: (teams) => {
         const nextTeams = safeTeams(teams);
         set({ teams: nextTeams, folders: [createDefaultFolder(nextTeams)] });
+      },
+      setTeamLibrary: (library) => {
+        const nextTeams = safeTeams(library.teams);
+        const nextPresets = Array.isArray(library.presets) ? library.presets : [];
+        set({
+          teams: nextTeams,
+          folders: normalizeFolders(library.folders, nextTeams),
+          presets: nextPresets.map((preset) => ({
+            ...preset,
+            teams: safeTeams(preset.teams)
+          }))
+        });
       },
       addTeam: (input, folderId = defaultFolderId) =>
         set((state) => {

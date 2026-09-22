@@ -36,6 +36,8 @@ $env:Path = "C:\Users\chany\.cache\codex-runtimes\codex-primary-runtime\dependen
 
 ```env
 DATABASE_URL="file:./dev.db"
+NEXT_PUBLIC_SUPABASE_URL=""
+NEXT_PUBLIC_SUPABASE_ANON_KEY=""
 ```
 
 Prisma Client 생성:
@@ -51,6 +53,38 @@ Prisma Client 생성:
 ```
 
 현재는 SQLite와 Json 필드를 사용해 복합 토너먼트 구조를 저장할 수 있게 설계했습니다. 나중에 PostgreSQL로 옮길 때도 `Tournament`, `SavedTournament`, `TeamPreset`, `TeamSetPreset` 구조는 유지할 수 있습니다.
+
+## Supabase 팀 클라우드 저장
+
+팀 관리 화면의 클라우드 저장은 Supabase Auth와 REST API를 사용합니다. Supabase 프로젝트를 만든 뒤 `.env` 또는 Vercel 환경변수에 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`를 넣으면 켜집니다.
+
+Supabase SQL Editor에서 아래 테이블과 RLS 정책을 한 번 생성하세요.
+
+```sql
+create table if not exists public.team_libraries (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  data jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.team_libraries enable row level security;
+
+create policy "Users can read their own team library"
+on public.team_libraries
+for select
+using (auth.uid() = user_id);
+
+create policy "Users can insert their own team library"
+on public.team_libraries
+for insert
+with check (auth.uid() = user_id);
+
+create policy "Users can update their own team library"
+on public.team_libraries
+for update
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+```
 
 ## 주요 기능
 

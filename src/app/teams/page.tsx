@@ -1,10 +1,20 @@
 "use client";
 
 import { DragEvent, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Edit3, Folder, FolderPlus, Plus, Trash2, X } from "lucide-react";
-import type { Team, TeamFolder } from "@/lib/core/models";
+import { Cloud, Download, Edit3, Folder, FolderPlus, LogIn, LogOut, Plus, Trash2, Upload, X } from "lucide-react";
+import type { Team, TeamFolder, TeamSetPreset } from "@/lib/core/models";
 import { TeamForm } from "@/components/teams/TeamForm";
 import { TeamLogo } from "@/components/teams/TeamLogo";
+import {
+  downloadTeamLibrary,
+  getSavedCloudSession,
+  isCloudSyncConfigured,
+  saveCloudSession,
+  signInCloudAccount,
+  signUpCloudAccount,
+  uploadTeamLibrary,
+  type CloudSession
+} from "@/lib/cloud/supabaseTeams";
 import { useTeamStore } from "@/store/teamStore";
 
 type TeamFormMode = "create" | "edit" | null;
@@ -42,6 +52,8 @@ export default function TeamsPage() {
   const {
     teams,
     folders,
+    presets,
+    setTeamLibrary,
     addTeam,
     updateTeam,
     deleteTeam,
@@ -62,6 +74,8 @@ export default function TeamsPage() {
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(() => new Set());
   const [selectionBox, setSelectionBox] = useState<SelectionBox>(null);
   const [teamOverrides, setTeamOverrides] = useState<Record<string, Team>>({});
+  const [cloudSession, setCloudSession] = useState<CloudSession | null>(null);
+  const [cloudStatus, setCloudStatus] = useState("로그인하면 다른 기기에서도 팀을 불러올 수 있습니다.");
   const desktopRef = useRef<HTMLElement | null>(null);
 
   const visibleTeams = useMemo(
@@ -77,6 +91,10 @@ export default function TeamsPage() {
   );
   const openPath = useMemo(() => buildPath(openFolderId, foldersById), [openFolderId, foldersById]);
   const isRoot = openFolderId === outsideFolderId;
+
+  useEffect(() => {
+    setCloudSession(getSavedCloudSession());
+  }, []);
 
   useEffect(() => {
     setTeamOverrides((current) => {
@@ -292,6 +310,24 @@ export default function TeamsPage() {
         </div>
       </div>
 
+      <CloudSyncPanel
+        teams={teams}
+        folders={folders}
+        presets={presets}
+        session={cloudSession}
+        status={cloudStatus}
+        onStatus={setCloudStatus}
+        onSession={(session) => {
+          setCloudSession(session);
+          saveCloudSession(session);
+        }}
+        onApplyLibrary={(library) => {
+          setTeamLibrary(library);
+          setOpenFolderId(outsideFolderId);
+          setSelectedItemIds(new Set());
+        }}
+      />
+
       <section
         ref={desktopRef}
         className="relative min-h-[660px] overflow-hidden rounded border border-line bg-arena bg-[linear-gradient(rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.08)_1px,transparent_1px)] bg-[size:34px_34px]"
@@ -441,6 +477,195 @@ export default function TeamsPage() {
         </div>
       ) : null}
     </main>
+  );
+}
+
+function CloudSyncPanel({
+  teams,
+  folders,
+  presets,
+  session,
+  status,
+  onStatus,
+  onSession,
+  onApplyLibrary
+}: {
+  teams: Team[];
+  folders: TeamFolder[];
+  presets: TeamSetPreset[];
+  session: CloudSession | null;
+  status: string;
+  onStatus: (status: string) => void;
+  onSession: (session: CloudSession | null) => void;
+  onApplyLibrary: (library: { teams: Team[]; folders: TeamFolder[]; presets: TeamSetPreset[] }) => void;
+}) {
+  const configured = isCloudSyncConfigured();
+  const [email, setEmail] = useState(session?.email ?? "");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (session?.email) setEmail(session.email);
+  }, [session?.email]);
+
+  const authenticate = async (mode: "signin" | "signup") => {
+    if (!configured || busy) return;
+
+    setBusy(true);
+    onStatus(mode === "signup" ? "계정을 만드는 중입니다..." : "로그인 중입니다...");
+    try {
+      const nextSession =
+        mode === "signup"
+          ? await signUpCloudAccount(email.trim(), password)
+          : await signInCloudAccount(email.trim(), password);
+      if (!nextSession) {
+        setPassword("");
+        onStatus("계정이 생성되었습니다. 이메일 확인이 필요하면 메일 인증 후 로그인하세요.");
+        return;
+      }
+      onSession(nextSession);
+      setPassword("");
+      onStatus(`${nextSession.email ?? email} 계정으로 로그인되었습니다.`);
+    } catch (error) {
+      onStatus(error instanceof Error ? error.message : "로그인에 실패했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const upload = async () => {
+    if (!session || busy) return;
+
+    setBusy(true);
+    onStatus("현재 팀 라이브러리를 클라우드에 업로드하는 중입니다...");
+    try {
+      const uploaded = await uploadTeamLibrary(session, { teams, folders, presets });
+      onStatus(`업로드 완료: ${uploaded.teams.length}팀 / ${uploaded.folders.length}폴더`);
+    } catch (error) {
+      onStatus(error instanceof Error ? error.message : "업로드에 실패했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const download = async () => {
+    if (!session || busy) return;
+
+    const confirmed = window.confirm(
+      "클라우드 팀 라이브러리를 이 기기에 적용할까요?\n\n현재 로컬 팀 목록과 폴더가 클라우드 데이터로 교체됩니다."
+    );
+    if (!confirmed) return;
+
+    setBusy(true);
+    onStatus("클라우드 팀 라이브러리를 불러오는 중입니다...");
+    try {
+      const library = await downloadTeamLibrary(session);
+      if (!library) {
+        onStatus("아직 클라우드에 저장된 팀 라이브러리가 없습니다.");
+        return;
+      }
+      onApplyLibrary(library);
+      onStatus(`다운로드 완료: ${library.teams.length}팀 / ${library.folders.length}폴더`);
+    } catch (error) {
+      onStatus(error instanceof Error ? error.message : "다운로드에 실패했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const signOut = () => {
+    onSession(null);
+    setPassword("");
+    onStatus("로그아웃했습니다. 로컬 팀은 그대로 유지됩니다.");
+  };
+
+  return (
+    <section className="mb-4 rounded border border-line bg-panel/90 p-4 shadow-panel">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <Cloud className="h-5 w-5 text-cyan" aria-hidden="true" />
+            <h2 className="text-lg font-black uppercase tracking-wide text-ink">클라우드 팀 저장</h2>
+          </div>
+          <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-muted">
+            이메일로 로그인해서 현재 팀/폴더/프리셋을 클라우드에 저장하고, 다른 기기에서 다시 불러올 수 있습니다.
+          </p>
+        </div>
+        <div className="rounded border border-line bg-arena px-3 py-2 text-xs font-bold text-muted">
+          {status}
+        </div>
+      </div>
+
+      {!configured ? (
+        <div className="mt-4 rounded border border-gold/40 bg-gold/10 px-4 py-3 text-sm font-bold leading-6 text-gold">
+          Supabase 환경변수 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`를 설정하면 클라우드 저장이 켜집니다.
+        </div>
+      ) : session ? (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="rounded border border-line bg-field px-3 py-2 text-sm font-black text-ink">
+            {session.email ?? "로그인됨"}
+          </span>
+          <button type="button" className="button-primary" onClick={upload} disabled={busy}>
+            <Upload className="h-4 w-4" />
+            클라우드에 저장
+          </button>
+          <button type="button" className="button-muted" onClick={download} disabled={busy}>
+            <Download className="h-4 w-4" />
+            클라우드에서 불러오기
+          </button>
+          <button type="button" className="button-muted" onClick={signOut} disabled={busy}>
+            <LogOut className="h-4 w-4" />
+            로그아웃
+          </button>
+        </div>
+      ) : (
+        <form
+          className="mt-4 grid gap-3 lg:grid-cols-[minmax(180px,1fr)_minmax(180px,1fr)_auto_auto]"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void authenticate("signin");
+          }}
+        >
+          <label className="block">
+            <span className="mb-2 block text-xs font-black uppercase tracking-wide text-ink">이메일</span>
+            <input
+              className="input"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@example.com"
+              required
+            />
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-xs font-black uppercase tracking-wide text-ink">비밀번호</span>
+            <input
+              className="input"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              minLength={6}
+              required
+            />
+          </label>
+          <button type="submit" className="button-primary self-end" disabled={busy}>
+            <LogIn className="h-4 w-4" />
+            로그인
+          </button>
+          <button
+            type="button"
+            className="button-muted self-end"
+            onClick={(event) => {
+              const form = event.currentTarget.form;
+              if (form?.reportValidity()) void authenticate("signup");
+            }}
+            disabled={busy}
+          >
+            계정 만들기
+          </button>
+        </form>
+      )}
+    </section>
   );
 }
 
