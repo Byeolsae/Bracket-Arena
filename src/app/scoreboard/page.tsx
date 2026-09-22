@@ -11,6 +11,7 @@ import { useTeamStore } from "@/store/teamStore";
 type NameMode = "short" | "full";
 type ScreenResolution = "fhd" | "qhd" | "uhd" | "custom";
 type AccentSide = "left" | "right";
+type AccentColorMode = "team" | "default" | "custom";
 type ScoreSide = "left" | "right";
 type SetScoreEdge = "top" | "bottom";
 type SetScoreAlign = "left" | "center" | "right";
@@ -60,6 +61,8 @@ type ScoreboardTeam = {
   score: number;
   setScore: number;
   accentSide: AccentSide;
+  accentColorMode: AccentColorMode;
+  customAccentColor: string;
   scoreSide: ScoreSide;
   setScoreEdge: SetScoreEdge;
   setScoreAlign: SetScoreAlign;
@@ -131,8 +134,8 @@ const defaultScoreboard: ScoreboardState = {
   elapsedSeconds: 0,
   timerRunning: false,
   teams: [
-    { id: "team-1", name: "Team 1", shortName: "TM1", score: 0, setScore: 0, accentSide: "left", scoreSide: "right", setScoreEdge: "bottom", setScoreAlign: "right", labelAlign: "center", logoSide: "left", xAnchor: "left", x: 0, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
-    { id: "team-2", name: "Team 2", shortName: "TM2", score: 0, setScore: 0, accentSide: "right", scoreSide: "left", setScoreEdge: "bottom", setScoreAlign: "left", labelAlign: "center", logoSide: "right", xAnchor: "right", x: 0, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
+    { id: "team-1", name: "Team 1", shortName: "TM1", score: 0, setScore: 0, accentSide: "left", accentColorMode: "default", customAccentColor: "#3b82f6", scoreSide: "right", setScoreEdge: "bottom", setScoreAlign: "right", labelAlign: "center", logoSide: "left", xAnchor: "left", x: 0, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
+    { id: "team-2", name: "Team 2", shortName: "TM2", score: 0, setScore: 0, accentSide: "right", accentColorMode: "default", customAccentColor: "#ef4444", scoreSide: "left", setScoreEdge: "bottom", setScoreAlign: "left", labelAlign: "center", logoSide: "right", xAnchor: "right", x: 0, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
   ]
 };
 
@@ -345,7 +348,8 @@ export default function ScoreboardPage() {
               ...pickScoreboardTeamVisuals(managedTeam),
               linkedTeamId: managedTeam.id,
               name: managedTeam.name,
-              shortName: normalizeShortName(managedTeam)
+              shortName: normalizeShortName(managedTeam),
+              accentColorMode: "team"
             }
           : team
       )
@@ -367,6 +371,8 @@ export default function ScoreboardPage() {
             score: 0,
             setScore: 0,
             accentSide: nextNumber % 2 === 1 ? "left" : "right",
+            accentColorMode: "default",
+            customAccentColor: nextNumber % 2 === 1 ? "#3b82f6" : "#ef4444",
             scoreSide: nextNumber % 2 === 1 ? "right" : "left",
             setScoreEdge: "top",
             setScoreAlign: "center",
@@ -1026,6 +1032,34 @@ export default function ScoreboardPage() {
                           오른쪽
                         </ToggleButton>
                       </div>
+                      <p className="mb-2 mt-4 text-xs font-black uppercase tracking-wide text-ink">브래킷 색상</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <ToggleButton
+                          active={team.accentColorMode === "team"}
+                          onClick={() => updateTeam(team.id, "accentColorMode", "team")}
+                        >
+                          팀 색
+                        </ToggleButton>
+                        <ToggleButton
+                          active={team.accentColorMode === "default"}
+                          onClick={() => updateTeam(team.id, "accentColorMode", "default")}
+                        >
+                          기본
+                        </ToggleButton>
+                        <ToggleButton
+                          active={team.accentColorMode === "custom"}
+                          onClick={() => updateTeam(team.id, "accentColorMode", "custom")}
+                        >
+                          커스텀
+                        </ToggleButton>
+                      </div>
+                      {team.accentColorMode === "custom" ? (
+                        <ColorField
+                          label="커스텀 색상"
+                          value={team.customAccentColor}
+                          onChange={(value) => updateTeam(team.id, "customAccentColor", value)}
+                        />
+                      ) : null}
                     </div>
                     <div className="mt-3 rounded-md border border-line/80 bg-arena/60 p-3">
                       <p className="mb-2 text-xs font-black uppercase tracking-wide text-ink">약칭 / 팀이름 정렬</p>
@@ -1758,7 +1792,7 @@ function TeamCell({
   const label = settings.nameMode === "short" ? team.shortName : team.name;
   const size = getBracketSize(team, settings);
   const fallbackAccentColor = side === "left" ? "#3b82f6" : "#ef4444";
-  const accentColor = getTeamBracketAccentColor(team) ?? fallbackAccentColor;
+  const accentColor = getScoreboardAccentColor(team, fallbackAccentColor);
   const textColor = getTeamThemeTextColor(team, settings.overlayTheme === "light" ? "#ffffff" : "#07111f");
   const scoreCell = (
     <ScoreCell
@@ -1940,6 +1974,36 @@ function NumberField({
   );
 }
 
+function ColorField({
+  label,
+  value,
+  onChange
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="mt-3 block">
+      <span className="mb-2 block text-xs font-black uppercase tracking-wide text-ink">{label}</span>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={isValidHexColor(value) ? value : "#3b82f6"}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-10 w-12 shrink-0 cursor-pointer rounded-md border border-line bg-field p-1"
+        />
+        <input
+          className="input"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="#3b82f6"
+        />
+      </div>
+    </label>
+  );
+}
+
 function RangeField({
   label,
   value,
@@ -2078,4 +2142,20 @@ function getScoreboardLogoCandidates(team: ScoreboardTeam, theme: OverlayTheme) 
       : [team.logoDark, team.logoDefault, team.logoLight];
 
   return candidates.filter((candidate): candidate is string => Boolean(candidate));
+}
+
+function getScoreboardAccentColor(team: ScoreboardTeam, fallbackAccentColor: string) {
+  if (team.accentColorMode === "custom") {
+    return isValidHexColor(team.customAccentColor) ? team.customAccentColor : fallbackAccentColor;
+  }
+
+  if (team.accentColorMode === "team") {
+    return getTeamBracketAccentColor(team) ?? fallbackAccentColor;
+  }
+
+  return fallbackAccentColor;
+}
+
+function isValidHexColor(value: string) {
+  return /^#[0-9a-f]{6}$/i.test(value);
 }
