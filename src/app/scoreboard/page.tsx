@@ -819,8 +819,8 @@ export default function ScoreboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[440px_1fr]">
-        <aside className="space-y-5">
+      <section className="grid gap-5 xl:grid-cols-[480px_1fr]">
+        <aside className="space-y-6">
           <div className="arena-card p-5">
             <div className="mb-4 flex items-center gap-2">
               <Settings2 className="h-5 w-5 text-cyan" aria-hidden="true" />
@@ -830,9 +830,12 @@ export default function ScoreboardPage() {
             <div className="space-y-4">
               <div className="space-y-3">
                 {scoreboard.teams.map((team, index) => (
-                  <div key={team.id} className="rounded-md border border-line bg-arena/70 p-3">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <p className="text-xs font-black uppercase tracking-wide text-cyan">팀 {index + 1}</p>
+                  <div key={team.id} className="rounded-md border border-line bg-panel/80 p-4 shadow-[0_10px_26px_rgba(0,0,0,0.18)]">
+                    <div className="mb-4 flex items-center justify-between gap-3 border-b border-line/80 pb-3">
+                      <div>
+                        <p className="text-sm font-black uppercase tracking-wide text-ink">팀 {index + 1}</p>
+                        <p className="mt-1 text-xs font-bold uppercase tracking-wide text-cyan">{team.shortName || "TEAM"}</p>
+                      </div>
                       <button
                         type="button"
                         onClick={() => removeTeam(team.id)}
@@ -843,7 +846,9 @@ export default function ScoreboardPage() {
                         <Trash2 className="h-4 w-4" aria-hidden="true" />
                       </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-md border border-line/80 bg-arena/60 p-3">
+                      <p className="mb-3 text-xs font-black uppercase tracking-wide text-gold">팀 정보</p>
+                      <div className="grid grid-cols-2 gap-3">
                       <TextField
                         label="풀네임"
                         value={team.name}
@@ -864,9 +869,10 @@ export default function ScoreboardPage() {
                         value={team.setScore}
                         onChange={(value) => updateTeam(team.id, "setScore", clamp(value, 0, settings.maxSetScore))}
                       />
+                      </div>
                     </div>
-                    <div className="mt-3">
-                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">브래킷 색 위치</p>
+                    <div className="mt-3 rounded-md border border-line/80 bg-arena/60 p-3">
+                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-ink">브래킷 색 위치</p>
                       <div className="grid grid-cols-2 gap-2">
                         <ToggleButton
                           active={team.accentSide === "left"}
@@ -882,8 +888,8 @@ export default function ScoreboardPage() {
                         </ToggleButton>
                       </div>
                     </div>
-                    <div className="mt-3">
-                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">약칭 / 팀이름 정렬</p>
+                    <div className="mt-3 rounded-md border border-line/80 bg-arena/60 p-3">
+                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-ink">약칭 / 팀이름 정렬</p>
                       <div className="grid grid-cols-3 gap-2">
                         <ToggleButton active={team.labelAlign === "left"} onClick={() => updateTeam(team.id, "labelAlign", "left")}>
                           좌
@@ -896,8 +902,8 @@ export default function ScoreboardPage() {
                         </ToggleButton>
                       </div>
                     </div>
-                    <div className="mt-3">
-                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">로고 위치</p>
+                    <div className="mt-3 rounded-md border border-line/80 bg-arena/60 p-3">
+                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-ink">로고 위치</p>
                       <div className="grid grid-cols-2 gap-2">
                         <ToggleButton active={team.logoSide === "left"} onClick={() => updateTeam(team.id, "logoSide", "left")}>
                           왼쪽
@@ -907,8 +913,8 @@ export default function ScoreboardPage() {
                         </ToggleButton>
                       </div>
                     </div>
-                    <div className="mt-3">
-                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">점수칸 위치</p>
+                    <div className="mt-3 rounded-md border border-line/80 bg-arena/60 p-3">
+                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-ink">점수칸 위치</p>
                       <div className="grid grid-cols-2 gap-2">
                         <ToggleButton
                           active={team.scoreSide === "left"}
@@ -924,8 +930,8 @@ export default function ScoreboardPage() {
                         </ToggleButton>
                       </div>
                     </div>
-                    <div className="mt-3">
-                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">세트점수 상하</p>
+                    <div className="mt-3 rounded-md border border-line/80 bg-arena/60 p-3">
+                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-ink">세트점수 상하</p>
                       <div className="grid grid-cols-2 gap-2">
                         <ToggleButton
                           active={team.setScoreEdge === "top"}
@@ -941,8 +947,8 @@ export default function ScoreboardPage() {
                         </ToggleButton>
                       </div>
                     </div>
-                    <div className="mt-3">
-                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">세트점수 정렬</p>
+                    <div className="mt-3 rounded-md border border-line/80 bg-arena/60 p-3">
+                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-ink">세트점수 정렬</p>
                       <div className="grid grid-cols-3 gap-2">
                         <ToggleButton
                           active={team.setScoreAlign === "left"}
@@ -994,7 +1000,7 @@ export default function ScoreboardPage() {
             </div>
 
             <div className="mt-4">
-              <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">브래킷 / 타이머 모드</p>
+              <p className="mb-2 text-xs font-black uppercase tracking-wide text-ink">브래킷 / 타이머 모드</p>
               <div className="grid grid-cols-2 gap-2">
                 <ToggleButton active={settings.overlayTheme === "dark"} onClick={() => updateSetting("overlayTheme", "dark")}>
                   다크
@@ -1021,7 +1027,7 @@ export default function ScoreboardPage() {
             </div>
 
             <div className="mt-4">
-              <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">폰트</p>
+              <p className="mb-2 text-xs font-black uppercase tracking-wide text-ink">폰트</p>
               <div className="grid grid-cols-2 gap-2">
                 <ToggleButton active={settings.fontFamily === "condensed"} onClick={() => updateSetting("fontFamily", "condensed")}>
                   방송체
@@ -1763,7 +1769,7 @@ function TextField({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-xs font-black uppercase tracking-wide text-muted">{label}</span>
+      <span className="mb-2 block text-xs font-black uppercase tracking-wide text-ink">{label}</span>
       <input className="input" value={value} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
@@ -1780,7 +1786,7 @@ function NumberField({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-xs font-black uppercase tracking-wide text-muted">{label}</span>
+      <span className="mb-2 block text-xs font-black uppercase tracking-wide text-ink">{label}</span>
       <input
         className="input"
         inputMode="numeric"
@@ -1811,7 +1817,7 @@ function RangeField({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 flex items-center justify-between gap-3 text-xs font-black uppercase tracking-wide text-muted">
+      <span className="mb-2 flex items-center justify-between gap-3 text-xs font-black uppercase tracking-wide text-ink">
         <span>{label}</span>
         <span className="text-cyan">
           {value}
@@ -1844,7 +1850,7 @@ function ToggleButton({
       type="button"
       onClick={onClick}
       className={`rounded-md border px-3 py-2 text-sm font-black uppercase tracking-wide transition ${
-        active ? "border-cyan bg-cyan text-arena" : "border-line bg-field text-muted hover:border-cyan hover:text-cyan"
+        active ? "border-cyan bg-cyan text-arena" : "border-line bg-field text-ink hover:border-cyan hover:text-cyan"
       }`}
     >
       {children}
@@ -1866,7 +1872,7 @@ function CheckButton({
       type="button"
       onClick={onClick}
       className={`rounded-md border px-3 py-2 text-xs font-black uppercase tracking-wide transition ${
-        active ? "border-lime bg-lime text-arena" : "border-line bg-field text-muted hover:border-lime hover:text-lime"
+        active ? "border-lime bg-lime text-arena" : "border-line bg-field text-ink hover:border-lime hover:text-lime"
       }`}
     >
       {children}
