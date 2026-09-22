@@ -8,6 +8,7 @@ type NameMode = "short" | "full";
 type ScreenResolution = "fhd" | "qhd" | "uhd" | "custom";
 type AccentSide = "left" | "right";
 type ScoreSide = "left" | "right";
+type SetScoreSide = "left" | "right";
 type LabelAlign = "left" | "center" | "right";
 type LogoSide = "left" | "right";
 type FontFamily = "sans" | "condensed" | "mono" | "serif";
@@ -46,6 +47,7 @@ type ScoreboardTeam = {
   setScore: number;
   accentSide: AccentSide;
   scoreSide: ScoreSide;
+  setScoreSide: SetScoreSide;
   labelAlign: LabelAlign;
   logoSide: LogoSide;
   x: number;
@@ -75,6 +77,7 @@ type OverlaySettings = {
   logoSize: number;
   fontSize: number;
   scoreFontSize: number;
+  maxSetScore: number;
   fontFamily: FontFamily;
   nameMode: NameMode;
   timerMode: TimerMode;
@@ -93,8 +96,8 @@ const defaultScoreboard: ScoreboardState = {
   elapsedSeconds: 0,
   timerRunning: false,
   teams: [
-    { id: "team-1", name: "Team 1", shortName: "TM1", score: 0, setScore: 0, accentSide: "left", scoreSide: "right", labelAlign: "left", logoSide: "left", x: 0, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
-    { id: "team-2", name: "Team 2", shortName: "TM2", score: 0, setScore: 0, accentSide: "right", scoreSide: "left", labelAlign: "right", logoSide: "right", x: 42, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
+    { id: "team-1", name: "Team 1", shortName: "TM1", score: 0, setScore: 0, accentSide: "left", scoreSide: "right", setScoreSide: "left", labelAlign: "left", logoSide: "left", x: 0, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
+    { id: "team-2", name: "Team 2", shortName: "TM2", score: 0, setScore: 0, accentSide: "right", scoreSide: "left", setScoreSide: "right", labelAlign: "right", logoSide: "right", x: 42, y: 12, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
   ]
 };
 
@@ -111,6 +114,7 @@ const defaultSettings: OverlaySettings = {
   logoSize: 30,
   fontSize: 30,
   scoreFontSize: 40,
+  maxSetScore: 3,
   fontFamily: "condensed",
   nameMode: "short",
   timerMode: "manual",
@@ -174,7 +178,7 @@ export default function ScoreboardPage() {
   const displayTimer =
     settings.timerMode === "countUp"
       ? formatTimer(scoreboard.elapsedSeconds, settings)
-      : scoreboard.timer;
+      : formatManualTimer(scoreboard.timer, settings);
 
   const updateSetting = <Key extends keyof OverlaySettings>(key: Key, value: OverlaySettings[Key]) => {
     setSettings((current) => ({ ...current, [key]: value }));
@@ -235,6 +239,7 @@ export default function ScoreboardPage() {
             setScore: 0,
             accentSide: nextNumber % 2 === 1 ? "left" : "right",
             scoreSide: nextNumber % 2 === 1 ? "right" : "left",
+            setScoreSide: nextNumber % 2 === 1 ? "left" : "right",
             labelAlign: nextNumber % 2 === 1 ? "left" : "right",
             logoSide: nextNumber % 2 === 1 ? "left" : "right",
             x: (nextNumber - 1) * 8,
@@ -772,7 +777,7 @@ export default function ScoreboardPage() {
                       <NumberField
                         label="세트점수"
                         value={team.setScore}
-                        onChange={(value) => updateTeam(team.id, "setScore", value)}
+                        onChange={(value) => updateTeam(team.id, "setScore", clamp(value, 0, settings.maxSetScore))}
                       />
                     </div>
                     <div className="mt-3">
@@ -829,6 +834,23 @@ export default function ScoreboardPage() {
                         <ToggleButton
                           active={team.scoreSide === "right"}
                           onClick={() => updateTeam(team.id, "scoreSide", "right")}
+                        >
+                          오른쪽
+                        </ToggleButton>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted">세트점수 표시 위치</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <ToggleButton
+                          active={team.setScoreSide === "left"}
+                          onClick={() => updateTeam(team.id, "setScoreSide", "left")}
+                        >
+                          왼쪽
+                        </ToggleButton>
+                        <ToggleButton
+                          active={team.setScoreSide === "right"}
+                          onClick={() => updateTeam(team.id, "setScoreSide", "right")}
                         >
                           오른쪽
                         </ToggleButton>
@@ -1018,21 +1040,10 @@ export default function ScoreboardPage() {
               <RangeField label="로고 크기" value={settings.logoSize} min={0} max={80} onChange={(value) => updateSetting("logoSize", value)} suffix="px" />
               <RangeField label="팀명 글자" value={settings.fontSize} min={14} max={64} onChange={(value) => updateSetting("fontSize", value)} suffix="px" />
               <RangeField label="점수 숫자" value={settings.scoreFontSize} min={16} max={96} onChange={(value) => updateSetting("scoreFontSize", value)} suffix="px" />
+              <RangeField label="최대 세트" value={settings.maxSetScore} min={1} max={7} onChange={(value) => updateSetting("maxSetScore", value)} suffix="세트" />
               <RangeField label="불투명도" value={settings.opacity} min={20} max={100} onChange={(value) => updateSetting("opacity", value)} suffix="%" />
               <p className="rounded-md border border-line bg-arena/70 px-3 py-3 text-xs font-bold leading-5 text-muted">
                 브래킷 오른쪽 가장자리를 드래그하면 넓이가, 아래쪽 가장자리를 드래그하면 높이가 바뀝니다.
-              </p>
-            </div>
-          </div>
-
-          <div className="arena-card p-5">
-            <div className="mb-4 flex items-center gap-2">
-              <SlidersHorizontal className="h-5 w-5 text-cyan" aria-hidden="true" />
-              <h2 className="text-lg font-black uppercase tracking-wide text-ink">타이머 크기</h2>
-            </div>
-            <div className="grid gap-3">
-              <p className="rounded-md border border-line bg-arena/70 px-3 py-3 text-xs font-bold leading-5 text-muted">
-                타이머 오른쪽 가장자리로 넓이, 아래쪽 가장자리로 두께를 조절합니다.
               </p>
             </div>
           </div>
@@ -1280,9 +1291,9 @@ function SplitTeamBracket({
       />
       <SetScoreMarkers
         setScore={team.setScore}
-        scoreFirst={!teamFirst}
-        scoreWidth={size.scoreWidth}
-        teamWidth={size.teamWidth}
+        maxSetScore={settings.maxSetScore}
+        side={team.setScoreSide}
+        rowHeight={size.rowHeight}
       />
     </div>
   );
@@ -1343,6 +1354,29 @@ function formatTimer(totalSeconds: number, settings: OverlaySettings) {
   if (showSeconds) parts.push(String(seconds).padStart(2, "0"));
 
   return parts.join(":");
+}
+
+function formatManualTimer(timer: string, settings: OverlaySettings) {
+  const parsedSeconds = parseTimerToSeconds(timer);
+
+  if (parsedSeconds === null) return timer;
+
+  return formatTimer(parsedSeconds, settings);
+}
+
+function parseTimerToSeconds(timer: string) {
+  const parts = timer.trim().split(":");
+
+  if (parts.length < 1 || parts.length > 3) return null;
+  if (!parts.every((part) => /^\d+$/.test(part))) return null;
+
+  const numbers = parts.map((part) => Number(part));
+
+  if (numbers.some((value) => !Number.isFinite(value))) return null;
+  if (numbers.length === 1) return numbers[0];
+  if (numbers.length === 2) return numbers[0] * 60 + numbers[1];
+
+  return numbers[0] * 3600 + numbers[1] * 60 + numbers[2];
 }
 
 function AlignmentGuides({ guides }: { guides: DragGuides }) {
@@ -1478,24 +1512,26 @@ function ScoreCell({
 
 function SetScoreMarkers({
   setScore,
-  scoreFirst,
-  scoreWidth,
-  teamWidth
+  maxSetScore,
+  side,
+  rowHeight
 }: {
   setScore: number;
-  scoreFirst: boolean;
-  scoreWidth: number;
-  teamWidth: number;
+  maxSetScore: number;
+  side: SetScoreSide;
+  rowHeight: number;
 }) {
-  const filledCount = clamp(Math.floor(setScore), 0, 5);
-  const markerCount = Math.max(3, filledCount);
+  const markerCount = clamp(Math.floor(maxSetScore), 1, 7);
+  const filledCount = clamp(Math.floor(setScore), 0, markerCount);
 
   return (
     <div
-      className="pointer-events-none absolute -bottom-3 z-20 flex h-2 items-center justify-center gap-1"
+      className="pointer-events-none absolute z-20 flex flex-col items-center justify-center gap-1"
       style={{
-        left: scoreFirst ? 0 : teamWidth,
-        width: scoreWidth
+        left: side === "left" ? -14 : "auto",
+        right: side === "right" ? -14 : "auto",
+        top: 0,
+        height: rowHeight
       }}
       aria-label={`세트점수 ${filledCount}`}
     >
