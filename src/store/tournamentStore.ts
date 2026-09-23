@@ -19,6 +19,11 @@ type TournamentStore = {
   tournament?: Tournament;
   doubleElimination?: DoubleEliminationBracket;
   stepladder?: StepladderBracket;
+  setTournamentState: (state: {
+    tournament?: Tournament;
+    doubleElimination?: DoubleEliminationBracket;
+    stepladder?: StepladderBracket;
+  }) => void;
   createTournament: (teams: Team[], name?: string) => void;
   createDoubleElimination: (teams: Team[]) => void;
   createStepladder: (teams: Team[]) => void;
@@ -43,6 +48,12 @@ export const useTournamentStore = create<TournamentStore>()(
       tournament: undefined,
       doubleElimination: undefined,
       stepladder: undefined,
+      setTournamentState: (state) =>
+        set({
+          tournament: state.tournament,
+          doubleElimination: state.doubleElimination,
+          stepladder: state.stepladder
+        }),
       createTournament: (teams, name) =>
         set({
           tournament: createSingleEliminationTournament(teams, name)

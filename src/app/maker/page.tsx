@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Play, Printer, Shuffle, Swords } from "lucide-react";
+import { FolderOpen, Play, Printer, Save, Shuffle, Swords } from "lucide-react";
 import { PlacementSummary, type PlacementSummaryEntry } from "@/components/tournament/PlacementSummary";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import { createGroupStage, calculateGroupStandings } from "@/lib/core/group";
@@ -37,6 +37,7 @@ import type {
 } from "@/lib/core/models";
 import { useTeamStore } from "@/store/teamStore";
 import { useTournamentStore } from "@/store/tournamentStore";
+import { useSavedTournamentStore, type SavedTournamentSnapshot } from "@/store/savedTournamentStore";
 
 const BracketView = dynamic(
   () => import("@/components/bracket/BracketView").then((mod) => mod.BracketView),
@@ -155,6 +156,16 @@ function isGroupFormat(format: StageFormat) {
 
 function isStageFormat(value: unknown): value is StageFormat {
   return typeof value === "string" && value in STAGE_LABELS;
+}
+
+function isTournamentMode(value: unknown): value is TournamentMode {
+  return value === "two-stage" || value === "final-only";
+}
+
+function isActiveStage(value: unknown): value is ActiveStage {
+  if (!value || typeof value !== "object") return false;
+  const stage = value as Partial<ActiveStage>;
+  return (stage.role === "qualifier" || stage.role === "final") && isStageFormat(stage.format);
 }
 
 const FIXED_GROUP_STAGE_CONFIG: Partial<Record<StageFormat, { teamsPerGroup: number; advancePerGroup: number; label: string }>> = {
@@ -364,11 +375,13 @@ export default function MakerPage() {
     createTournament,
     createDoubleElimination,
     createStepladder,
+    setTournamentState,
     setMatchResult,
     setDoubleResult,
     setStepladderResult,
     clearResult
   } = useTournamentStore();
+  const saveTournamentSnapshot = useSavedTournamentStore((state) => state.saveTournament);
 
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [tournamentName, setTournamentName] = useState("새 대회");
@@ -389,10 +402,74 @@ export default function MakerPage() {
   const [tripleStage, setTripleStage] = useState<TripleEliminationStage>();
   const [creationNotice, setCreationNotice] = useState<string>();
 
+  const buildCurrentSnapshot = (): SavedTournamentSnapshot => ({
+    selectedTeamIds,
+    tournamentName,
+    mode,
+    qualifierFormat,
+    finalFormat,
+    activeStage,
+    groupCount,
+    teamGroupAssignments,
+    tournament,
+    doubleElimination,
+    stepladder,
+    leagueStage,
+    groupStage,
+    groupDoubleStage,
+    groupTripleStage,
+    swissStage,
+    tripleStage
+  });
+
+  const applySnapshot = (snapshot: SavedTournamentSnapshot) => {
+    setSelectedTeamIds(snapshot.selectedTeamIds.filter((teamId) => teams.some((team) => team.id === teamId)));
+    setTournamentName(snapshot.tournamentName || "저장된 대회");
+    if (isTournamentMode(snapshot.mode)) setMode(snapshot.mode);
+    if (isStageFormat(snapshot.qualifierFormat)) setQualifierFormat(snapshot.qualifierFormat);
+    if (isStageFormat(snapshot.finalFormat)) setFinalFormat(snapshot.finalFormat);
+    setActiveStage(isActiveStage(snapshot.activeStage) ? snapshot.activeStage : null);
+    setGroupCount(Math.max(1, Number(snapshot.groupCount) || 1));
+    setTeamGroupAssignments(snapshot.teamGroupAssignments ?? {});
+    setTournamentState({
+      tournament: snapshot.tournament as Tournament | undefined,
+      doubleElimination: snapshot.doubleElimination as DoubleEliminationBracket | undefined,
+      stepladder: snapshot.stepladder as StepladderBracket | undefined
+    });
+    setLeagueStage(snapshot.leagueStage as LeagueStage | undefined);
+    setGroupStage(snapshot.groupStage as GroupStage | undefined);
+    setGroupDoubleStage(snapshot.groupDoubleStage as GroupDoubleEliminationStage | undefined);
+    setGroupTripleStage(snapshot.groupTripleStage as GroupTripleEliminationStage | undefined);
+    setSwissStage(snapshot.swissStage as SwissStage | undefined);
+    setTripleStage(snapshot.tripleStage as TripleEliminationStage | undefined);
+  };
+
+  const saveCurrentTournament = () => {
+    const saved = saveTournamentSnapshot(tournamentName, buildCurrentSnapshot());
+    setCreationNotice(`"${saved.name}" 대회를 저장했습니다.`);
+  };
+
   useEffect(() => {
     setSelectedTeamIds((current) => {
       return current.filter((id) => teams.some((team) => team.id === id));
     });
+  }, [teams]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !teams.length) return;
+    const rawSavedTournament = window.localStorage.getItem("bracket-arena-load-tournament");
+    if (!rawSavedTournament) return;
+
+    try {
+      const snapshot = JSON.parse(rawSavedTournament) as SavedTournamentSnapshot;
+      applySnapshot(snapshot);
+      setCreationNotice("저장된 대회를 불러왔습니다.");
+    } catch {
+      setCreationNotice("저장된 대회를 불러오지 못했습니다.");
+    } finally {
+      window.localStorage.removeItem("bracket-arena-load-tournament");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teams]);
 
   useEffect(() => {
@@ -713,6 +790,14 @@ export default function MakerPage() {
           <Swords className="h-4 w-4" />
           {mode === "two-stage" ? "본선 생성" : "대진표 생성"}
         </button>
+        <button className="button-muted" type="button" onClick={saveCurrentTournament}>
+          <Save className="h-4 w-4" />
+          현재 대회 저장
+        </button>
+        <Link className="button-muted" href="/saved-tournaments">
+          <FolderOpen className="h-4 w-4" />
+          저장된 대회
+        </Link>
         {selectedTeams.length < 2 ? <span className="text-sm font-semibold text-danger">최소 2팀을 선택해야 합니다.</span> : null}
         {qualifierLimitMessage ? <span className="text-sm font-semibold text-danger">{qualifierLimitMessage}</span> : null}
         {finalLimitMessage ? <span className="text-sm font-semibold text-danger">{finalLimitMessage}</span> : null}

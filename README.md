@@ -84,6 +84,30 @@ on public.team_libraries
 for update
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
+
+create table if not exists public.saved_tournament_libraries (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  data jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.saved_tournament_libraries enable row level security;
+
+create policy "Users can read their own saved tournament library"
+on public.saved_tournament_libraries
+for select
+using (auth.uid() = user_id);
+
+create policy "Users can insert their own saved tournament library"
+on public.saved_tournament_libraries
+for insert
+with check (auth.uid() = user_id);
+
+create policy "Users can update their own saved tournament library"
+on public.saved_tournament_libraries
+for update
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
 ```
 
 ## 주요 기능

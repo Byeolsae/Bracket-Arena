@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Brackets, Cloud, Layers3, MonitorPlay, Shuffle, Users } from "lucide-react";
+import { ArrowRight, Brackets, Cloud, FolderOpen, Layers3, MonitorPlay, Shuffle, Users } from "lucide-react";
 
 const entryPoints = [
   {
@@ -36,6 +36,13 @@ const entryPoints = [
     href: "/draw",
     icon: Shuffle,
     cta: "참가팀 준비하기"
+  },
+  {
+    title: "저장된 대회",
+    description: "저장해 둔 대회 설정과 브래킷 진행 상태를 다시 불러옵니다.",
+    href: "/saved-tournaments",
+    icon: FolderOpen,
+    cta: "저장소 열기"
   },
   {
     title: "로그인 / 클라우드",

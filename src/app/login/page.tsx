@@ -2,17 +2,20 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Cloud, Download, LogIn, LogOut, Upload, Users } from "lucide-react";
+import { Cloud, Download, FolderOpen, LogIn, LogOut, Trophy, Upload, Users } from "lucide-react";
 import {
+  downloadSavedTournamentLibrary,
   downloadTeamLibrary,
   getSavedCloudSession,
   isCloudSyncConfigured,
   saveCloudSession,
   signInCloudAccount,
   signUpCloudAccount,
+  uploadSavedTournamentLibrary,
   uploadTeamLibrary,
   type CloudSession
 } from "@/lib/cloud/supabaseTeams";
+import { useSavedTournamentStore } from "@/store/savedTournamentStore";
 import { useTeamStore } from "@/store/teamStore";
 
 export default function LoginPage() {
@@ -20,11 +23,13 @@ export default function LoginPage() {
   const folders = useTeamStore((state) => state.folders);
   const presets = useTeamStore((state) => state.presets);
   const setTeamLibrary = useTeamStore((state) => state.setTeamLibrary);
+  const savedTournaments = useSavedTournamentStore((state) => state.savedTournaments);
+  const setSavedTournaments = useSavedTournamentStore((state) => state.setSavedTournaments);
   const configured = isCloudSyncConfigured();
   const [session, setSession] = useState<CloudSession | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [status, setStatus] = useState("로그인하면 팀 관리에서 만든 팀을 클라우드에 저장할 수 있습니다.");
+  const [status, setStatus] = useState("로그인하면 팀과 저장된 대회를 클라우드에 보관할 수 있습니다.");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -63,7 +68,7 @@ export default function LoginPage() {
     }
   };
 
-  const upload = async () => {
+  const uploadTeams = async () => {
     if (!session || busy) return;
 
     setBusy(true);
@@ -78,7 +83,7 @@ export default function LoginPage() {
     }
   };
 
-  const download = async () => {
+  const downloadTeams = async () => {
     if (!session || busy) return;
 
     const confirmed = window.confirm(
@@ -103,6 +108,46 @@ export default function LoginPage() {
     }
   };
 
+  const uploadTournaments = async () => {
+    if (!session || busy) return;
+
+    setBusy(true);
+    setStatus("저장된 대회 목록을 클라우드에 저장하는 중입니다...");
+    try {
+      const uploaded = await uploadSavedTournamentLibrary(session, savedTournaments);
+      setStatus(`대회 저장 완료: ${uploaded.savedTournaments.length}개`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "저장된 대회 업로드에 실패했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const downloadTournaments = async () => {
+    if (!session || busy) return;
+
+    const confirmed = window.confirm(
+      "클라우드의 저장된 대회 목록을 이 기기에 적용할까요?\n\n현재 로컬 저장된 대회 목록이 클라우드 데이터로 교체됩니다."
+    );
+    if (!confirmed) return;
+
+    setBusy(true);
+    setStatus("저장된 대회 목록을 클라우드에서 불러오는 중입니다...");
+    try {
+      const cloudTournaments = await downloadSavedTournamentLibrary(session);
+      if (!cloudTournaments) {
+        setStatus("아직 클라우드에 저장된 대회 목록이 없습니다.");
+        return;
+      }
+      setSavedTournaments(cloudTournaments);
+      setStatus(`대회 불러오기 완료: ${cloudTournaments.length}개`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "저장된 대회 불러오기에 실패했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const signOut = () => {
     persistSession(null);
     setPassword("");
@@ -116,7 +161,7 @@ export default function LoginPage() {
           <p className="section-kicker">계정 / 클라우드</p>
           <h1 className="mt-2 text-3xl font-black uppercase tracking-wide text-ink sm:text-4xl">로그인</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-            한 기기에서 만든 팀을 클라우드에 저장하고, 다른 기기에서 같은 계정으로 불러옵니다.
+            한 기기에서 만든 팀과 저장된 대회를 클라우드에 보관하고, 다른 기기에서 같은 계정으로 불러옵니다.
           </p>
         </div>
 
@@ -124,7 +169,7 @@ export default function LoginPage() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-center gap-2">
               <Cloud className="h-5 w-5 text-cyan" aria-hidden="true" />
-              <h2 className="text-lg font-black uppercase tracking-wide text-ink">클라우드 팀 저장</h2>
+              <h2 className="text-lg font-black uppercase tracking-wide text-ink">클라우드 저장</h2>
             </div>
             <div className="rounded border border-line bg-arena px-3 py-2 text-xs font-bold text-muted">
               {status}
@@ -141,13 +186,21 @@ export default function LoginPage() {
                 로그인됨: {session.email ?? "계정"}
               </div>
               <div className="flex flex-wrap gap-2">
-                <button type="button" className="button-primary" onClick={upload} disabled={busy}>
+                <button type="button" className="button-primary" onClick={uploadTeams} disabled={busy}>
                   <Upload className="h-4 w-4" />
-                  클라우드에 저장
+                  팀 저장
                 </button>
-                <button type="button" className="button-muted" onClick={download} disabled={busy}>
+                <button type="button" className="button-muted" onClick={downloadTeams} disabled={busy}>
                   <Download className="h-4 w-4" />
-                  클라우드에서 불러오기
+                  팀 불러오기
+                </button>
+                <button type="button" className="button-primary" onClick={uploadTournaments} disabled={busy}>
+                  <Trophy className="h-4 w-4" />
+                  대회 저장
+                </button>
+                <button type="button" className="button-muted" onClick={downloadTournaments} disabled={busy}>
+                  <Download className="h-4 w-4" />
+                  대회 불러오기
                 </button>
                 <button type="button" className="button-muted" onClick={signOut} disabled={busy}>
                   <LogOut className="h-4 w-4" />
@@ -210,6 +263,10 @@ export default function LoginPage() {
           <Link href="/teams" className="button-muted">
             <Users className="h-4 w-4" />
             팀 관리로 이동
+          </Link>
+          <Link href="/saved-tournaments" className="button-muted">
+            <FolderOpen className="h-4 w-4" />
+            저장된 대회
           </Link>
         </div>
       </section>

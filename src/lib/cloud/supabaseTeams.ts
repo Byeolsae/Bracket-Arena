@@ -1,4 +1,5 @@
 import type { Team, TeamFolder, TeamSetPreset } from "@/lib/core/models";
+import type { SavedTournament } from "@/store/savedTournamentStore";
 
 export type CloudTeamLibrary = {
   teams: Team[];
@@ -33,6 +34,7 @@ type LibraryRow = {
 
 const sessionStorageKey = "bracket-arena-cloud-session";
 const tableName = "team_libraries";
+const tournamentTableName = "saved_tournament_libraries";
 
 export function isCloudSyncConfigured() {
   return Boolean(getSupabaseUrl() && getSupabaseAnonKey());
@@ -121,6 +123,44 @@ export async function downloadTeamLibrary(session: CloudSession): Promise<CloudT
     presets: Array.isArray(row.data.presets) ? row.data.presets : [],
     updatedAt: row.data.updatedAt ?? row.updated_at ?? ""
   };
+}
+
+export async function uploadSavedTournamentLibrary(session: CloudSession, savedTournaments: SavedTournament[]) {
+  const updatedAt = new Date().toISOString();
+  const data = {
+    savedTournaments,
+    updatedAt
+  };
+
+  const response = await supabaseFetch(`/rest/v1/${tournamentTableName}?on_conflict=user_id`, session, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates,return=minimal"
+    },
+    body: JSON.stringify({
+      user_id: session.userId,
+      data,
+      updated_at: updatedAt
+    })
+  });
+
+  if (!response.ok) throw new Error(await getResponseError(response, "저장된 대회를 업로드하지 못했습니다."));
+
+  return data;
+}
+
+export async function downloadSavedTournamentLibrary(session: CloudSession): Promise<SavedTournament[] | null> {
+  const response = await supabaseFetch(
+    `/rest/v1/${tournamentTableName}?user_id=eq.${encodeURIComponent(session.userId)}&select=data,updated_at&limit=1`,
+    session
+  );
+
+  if (!response.ok) throw new Error(await getResponseError(response, "저장된 대회를 불러오지 못했습니다."));
+
+  const rows = (await response.json()) as Array<{ data?: { savedTournaments?: SavedTournament[] } }>;
+  const savedTournaments = rows[0]?.data?.savedTournaments;
+  return Array.isArray(savedTournaments) ? savedTournaments : null;
 }
 
 async function authenticate(
