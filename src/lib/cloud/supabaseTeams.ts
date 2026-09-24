@@ -43,6 +43,28 @@ type LibraryRow = {
   updated_at?: string;
 };
 
+type ScoreboardRealtimeRow<Data> = {
+  id?: string;
+  owner_id?: string;
+  name?: string;
+  data?: Data;
+  updated_at?: string;
+};
+
+type RealtimeMessage<Data> = {
+  event?: string;
+  payload?: {
+    status?: string;
+    response?: unknown;
+    data?: {
+      record?: ScoreboardRealtimeRow<Data>;
+    };
+    record?: ScoreboardRealtimeRow<Data>;
+  };
+  ref?: string | null;
+  topic?: string;
+};
+
 const sessionStorageKey = "bracket-arena-cloud-session";
 const tableName = "team_libraries";
 const tournamentTableName = "saved_tournament_libraries";
@@ -286,6 +308,84 @@ export async function downloadScoreboardBoard<Data>(boardId: string, session?: C
   } satisfies CloudScoreboardBoard<Data>;
 }
 
+export function subscribeScoreboardBoard<Data>(
+  boardId: string,
+  onBoardData: (data: Data) => void,
+  onStatus?: (status: string) => void
+) {
+  const url = getSupabaseRealtimeUrl();
+  const anonKey = getSupabaseAnonKey();
+
+  if (!url || !anonKey || typeof WebSocket === "undefined") {
+    onStatus?.("실시간 연결을 사용할 수 없어 폴링으로 동기화합니다.");
+    return () => undefined;
+  }
+
+  let ref = 1;
+  let closed = false;
+  const topic = `realtime:public:${scoreboardTableName}:${boardId}`;
+  const socket = new WebSocket(`${url}?apikey=${encodeURIComponent(anonKey)}&vsn=1.0.0`);
+
+  const send = (event: string, payload: unknown, messageTopic = topic) => {
+    if (socket.readyState !== WebSocket.OPEN) return;
+    socket.send(JSON.stringify({ topic: messageTopic, event, payload, ref: `${ref++}` }));
+  };
+
+  const heartbeatId = window.setInterval(() => {
+    send("heartbeat", {}, "phoenix");
+  }, 25000);
+
+  socket.addEventListener("open", () => {
+    onStatus?.("OBS 실시간 연결 중...");
+    send("phx_join", {
+      config: {
+        postgres_changes: [
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: scoreboardTableName,
+            filter: `id=eq.${boardId}`
+          }
+        ]
+      },
+      access_token: anonKey
+    });
+  });
+
+  socket.addEventListener("message", (event) => {
+    try {
+      const message = JSON.parse(String(event.data)) as RealtimeMessage<Data>;
+      if (message.event === "phx_reply" && message.payload?.status === "ok") {
+        onStatus?.("OBS 실시간 연결됨");
+        return;
+      }
+
+      if (message.event !== "postgres_changes") return;
+
+      const record = message.payload?.data?.record ?? message.payload?.record;
+      if (!record?.data) return;
+      onBoardData(record.data);
+      onStatus?.("OBS 실시간 반영됨");
+    } catch {
+      onStatus?.("OBS 실시간 메시지를 처리하지 못했습니다.");
+    }
+  });
+
+  socket.addEventListener("error", () => {
+    if (!closed) onStatus?.("OBS 실시간 연결 오류: 폴링으로 동기화합니다.");
+  });
+
+  socket.addEventListener("close", () => {
+    if (!closed) onStatus?.("OBS 실시간 연결 종료: 폴링으로 동기화합니다.");
+  });
+
+  return () => {
+    closed = true;
+    window.clearInterval(heartbeatId);
+    socket.close();
+  };
+}
+
 async function authenticate(
   path: string,
   email: string,
@@ -325,6 +425,7 @@ async function supabaseFetch(path: string, session?: CloudSession | null, init?:
   }
 
   return fetch(`${url.replace(/\/$/, "")}${path}`, {
+    cache: "no-store",
     ...init,
     headers: {
       apikey: anonKey,
@@ -345,6 +446,12 @@ async function getResponseError(response: Response, fallback: string) {
 
 function getSupabaseUrl() {
   return process.env.NEXT_PUBLIC_SUPABASE_URL;
+}
+
+function getSupabaseRealtimeUrl() {
+  const url = getSupabaseUrl();
+  if (!url) return "";
+  return `${url.replace(/^http/, "ws").replace(/\/$/, "")}/realtime/v1/websocket`;
 }
 
 function getSupabaseAnonKey() {

@@ -9,6 +9,7 @@ import {
   downloadScoreboardBoard,
   getSavedCloudSession,
   isCloudSyncConfigured,
+  subscribeScoreboardBoard,
   updateScoreboardBoard,
   type CloudSession
 } from "@/lib/cloud/supabaseTeams";
@@ -303,6 +304,9 @@ export default function ScoreboardPage() {
   const [cloudStatus, setCloudStatus] = useState("OBS 출력용 보드를 만들면 변경사항이 자동 저장됩니다.");
   const previewRef = useRef<HTMLDivElement>(null);
   const displayRef = useRef<HTMLDivElement>(null);
+  const pendingCloudSaveRef = useRef<ScoreboardBoardData | null>(null);
+  const cloudSaveTimerRef = useRef<number | null>(null);
+  const cloudSaveInFlightRef = useRef(false);
   const screenSize = getScreenSize(settings);
   const previewScale = previewSize.width > 0 ? previewSize.width / screenSize.width : 1;
   const displayScale = displaySize.width > 0
@@ -333,21 +337,35 @@ export default function ScoreboardPage() {
     if (!isDisplayMode) return;
 
     let cancelled = false;
+    const applyBoardData = (data: ScoreboardBoardData) => {
+      setScoreboard(data.scoreboard ?? defaultScoreboard);
+      setSettings((current) => ({ ...current, ...(data.settings ?? defaultSettings) }));
+    };
     const loadBoard = async () => {
       try {
         const board = await downloadScoreboardBoard<ScoreboardBoardData>(displayBoardId);
         if (cancelled || !board?.data) return;
-        setScoreboard(board.data.scoreboard ?? defaultScoreboard);
-        setSettings((current) => ({ ...current, ...(board.data.settings ?? defaultSettings) }));
+        applyBoardData(board.data);
       } catch {
         if (!cancelled) setCloudStatus("스코어보드 보드를 불러오지 못했습니다.");
       }
     };
 
     void loadBoard();
-    const intervalId = window.setInterval(loadBoard, 800);
+    const unsubscribe = subscribeScoreboardBoard<ScoreboardBoardData>(
+      displayBoardId,
+      (data) => {
+        if (cancelled) return;
+        applyBoardData(data);
+      },
+      (status) => {
+        if (!cancelled) setCloudStatus(status);
+      }
+    );
+    const intervalId = window.setInterval(loadBoard, 2500);
     return () => {
       cancelled = true;
+      unsubscribe();
       window.clearInterval(intervalId);
     };
   }, [displayBoardId, isDisplayMode]);
@@ -386,15 +404,40 @@ export default function ScoreboardPage() {
   useEffect(() => {
     if (isDisplayMode || !cloudSession || !cloudBoardId) return;
 
-    const timeoutId = window.setTimeout(() => {
-      setCloudStatus("스코어보드 저장 중...");
-      updateScoreboardBoard<ScoreboardBoardData>(cloudSession, cloudBoardId, { scoreboard, settings })
-        .then(() => setCloudStatus("스코어보드 자동 저장 완료"))
-        .catch((error) => setCloudStatus(error instanceof Error ? error.message : "스코어보드 저장 실패"));
-    }, 500);
+    pendingCloudSaveRef.current = { scoreboard, settings };
 
-    return () => window.clearTimeout(timeoutId);
+    const flushCloudSave = () => {
+      cloudSaveTimerRef.current = null;
+      if (cloudSaveInFlightRef.current) return;
+
+      const payload = pendingCloudSaveRef.current;
+      if (!payload) return;
+
+      pendingCloudSaveRef.current = null;
+      cloudSaveInFlightRef.current = true;
+      setCloudStatus("스코어보드 실시간 저장 중...");
+
+      updateScoreboardBoard<ScoreboardBoardData>(cloudSession, cloudBoardId, payload)
+        .then(() => setCloudStatus("스코어보드 실시간 자동 저장 완료"))
+        .catch((error) => setCloudStatus(error instanceof Error ? error.message : "스코어보드 저장 실패"))
+        .finally(() => {
+          cloudSaveInFlightRef.current = false;
+          if (pendingCloudSaveRef.current && !cloudSaveTimerRef.current) {
+            cloudSaveTimerRef.current = window.setTimeout(flushCloudSave, 180);
+          }
+        });
+    };
+
+    if (!cloudSaveTimerRef.current && !cloudSaveInFlightRef.current) {
+      cloudSaveTimerRef.current = window.setTimeout(flushCloudSave, 180);
+    }
   }, [cloudBoardId, cloudSession, isDisplayMode, scoreboard, settings]);
+
+  useEffect(() => {
+    return () => {
+      if (cloudSaveTimerRef.current) window.clearTimeout(cloudSaveTimerRef.current);
+    };
+  }, []);
 
   const displayUrl = cloudBoardId && typeof window !== "undefined"
     ? `${window.location.origin}/scoreboard?display=${encodeURIComponent(cloudBoardId)}`

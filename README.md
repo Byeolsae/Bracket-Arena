@@ -143,6 +143,8 @@ using (auth.uid() = owner_id);
 alter publication supabase_realtime add table public.scoreboard_boards;
 ```
 
+OBS 스코어보드 출력은 `scoreboard_boards`의 Supabase Realtime 업데이트를 구독합니다. 위 `alter publication`이 이미 실행되어 있다면 같은 쿼리는 중복 오류가 날 수 있으며, 그 경우는 무시해도 됩니다.
+
 ## 주요 기능
 
 - 팀 등록/수정/삭제
