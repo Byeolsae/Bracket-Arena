@@ -260,11 +260,29 @@ export default function ScoreboardPage() {
   const [scoreboard, setScoreboard] = useState<ScoreboardState>(defaultScoreboard);
   const [settings, setSettings] = useState<OverlaySettings>(defaultSettings);
   const [dragGuides, setDragGuides] = useState<DragGuides>(hiddenDragGuides);
+  const [previewSize, setPreviewSize] = useState({ width: 0, height: 0 });
   const previewRef = useRef<HTMLDivElement>(null);
+  const screenSize = getScreenSize(settings);
+  const previewScale = previewSize.width > 0 ? previewSize.width / screenSize.width : 1;
   const managedTeamGroups = useMemo(
     () => buildManagedTeamGroups(managedFolders, managedTeams),
     [managedFolders, managedTeams]
   );
+
+  useEffect(() => {
+    const previewElement = previewRef.current;
+    if (!previewElement) return;
+
+    const updatePreviewSize = () => {
+      const rect = previewElement.getBoundingClientRect();
+      setPreviewSize({ width: rect.width, height: rect.height });
+    };
+    updatePreviewSize();
+
+    const observer = new ResizeObserver(updatePreviewSize);
+    observer.observe(previewElement);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (settings.timerMode !== "countUp" || !scoreboard.timerRunning) return;
@@ -403,30 +421,37 @@ export default function ScoreboardPage() {
     });
   };
 
+  const getPreviewMetrics = () => {
+    const previewRect = previewRef.current?.getBoundingClientRect();
+    if (!previewRect) return null;
+
+    return {
+      rect: previewRect,
+      width: screenSize.width,
+      height: screenSize.height,
+      scaleX: previewRect.width / screenSize.width,
+      scaleY: previewRect.height / screenSize.height
+    };
+  };
+
   const getTeamSnapRect = (team: ScoreboardTeam): SnapRect => {
     const size = getBracketSize(team, settings);
-    const previewRect = previewRef.current?.getBoundingClientRect();
-    const previewWidth = previewRect?.width ?? 1;
-    const previewHeight = previewRect?.height ?? 1;
     const width = size.teamWidth + size.scoreWidth;
-    const left = getAnchoredLeft(team, width, previewWidth);
+    const left = getAnchoredLeft(team, width, screenSize.width);
 
     return {
       id: team.id,
       left,
-      top: (team.y / 100) * previewHeight,
+      top: (team.y / 100) * screenSize.height,
       width,
       height: size.rowHeight
     };
   };
 
   const getTimerSnapRect = (): SnapRect => {
-    const previewRect = previewRef.current?.getBoundingClientRect();
-    const previewWidth = previewRect?.width ?? settings.timerWidth;
-
     return {
       id: "timer",
-      left: settings.timerCentered ? (previewWidth - settings.timerWidth) / 2 : settings.timerX,
+      left: settings.timerCentered ? (screenSize.width - settings.timerWidth) / 2 : settings.timerX,
       top: settings.timerY,
       width: settings.timerWidth,
       height: settings.timerHeight
@@ -546,23 +571,26 @@ export default function ScoreboardPage() {
   };
 
   const handleTeamDragStart = (teamId: string, event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || !previewRef.current) return;
+    const metrics = getPreviewMetrics();
+    if (event.button !== 0 || !metrics) return;
 
-    const previewRect = previewRef.current.getBoundingClientRect();
     const teamRect = event.currentTarget.getBoundingClientRect();
-    const grabOffsetX = event.clientX - teamRect.left;
-    const grabOffsetY = event.clientY - teamRect.top;
+    const teamSize = getBracketSize(scoreboard.teams.find((team) => team.id === teamId) ?? defaultScoreboard.teams[0], settings);
+    const teamWidth = teamSize.teamWidth + teamSize.scoreWidth;
+    const teamHeight = teamSize.rowHeight;
+    const grabOffsetX = (event.clientX - teamRect.left) / metrics.scaleX;
+    const grabOffsetY = (event.clientY - teamRect.top) / metrics.scaleY;
 
     event.preventDefault();
     event.stopPropagation();
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
-      const maxLeft = Math.max(0, previewRect.width - teamRect.width);
-      const maxTop = Math.max(0, previewRect.height - teamRect.height);
+      const maxLeft = Math.max(0, metrics.width - teamWidth);
+      const maxTop = Math.max(0, metrics.height - teamHeight);
       const centerLeft = maxLeft / 2;
       const centerTop = maxTop / 2;
-      let nextLeft = clamp(moveEvent.clientX - previewRect.left - grabOffsetX, 0, maxLeft);
-      let nextTop = clamp(moveEvent.clientY - previewRect.top - grabOffsetY, 0, maxTop);
+      let nextLeft = clamp((moveEvent.clientX - metrics.rect.left) / metrics.scaleX - grabOffsetX, 0, maxLeft);
+      let nextTop = clamp((moveEvent.clientY - metrics.rect.top) / metrics.scaleY - grabOffsetY, 0, maxTop);
       const nextGuides: DragGuides = { ...hiddenDragGuides };
 
       if (Math.abs(nextLeft - centerLeft) <= snapDistance) {
@@ -590,8 +618,8 @@ export default function ScoreboardPage() {
       const attachmentSnap = snapToAttachmentRects(
         nextLeft,
         nextTop,
-        teamRect.width,
-        teamRect.height,
+        teamWidth,
+        teamHeight,
         getAttachmentSnapRects({ excludedTeamId: teamId, includeTimer: true })
       );
       nextLeft = clamp(attachmentSnap.left, 0, maxLeft);
@@ -606,8 +634,8 @@ export default function ScoreboardPage() {
           teamId,
           nextLeft,
           nextTop,
-          previewRect.width,
-          previewRect.height,
+          metrics.width,
+          metrics.height,
           settings,
           settings.symmetricPositions
         )
@@ -646,18 +674,18 @@ export default function ScoreboardPage() {
     handle: ResizeHandle,
     event: ReactPointerEvent<HTMLDivElement>
   ) => {
-    if (event.button !== 0 || !previewRef.current) return;
+    const metrics = getPreviewMetrics();
+    if (event.button !== 0 || !metrics) return;
 
-    const previewRect = previewRef.current.getBoundingClientRect();
     const targetTeam = teamId ? scoreboard.teams.find((team) => team.id === teamId) : null;
     const startTeamWidth = targetTeam?.teamWidth ?? settings.teamWidth;
     const startScoreWidth = targetTeam?.scoreWidth ?? settings.scoreWidth;
     const startRowHeight = targetTeam?.rowHeight ?? settings.rowHeight;
     const startWidth = startTeamWidth + startScoreWidth;
     const startLeft = targetTeam
-      ? getAnchoredLeft(targetTeam, startWidth, previewRect.width)
+      ? getAnchoredLeft(targetTeam, startWidth, metrics.width)
       : 0;
-    const startTop = targetTeam ? (targetTeam.y / 100) * previewRect.height : 0;
+    const startTop = targetTeam ? (targetTeam.y / 100) * metrics.height : 0;
     const resizeFromLeft = handle.includes("left");
     const resizeFromRight = handle.includes("right");
     const resizeFromTop = handle.includes("top");
@@ -667,8 +695,8 @@ export default function ScoreboardPage() {
     event.stopPropagation();
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
-      const deltaX = moveEvent.clientX - event.clientX;
-      const deltaY = moveEvent.clientY - event.clientY;
+      const deltaX = (moveEvent.clientX - event.clientX) / metrics.scaleX;
+      const deltaY = (moveEvent.clientY - event.clientY) / metrics.scaleY;
       const widthDelta = resizeFromLeft ? -deltaX : resizeFromRight ? deltaX : 0;
       const heightDelta = resizeFromTop ? -deltaY : resizeFromBottom ? deltaY : 0;
       const nextTeamWidth = Math.round(clamp(startTeamWidth + widthDelta, 80, 620));
@@ -676,10 +704,10 @@ export default function ScoreboardPage() {
       const nextWidth = nextTeamWidth + startScoreWidth;
       const xShift = resizeFromLeft ? startTeamWidth - nextTeamWidth : 0;
       const yShift = resizeFromTop ? startRowHeight - nextRowHeight : 0;
-      const nextLeft = clamp(startLeft + xShift, 0, Math.max(0, previewRect.width - nextWidth));
-      const nextTop = clamp(startTop + yShift, 0, Math.max(0, previewRect.height - nextRowHeight));
-      const nextX = Math.round((nextLeft / Math.max(1, previewRect.width)) * 1000) / 10;
-      const nextY = Math.round((nextTop / Math.max(1, previewRect.height)) * 1000) / 10;
+      const nextLeft = clamp(startLeft + xShift, 0, Math.max(0, metrics.width - nextWidth));
+      const nextTop = clamp(startTop + yShift, 0, Math.max(0, metrics.height - nextRowHeight));
+      const nextX = Math.round((nextLeft / Math.max(1, metrics.width)) * 1000) / 10;
+      const nextY = Math.round((nextTop / Math.max(1, metrics.height)) * 1000) / 10;
 
       if (!teamId || settings.symmetricSizes) {
         resizeAllTeams(nextTeamWidth, nextRowHeight);
@@ -734,28 +762,28 @@ export default function ScoreboardPage() {
     handle: ScoreResizeHandle,
     event: ReactPointerEvent<HTMLDivElement>
   ) => {
-    if (event.button !== 0 || !previewRef.current) return;
+    const metrics = getPreviewMetrics();
+    if (event.button !== 0 || !metrics) return;
 
-    const previewRect = previewRef.current.getBoundingClientRect();
     const targetTeam = scoreboard.teams.find((team) => team.id === teamId);
     if (!targetTeam) return;
 
     const startScoreWidth = targetTeam.scoreWidth;
     const startWidth = targetTeam.teamWidth + targetTeam.scoreWidth;
-    const startLeft = getAnchoredLeft(targetTeam, startWidth, previewRect.width);
+    const startLeft = getAnchoredLeft(targetTeam, startWidth, metrics.width);
     const resizeFromLeft = handle === "left";
 
     event.preventDefault();
     event.stopPropagation();
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
-      const deltaX = moveEvent.clientX - event.clientX;
+      const deltaX = (moveEvent.clientX - event.clientX) / metrics.scaleX;
       const widthDelta = resizeFromLeft ? -deltaX : deltaX;
       const nextScoreWidth = Math.round(clamp(startScoreWidth + widthDelta, 28, 220));
       const nextWidth = targetTeam.teamWidth + nextScoreWidth;
       const xShift = resizeFromLeft ? startScoreWidth - nextScoreWidth : 0;
-      const nextLeft = clamp(startLeft + xShift, 0, Math.max(0, previewRect.width - nextWidth));
-      const nextX = Math.round((nextLeft / Math.max(1, previewRect.width)) * 1000) / 10;
+      const nextLeft = clamp(startLeft + xShift, 0, Math.max(0, metrics.width - nextWidth));
+      const nextX = Math.round((nextLeft / Math.max(1, metrics.width)) * 1000) / 10;
 
       if (settings.symmetricSizes) {
         resizeAllScoreCells(nextScoreWidth);
@@ -800,13 +828,13 @@ export default function ScoreboardPage() {
     handle: ResizeHandle,
     event: ReactPointerEvent<HTMLDivElement>
   ) => {
-    if (event.button !== 0 || !previewRef.current) return;
+    const metrics = getPreviewMetrics();
+    if (event.button !== 0 || !metrics) return;
 
-    const previewRect = previewRef.current.getBoundingClientRect();
     const startTimerWidth = settings.timerWidth;
     const startTimerHeight = settings.timerHeight;
     const startTimerX = settings.timerCentered
-      ? Math.max(0, (previewRect.width - settings.timerWidth) / 2)
+      ? Math.max(0, (metrics.width - settings.timerWidth) / 2)
       : settings.timerX;
     const startTimerY = settings.timerY;
     const resizeFromLeft = handle.includes("left");
@@ -818,8 +846,8 @@ export default function ScoreboardPage() {
     event.stopPropagation();
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
-      const deltaX = moveEvent.clientX - event.clientX;
-      const deltaY = moveEvent.clientY - event.clientY;
+      const deltaX = (moveEvent.clientX - event.clientX) / metrics.scaleX;
+      const deltaY = (moveEvent.clientY - event.clientY) / metrics.scaleY;
       const widthDelta = resizeFromLeft ? -deltaX : resizeFromRight ? deltaX : 0;
       const heightDelta = resizeFromTop ? -deltaY : resizeFromBottom ? deltaY : 0;
       const nextTimerWidth = Math.round(clamp(startTimerWidth + widthDelta, 70, 520));
@@ -827,12 +855,12 @@ export default function ScoreboardPage() {
       const nextTimerX = clamp(
         resizeFromLeft ? startTimerX + startTimerWidth - nextTimerWidth : startTimerX,
         0,
-        Math.max(0, previewRect.width - nextTimerWidth)
+        Math.max(0, metrics.width - nextTimerWidth)
       );
       const nextTimerY = clamp(
         resizeFromTop ? startTimerY + startTimerHeight - nextTimerHeight : startTimerY,
         0,
-        Math.max(0, previewRect.height - nextTimerHeight)
+        Math.max(0, metrics.height - nextTimerHeight)
       );
 
       setSettings((current) => ({
@@ -855,23 +883,23 @@ export default function ScoreboardPage() {
   };
 
   const handleTimerDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || !previewRef.current) return;
+    const metrics = getPreviewMetrics();
+    if (event.button !== 0 || !metrics) return;
 
-    const previewRect = previewRef.current.getBoundingClientRect();
     const timerRect = event.currentTarget.getBoundingClientRect();
-    const grabOffsetX = event.clientX - timerRect.left;
-    const grabOffsetY = event.clientY - timerRect.top;
+    const grabOffsetX = (event.clientX - timerRect.left) / metrics.scaleX;
+    const grabOffsetY = (event.clientY - timerRect.top) / metrics.scaleY;
 
     event.preventDefault();
     event.stopPropagation();
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
-      const maxLeft = Math.max(0, previewRect.width - timerRect.width);
-      const maxTop = Math.max(0, previewRect.height - timerRect.height);
+      const maxLeft = Math.max(0, metrics.width - settings.timerWidth);
+      const maxTop = Math.max(0, metrics.height - settings.timerHeight);
       const centerLeft = maxLeft / 2;
       const centerTop = maxTop / 2;
-      let nextLeft = clamp(moveEvent.clientX - previewRect.left - grabOffsetX, 0, maxLeft);
-      let nextTop = clamp(moveEvent.clientY - previewRect.top - grabOffsetY, 0, maxTop);
+      let nextLeft = clamp((moveEvent.clientX - metrics.rect.left) / metrics.scaleX - grabOffsetX, 0, maxLeft);
+      let nextTop = clamp((moveEvent.clientY - metrics.rect.top) / metrics.scaleY - grabOffsetY, 0, maxTop);
       const nextGuides: DragGuides = { ...hiddenDragGuides };
 
       if (Math.abs(nextLeft - centerLeft) <= snapDistance) {
@@ -899,8 +927,8 @@ export default function ScoreboardPage() {
       const attachmentSnap = snapToAttachmentRects(
         nextLeft,
         nextTop,
-        timerRect.width,
-        timerRect.height,
+        settings.timerWidth,
+        settings.timerHeight,
         getAttachmentSnapRects({ includeTimer: false })
       );
       nextLeft = clamp(attachmentSnap.left, 0, maxLeft);
@@ -1383,22 +1411,32 @@ export default function ScoreboardPage() {
               ref={previewRef}
               className="relative w-full max-w-6xl overflow-hidden rounded-md border border-line bg-[#111318] shadow-panel"
               style={{
-                aspectRatio: `${getScreenSize(settings).width} / ${getScreenSize(settings).height}`
+                aspectRatio: `${screenSize.width} / ${screenSize.height}`
               }}
             >
               <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:52px_52px]" />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_48%_24%,rgba(255,255,255,0.08),transparent_18%)]" />
-              <AlignmentGuides guides={dragGuides} />
-              <CustomScoreboardOverlay
-                scoreboard={scoreboard}
-                displayTimer={displayTimer}
-                settings={settings}
-                onTeamPointerDown={handleTeamDragStart}
-                onBracketResizePointerDown={handleBracketResizeStart}
-                onScoreResizePointerDown={handleScoreResizeStart}
-                onTimerResizePointerDown={handleTimerResizeStart}
-                onTimerPointerDown={handleTimerDragStart}
-              />
+              <div
+                className="absolute left-0 top-0"
+                style={{
+                  width: screenSize.width,
+                  height: screenSize.height,
+                  transform: `scale(${previewScale})`,
+                  transformOrigin: "top left"
+                }}
+              >
+                <AlignmentGuides guides={dragGuides} />
+                <CustomScoreboardOverlay
+                  scoreboard={scoreboard}
+                  displayTimer={displayTimer}
+                  settings={settings}
+                  onTeamPointerDown={handleTeamDragStart}
+                  onBracketResizePointerDown={handleBracketResizeStart}
+                  onScoreResizePointerDown={handleScoreResizeStart}
+                  onTimerResizePointerDown={handleTimerResizeStart}
+                  onTimerPointerDown={handleTimerDragStart}
+                />
+              </div>
             </div>
           </div>
         </div>
