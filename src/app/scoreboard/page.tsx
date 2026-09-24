@@ -29,7 +29,7 @@ type XAnchor = "left" | "right";
 type LabelAlign = "left" | "center" | "right";
 type LogoSide = "left" | "right";
 type FontFamily = "sans" | "condensed" | "mono" | "serif";
-type TimerMode = "manual" | "countUp";
+type TimerMode = "manual" | "countUp" | "countDown";
 type OverlayTheme = "dark" | "light";
 type OutputBackgroundMode = "transparent" | "green" | "black";
 type ResizeHandle =
@@ -107,6 +107,7 @@ type ScoreboardState = {
   timer: string;
   elapsedSeconds: number;
   timerRunning: boolean;
+  timerFinished: boolean;
   teams: ScoreboardTeam[];
 };
 
@@ -154,11 +155,14 @@ const defaultScoreboard: ScoreboardState = {
   timer: "00:00:00",
   elapsedSeconds: 0,
   timerRunning: false,
+  timerFinished: false,
   teams: [
     { id: "team-1", name: "Team 1", shortName: "TM1", score: 0, setScore: 0, accentSide: "left", accentColorMode: "default", customAccentColor: "#3b82f6", scoreSide: "right", setScoreEdge: "bottom", setScoreAlign: "right", labelAlign: "center", logoSide: "left", xAnchor: "left", x: 0, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
     { id: "team-2", name: "Team 2", shortName: "TM2", score: 0, setScore: 0, accentSide: "right", accentColorMode: "default", customAccentColor: "#ef4444", scoreSide: "left", setScoreEdge: "bottom", setScoreAlign: "left", labelAlign: "center", logoSide: "right", xAnchor: "right", x: 0, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
   ]
 };
+
+const scoreboardStorageKey = "bracket-arena-scoreboard-state";
 
 const defaultSettings: OverlaySettings = {
   customWidth: 1920,
@@ -221,6 +225,52 @@ function getScreenSize(settings: OverlaySettings) {
   }
 
   return resolutionOptions[settings.resolution];
+}
+
+function normalizeScoreboardState(scoreboard?: Partial<ScoreboardState>): ScoreboardState {
+  return {
+    ...defaultScoreboard,
+    ...scoreboard,
+    timerFinished: scoreboard?.timerFinished ?? false,
+    teams: Array.isArray(scoreboard?.teams) && scoreboard.teams.length > 0 ? scoreboard.teams : defaultScoreboard.teams
+  };
+}
+
+function normalizeOverlaySettings(settings?: Partial<OverlaySettings>): OverlaySettings {
+  return {
+    ...defaultSettings,
+    ...settings
+  };
+}
+
+function loadSavedScoreboardState() {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(scoreboardStorageKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<ScoreboardBoardData> & { cloudBoardId?: string };
+    return {
+      scoreboard: normalizeScoreboardState(parsed.scoreboard),
+      settings: normalizeOverlaySettings(parsed.settings),
+      cloudBoardId: typeof parsed.cloudBoardId === "string" ? parsed.cloudBoardId : ""
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveScoreboardState(scoreboard: ScoreboardState, settings: OverlaySettings, cloudBoardId: string) {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.setItem(
+    scoreboardStorageKey,
+    JSON.stringify({
+      scoreboard,
+      settings,
+      cloudBoardId
+    })
+  );
 }
 
 function getOutputBackgroundStyle(settings: OverlaySettings) {
@@ -307,6 +357,7 @@ export default function ScoreboardPage() {
   const [cloudSession, setCloudSession] = useState<CloudSession | null>(null);
   const [cloudBoardId, setCloudBoardId] = useState("");
   const [cloudStatus, setCloudStatus] = useState("OBS 출력용 보드를 만들면 변경사항이 자동 저장됩니다.");
+  const [localStateReady, setLocalStateReady] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const displayRef = useRef<HTMLDivElement>(null);
   const pendingCloudSaveRef = useRef<ScoreboardBoardData | null>(null);
@@ -327,12 +378,30 @@ export default function ScoreboardPage() {
   );
 
   useEffect(() => {
+    if (!isDisplayMode) {
+      const savedScoreboardState = loadSavedScoreboardState();
+      if (savedScoreboardState) {
+        setScoreboard(savedScoreboardState.scoreboard);
+        setSettings(savedScoreboardState.settings);
+        if (savedScoreboardState.cloudBoardId) {
+          setCloudBoardId(savedScoreboardState.cloudBoardId);
+          window.localStorage.setItem("bracket-arena-scoreboard-board-id", savedScoreboardState.cloudBoardId);
+        }
+      }
+      setLocalStateReady(true);
+    }
+
     const saved = getSavedCloudSession();
     setCloudSession(saved);
     if (typeof window !== "undefined") {
-      setCloudBoardId(window.localStorage.getItem("bracket-arena-scoreboard-board-id") ?? "");
+      setCloudBoardId((current) => current || window.localStorage.getItem("bracket-arena-scoreboard-board-id") || "");
     }
-  }, []);
+  }, [isDisplayMode]);
+
+  useEffect(() => {
+    if (isDisplayMode || !localStateReady) return;
+    saveScoreboardState(scoreboard, settings, cloudBoardId);
+  }, [cloudBoardId, isDisplayMode, localStateReady, scoreboard, settings]);
 
   useEffect(() => {
     if (!isDisplayMode) return;
@@ -347,8 +416,8 @@ export default function ScoreboardPage() {
     const applyBoardData = (data: ScoreboardBoardData, updatedAt = "") => {
       if (updatedAt && displayLastUpdatedAtRef.current === updatedAt) return;
       if (updatedAt) displayLastUpdatedAtRef.current = updatedAt;
-      setScoreboard(data.scoreboard ?? defaultScoreboard);
-      setSettings((current) => ({ ...current, ...(data.settings ?? defaultSettings) }));
+      setScoreboard(normalizeScoreboardState(data.scoreboard));
+      setSettings((current) => ({ ...current, ...normalizeOverlaySettings(data.settings) }));
     };
     const loadBoard = async () => {
       try {
@@ -504,20 +573,33 @@ export default function ScoreboardPage() {
   };
 
   useEffect(() => {
-    if (settings.timerMode !== "countUp" || !scoreboard.timerRunning) return;
+    if ((settings.timerMode !== "countUp" && settings.timerMode !== "countDown") || !scoreboard.timerRunning) return;
 
     const intervalId = window.setInterval(() => {
-      setScoreboard((current) => ({
-        ...current,
-        elapsedSeconds: current.elapsedSeconds + 1
-      }));
+      setScoreboard((current) => {
+        if (settings.timerMode === "countDown") {
+          const nextSeconds = Math.max(0, current.elapsedSeconds - 1);
+          return {
+            ...current,
+            elapsedSeconds: nextSeconds,
+            timerRunning: nextSeconds > 0,
+            timerFinished: nextSeconds === 0
+          };
+        }
+
+        return {
+          ...current,
+          elapsedSeconds: current.elapsedSeconds + 1,
+          timerFinished: false
+        };
+      });
     }, 1000);
 
     return () => window.clearInterval(intervalId);
   }, [scoreboard.timerRunning, settings.timerMode]);
 
   const displayTimer =
-    settings.timerMode === "countUp"
+    settings.timerMode === "countUp" || settings.timerMode === "countDown"
       ? formatTimer(scoreboard.elapsedSeconds, settings)
       : formatManualTimer(scoreboard.timer, settings);
 
@@ -526,7 +608,7 @@ export default function ScoreboardPage() {
   };
 
   const updateTimer = (timer: string) => {
-    setScoreboard((current) => ({ ...current, timer }));
+    setScoreboard((current) => ({ ...current, timer, timerFinished: false }));
   };
 
   const updateElapsedPart = (part: "hours" | "minutes" | "seconds", value: number) => {
@@ -540,17 +622,18 @@ export default function ScoreboardPage() {
 
       return {
         ...current,
-        elapsedSeconds: nextHours * 3600 + nextMinutes * 60 + nextSeconds
+        elapsedSeconds: nextHours * 3600 + nextMinutes * 60 + nextSeconds,
+        timerFinished: false
       };
     });
   };
 
   const setTimerRunning = (timerRunning: boolean) => {
-    setScoreboard((current) => ({ ...current, timerRunning }));
+    setScoreboard((current) => ({ ...current, timerRunning, timerFinished: timerRunning ? false : current.timerFinished }));
   };
 
   const resetElapsedTimer = () => {
-    setScoreboard((current) => ({ ...current, elapsedSeconds: 0, timerRunning: false }));
+    setScoreboard((current) => ({ ...current, elapsedSeconds: 0, timerRunning: false, timerFinished: false }));
   };
 
   const updateTeam = <Key extends keyof ScoreboardTeam>(
@@ -1581,12 +1664,15 @@ export default function ScoreboardPage() {
               <h2 className="text-lg font-black uppercase tracking-wide text-ink">타이머</h2>
             </div>
             <div className="grid gap-3">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <ToggleButton active={settings.timerMode === "manual"} onClick={() => updateSetting("timerMode", "manual")}>
                   직접입력
                 </ToggleButton>
                 <ToggleButton active={settings.timerMode === "countUp"} onClick={() => updateSetting("timerMode", "countUp")}>
                   0부터 진행
+                </ToggleButton>
+                <ToggleButton active={settings.timerMode === "countDown"} onClick={() => updateSetting("timerMode", "countDown")}>
+                  카운트다운
                 </ToggleButton>
               </div>
               {settings.timerMode === "manual" ? (
@@ -1595,17 +1681,17 @@ export default function ScoreboardPage() {
                 <>
                   <div className="grid grid-cols-3 gap-2">
                     <NumberField
-                      label="시작 시"
+                      label={settings.timerMode === "countDown" ? "남은 시" : "시작 시"}
                       value={Math.floor(scoreboard.elapsedSeconds / 3600)}
                       onChange={(value) => updateElapsedPart("hours", value)}
                     />
                     <NumberField
-                      label="시작 분"
+                      label={settings.timerMode === "countDown" ? "남은 분" : "시작 분"}
                       value={Math.floor((scoreboard.elapsedSeconds % 3600) / 60)}
                       onChange={(value) => updateElapsedPart("minutes", value)}
                     />
                     <NumberField
-                      label="시작 초"
+                      label={settings.timerMode === "countDown" ? "남은 초" : "시작 초"}
                       value={scoreboard.elapsedSeconds % 60}
                       onChange={(value) => updateElapsedPart("seconds", value)}
                     />
@@ -1636,6 +1722,7 @@ export default function ScoreboardPage() {
               </div>
               <p className="rounded-md border border-line bg-arena/70 px-3 py-3 text-xs font-bold leading-5 text-muted">
                 현재 표시: {displayTimer}
+                {settings.timerMode === "countDown" && scoreboard.timerFinished ? <span className="ml-2 text-red-300">종료</span> : null}
               </p>
             </div>
           </div>
@@ -1818,6 +1905,7 @@ function CustomScoreboardOverlay({
         <TimerBlock
           timer={displayTimer}
           settings={settings}
+          finished={settings.timerMode === "countDown" && scoreboard.timerFinished}
           className="pointer-events-auto absolute left-0 top-0"
           onResizePointerDown={onTimerResizePointerDown}
           onPointerDown={onTimerPointerDown}
@@ -1841,12 +1929,14 @@ function CustomScoreboardOverlay({
 function TimerBlock({
   timer,
   settings,
+  finished,
   className = "",
   onResizePointerDown,
   onPointerDown
 }: {
   timer: string;
   settings: OverlaySettings;
+  finished: boolean;
   className?: string;
   onResizePointerDown: (handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
   onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
@@ -1854,10 +1944,13 @@ function TimerBlock({
   const timerThemeClass = settings.overlayTheme === "light"
     ? "border border-slate-300 bg-white text-slate-950 shadow-[0_8px_20px_rgba(15,23,42,0.16)]"
     : "border border-white/10 bg-[#07111f] text-white shadow-[0_8px_20px_rgba(0,0,0,0.45)]";
+  const timerFinishedClass = finished
+    ? "border-red-400 bg-red-600 text-white shadow-[0_0_26px_rgba(248,113,113,0.75)]"
+    : timerThemeClass;
 
   return (
     <div
-      className={`group relative cursor-move touch-none select-none ${timerThemeClass} ${className}`}
+      className={`group relative cursor-move touch-none select-none ${timerFinishedClass} ${className}`}
       onPointerDown={onPointerDown}
       style={{
         left: settings.timerCentered ? "50%" : 0,
