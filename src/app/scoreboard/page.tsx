@@ -101,11 +101,21 @@ type ScoreboardTeam = {
   >
 >;
 
+type GameIconBox = {
+  enabled: boolean;
+  image: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 type ScoreboardState = {
   timer: string;
   elapsedSeconds: number;
   timerRunning: boolean;
   timerFinished: boolean;
+  gameIcon: GameIconBox;
   teams: ScoreboardTeam[];
 };
 
@@ -155,6 +165,14 @@ const defaultScoreboard: ScoreboardState = {
   elapsedSeconds: 0,
   timerRunning: false,
   timerFinished: false,
+  gameIcon: {
+    enabled: false,
+    image: "",
+    x: 50,
+    y: 0,
+    width: 58,
+    height: 58
+  },
   teams: [
     { id: "team-1", name: "Team 1", shortName: "TM1", score: 0, setScore: 0, accentSide: "left", accentColorMode: "default", customAccentColor: "#3b82f6", scoreSide: "right", setScoreEdge: "bottom", labelAlign: "center", logoSide: "left", xAnchor: "left", x: 0, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
     { id: "team-2", name: "Team 2", shortName: "TM2", score: 0, setScore: 0, accentSide: "right", accentColorMode: "default", customAccentColor: "#ef4444", scoreSide: "left", setScoreEdge: "bottom", labelAlign: "center", logoSide: "right", xAnchor: "right", x: 0, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
@@ -243,6 +261,10 @@ function normalizeScoreboardState(scoreboard?: Partial<ScoreboardState>): Scoreb
   return {
     ...defaultScoreboard,
     ...scoreboard,
+    gameIcon: {
+      ...defaultScoreboard.gameIcon,
+      ...scoreboard?.gameIcon
+    },
     timerFinished: scoreboard?.timerFinished ?? false,
     teams: Array.isArray(scoreboard?.teams) && scoreboard.teams.length > 0 ? scoreboard.teams : defaultScoreboard.teams
   };
@@ -348,6 +370,10 @@ async function resolveScoreboardLogosForOutput(scoreboard: ScoreboardState) {
 
   return {
     ...scoreboard,
+    gameIcon: {
+      ...scoreboard.gameIcon,
+      image: scoreboard.gameIcon.image ? (await resolveStoredLogo(scoreboard.gameIcon.image)) || scoreboard.gameIcon.image : ""
+    },
     teams
   };
 }
@@ -364,6 +390,15 @@ function getOutputBackgroundStyle(settings: OverlaySettings) {
   }
 
   return { backgroundColor: "transparent" };
+}
+
+function readImageFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 function normalizeShortName(team: Team) {
@@ -765,6 +800,34 @@ export default function ScoreboardPage() {
     }));
   };
 
+  const updateGameIcon = <Key extends keyof GameIconBox>(key: Key, value: GameIconBox[Key]) => {
+    setScoreboard((current) => ({
+      ...current,
+      gameIcon: {
+        ...current.gameIcon,
+        [key]: value
+      }
+    }));
+  };
+
+  const handleGameIconFileChange = async (file: File | undefined) => {
+    if (!file) return;
+
+    try {
+      const image = await readImageFileAsDataUrl(file);
+      setScoreboard((current) => ({
+        ...current,
+        gameIcon: {
+          ...current.gameIcon,
+          enabled: true,
+          image
+        }
+      }));
+    } catch {
+      setCloudStatus("게임 아이콘 이미지를 불러오지 못했습니다.");
+    }
+  };
+
   const applyManagedTeam = (scoreboardTeamId: string, managedTeamId: string) => {
     if (!managedTeamId) {
       setScoreboard((current) => ({
@@ -877,17 +940,28 @@ export default function ScoreboardPage() {
     };
   };
 
+  const getGameIconSnapRect = (): SnapRect => ({
+    id: "game-icon",
+    left: scoreboard.gameIcon.x,
+    top: scoreboard.gameIcon.y,
+    width: scoreboard.gameIcon.width,
+    height: scoreboard.gameIcon.height
+  });
+
   const getAttachmentSnapRects = ({
     excludedTeamId,
-    includeTimer
+    includeTimer,
+    includeGameIcon = true
   }: {
     excludedTeamId?: string;
     includeTimer: boolean;
+    includeGameIcon?: boolean;
   }) => [
     ...scoreboard.teams
       .filter((team) => team.id !== excludedTeamId)
       .map((team) => getTeamSnapRect(team)),
-    ...(includeTimer && settings.showTimer ? [getTimerSnapRect()] : [])
+    ...(includeTimer && settings.showTimer ? [getTimerSnapRect()] : []),
+    ...(includeGameIcon && scoreboard.gameIcon.enabled ? [getGameIconSnapRect()] : [])
   ];
 
   const resetOverlayLayout = () => {
@@ -901,6 +975,13 @@ export default function ScoreboardPage() {
     }));
     setScoreboard((current) => ({
       ...current,
+      gameIcon: {
+        ...current.gameIcon,
+        x: defaultScoreboard.gameIcon.x,
+        y: defaultScoreboard.gameIcon.y,
+        width: defaultScoreboard.gameIcon.width,
+        height: defaultScoreboard.gameIcon.height
+      },
       teams: current.teams.map((team, index) => {
         const defaultTeam = defaultScoreboard.teams[index];
 
@@ -1374,6 +1455,138 @@ export default function ScoreboardPage() {
     window.addEventListener("pointerup", handlePointerUp);
   };
 
+  const handleGameIconDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const metrics = getPreviewMetrics();
+    if (event.button !== 0 || !metrics) return;
+
+    const iconRect = event.currentTarget.getBoundingClientRect();
+    const startIconWidth = scoreboard.gameIcon.width;
+    const startIconHeight = scoreboard.gameIcon.height;
+    const grabOffsetX = (event.clientX - iconRect.left) / metrics.scaleX;
+    const grabOffsetY = (event.clientY - iconRect.top) / metrics.scaleY;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const maxLeft = Math.max(0, metrics.width - startIconWidth);
+      const maxTop = Math.max(0, metrics.height - startIconHeight);
+      const centerLeft = maxLeft / 2;
+      const centerTop = maxTop / 2;
+      let nextLeft = clamp((moveEvent.clientX - metrics.rect.left) / metrics.scaleX - grabOffsetX, 0, maxLeft);
+      let nextTop = clamp((moveEvent.clientY - metrics.rect.top) / metrics.scaleY - grabOffsetY, 0, maxTop);
+      const nextGuides: DragGuides = { ...hiddenDragGuides };
+
+      if (Math.abs(nextLeft - centerLeft) <= snapDistance) {
+        nextLeft = centerLeft;
+        nextGuides.verticalCenter = true;
+      } else if (nextLeft <= snapDistance) {
+        nextLeft = 0;
+        nextGuides.leftEdge = true;
+      } else if (Math.abs(nextLeft - maxLeft) <= snapDistance) {
+        nextLeft = maxLeft;
+        nextGuides.rightEdge = true;
+      }
+
+      if (Math.abs(nextTop - centerTop) <= snapDistance) {
+        nextTop = centerTop;
+        nextGuides.horizontalCenter = true;
+      } else if (nextTop <= snapDistance) {
+        nextTop = 0;
+        nextGuides.topEdge = true;
+      } else if (Math.abs(nextTop - maxTop) <= snapDistance) {
+        nextTop = maxTop;
+        nextGuides.bottomEdge = true;
+      }
+
+      const attachmentSnap = snapToAttachmentRects(
+        nextLeft,
+        nextTop,
+        startIconWidth,
+        startIconHeight,
+        getAttachmentSnapRects({ includeTimer: true, includeGameIcon: false })
+      );
+      nextLeft = clamp(attachmentSnap.left, 0, maxLeft);
+      nextTop = clamp(attachmentSnap.top, 0, maxTop);
+      nextGuides.verticalCenter = nextGuides.verticalCenter || attachmentSnap.guides.verticalCenter;
+      nextGuides.horizontalCenter = nextGuides.horizontalCenter || attachmentSnap.guides.horizontalCenter;
+
+      setScoreboard((current) => ({
+        ...current,
+        gameIcon: {
+          ...current.gameIcon,
+          x: Math.round(nextLeft),
+          y: Math.round(nextTop)
+        }
+      }));
+      setDragGuides(nextGuides);
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      setDragGuides(hiddenDragGuides);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+  };
+
+  const handleGameIconResizeStart = (handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => {
+    const metrics = getPreviewMetrics();
+    if (event.button !== 0 || !metrics) return;
+
+    const startWidth = scoreboard.gameIcon.width;
+    const startHeight = scoreboard.gameIcon.height;
+    const startLeft = scoreboard.gameIcon.x;
+    const startTop = scoreboard.gameIcon.y;
+    const resizeFromLeft = handle.includes("left");
+    const resizeFromRight = handle.includes("right");
+    const resizeFromTop = handle.includes("top");
+    const resizeFromBottom = handle.includes("bottom");
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const deltaX = (moveEvent.clientX - event.clientX) / metrics.scaleX;
+      const deltaY = (moveEvent.clientY - event.clientY) / metrics.scaleY;
+      const widthDelta = resizeFromLeft ? -deltaX : resizeFromRight ? deltaX : 0;
+      const heightDelta = resizeFromTop ? -deltaY : resizeFromBottom ? deltaY : 0;
+      const nextWidth = Math.round(clamp(startWidth + widthDelta, 12, metrics.width));
+      const nextHeight = Math.round(clamp(startHeight + heightDelta, 12, metrics.height));
+      const nextLeft = clamp(
+        resizeFromLeft ? startLeft + startWidth - nextWidth : startLeft,
+        0,
+        Math.max(0, metrics.width - nextWidth)
+      );
+      const nextTop = clamp(
+        resizeFromTop ? startTop + startHeight - nextHeight : startTop,
+        0,
+        Math.max(0, metrics.height - nextHeight)
+      );
+
+      setScoreboard((current) => ({
+        ...current,
+        gameIcon: {
+          ...current.gameIcon,
+          x: Math.round(nextLeft),
+          y: Math.round(nextTop),
+          width: nextWidth,
+          height: nextHeight
+        }
+      }));
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+  };
+
   if (isDisplayMode) {
     return (
       <main ref={displayRef} className="fixed inset-0 z-[9999] overflow-hidden" style={getOutputBackgroundStyle(settings)}>
@@ -1395,6 +1608,8 @@ export default function ScoreboardPage() {
             onScoreResizePointerDown={() => undefined}
             onTimerResizePointerDown={() => undefined}
             onTimerPointerDown={() => undefined}
+            onGameIconPointerDown={() => undefined}
+            onGameIconResizePointerDown={() => undefined}
           />
         </div>
       </main>
@@ -1852,6 +2067,61 @@ export default function ScoreboardPage() {
 
           <details className="arena-card p-5" open>
             <summary className="mb-4 flex cursor-pointer list-none items-center gap-2 marker:hidden">
+              <MonitorPlay className="h-5 w-5 text-lime" aria-hidden="true" />
+              <h2 className="text-lg font-black uppercase tracking-wide text-ink">게임 아이콘 브래킷</h2>
+              <span className="ml-auto text-xs font-black uppercase tracking-wide text-muted">접기/열기</span>
+            </summary>
+            <div className="grid gap-3">
+              <CheckButton active={scoreboard.gameIcon.enabled} onClick={() => updateGameIcon("enabled", !scoreboard.gameIcon.enabled)}>
+                표시
+              </CheckButton>
+              <label className="block rounded-md border border-line bg-field px-3 py-3">
+                <span className="mb-2 block text-xs font-black uppercase tracking-wide text-ink">아이콘 이미지</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="block w-full text-xs font-bold text-muted file:mr-3 file:rounded-md file:border-0 file:bg-cyan/15 file:px-3 file:py-2 file:text-xs file:font-black file:uppercase file:tracking-wide file:text-cyan"
+                  onChange={(event) => {
+                    void handleGameIconFileChange(event.target.files?.[0]);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => updateGameIcon("image", "")}
+                  className="rounded-md border border-line bg-field px-3 py-2 text-xs font-black uppercase tracking-wide text-muted transition hover:border-red-400 hover:text-red-300"
+                >
+                  이미지 제거
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setScoreboard((current) => ({
+                      ...current,
+                      gameIcon: {
+                        ...current.gameIcon,
+                        x: defaultScoreboard.gameIcon.x,
+                        y: defaultScoreboard.gameIcon.y,
+                        width: defaultScoreboard.gameIcon.width,
+                        height: defaultScoreboard.gameIcon.height
+                      }
+                    }))
+                  }
+                  className="rounded-md border border-gold/50 bg-gold/10 px-3 py-2 text-xs font-black uppercase tracking-wide text-gold transition hover:bg-gold hover:text-arena"
+                >
+                  위치 리셋
+                </button>
+              </div>
+              <p className="rounded-md border border-line bg-arena/70 px-3 py-3 text-xs font-bold leading-5 text-muted">
+                미리보기에서 사각형을 드래그하고 모서리를 잡아 크기를 조절합니다.
+              </p>
+            </div>
+          </details>
+
+          <details className="arena-card p-5" open>
+            <summary className="mb-4 flex cursor-pointer list-none items-center gap-2 marker:hidden">
               <MonitorPlay className="h-5 w-5 text-cyan" aria-hidden="true" />
               <h2 className="text-lg font-black uppercase tracking-wide text-ink">화면 해상도</h2>
               <span className="ml-auto text-xs font-black uppercase tracking-wide text-muted">접기/열기</span>
@@ -1991,6 +2261,8 @@ export default function ScoreboardPage() {
                   onScoreResizePointerDown={handleScoreResizeStart}
                   onTimerResizePointerDown={handleTimerResizeStart}
                   onTimerPointerDown={handleTimerDragStart}
+                  onGameIconPointerDown={handleGameIconDragStart}
+                  onGameIconResizePointerDown={handleGameIconResizeStart}
                 />
               </div>
             </div>
@@ -2009,7 +2281,9 @@ function CustomScoreboardOverlay({
   onBracketResizePointerDown,
   onScoreResizePointerDown,
   onTimerResizePointerDown,
-  onTimerPointerDown
+  onTimerPointerDown,
+  onGameIconPointerDown,
+  onGameIconResizePointerDown
 }: {
   scoreboard: ScoreboardState;
   displayTimer: string;
@@ -2019,9 +2293,19 @@ function CustomScoreboardOverlay({
   onScoreResizePointerDown: (teamId: string, handle: ScoreResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
   onTimerResizePointerDown: (handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
   onTimerPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  onGameIconPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  onGameIconResizePointerDown: (handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
   return (
     <div className="absolute inset-0 z-10 pointer-events-none" style={{ opacity: settings.opacity / 100 }}>
+      {scoreboard.gameIcon.enabled ? (
+        <GameIconBoxView
+          gameIcon={scoreboard.gameIcon}
+          settings={settings}
+          onPointerDown={onGameIconPointerDown}
+          onResizePointerDown={onGameIconResizePointerDown}
+        />
+      ) : null}
       {settings.showTimer ? (
         <TimerBlock
           timer={displayTimer}
@@ -2043,6 +2327,49 @@ function CustomScoreboardOverlay({
           onScoreResizePointerDown={onScoreResizePointerDown}
         />
       ))}
+    </div>
+  );
+}
+
+function GameIconBoxView({
+  gameIcon,
+  settings,
+  onPointerDown,
+  onResizePointerDown
+}: {
+  gameIcon: GameIconBox;
+  settings: OverlaySettings;
+  onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  onResizePointerDown: (handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
+}) {
+  const themeClass = settings.overlayTheme === "light"
+    ? "border-slate-300 bg-white text-slate-950 shadow-[0_8px_20px_rgba(15,23,42,0.16)]"
+    : "border-white/15 bg-[#07111f] text-white shadow-[0_8px_20px_rgba(0,0,0,0.45)]";
+
+  return (
+    <div
+      className={`group pointer-events-auto absolute z-20 grid cursor-move touch-none select-none place-items-center overflow-hidden border ${themeClass}`}
+      onPointerDown={onPointerDown}
+      style={{
+        left: gameIcon.x,
+        top: gameIcon.y,
+        width: gameIcon.width,
+        height: gameIcon.height
+      }}
+      title="게임 아이콘 브래킷 드래그"
+    >
+      {gameIcon.image ? (
+        <span
+          className="h-full w-full bg-contain bg-center bg-no-repeat"
+          style={{ backgroundImage: `url("${gameIcon.image}")` }}
+          aria-hidden="true"
+        />
+      ) : (
+        <span className={`text-[10px] font-black uppercase tracking-wide text-muted ${getFontFamilyClass(settings.fontFamily)}`}>
+          GAME
+        </span>
+      )}
+      <ResizeHandles onResizePointerDown={onResizePointerDown} />
     </div>
   );
 }
