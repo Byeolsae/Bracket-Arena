@@ -296,6 +296,40 @@ function saveScoreboardState(scoreboard: ScoreboardState, settings: OverlaySetti
   );
 }
 
+function getDisplayScoreboardStorageKey(boardId: string) {
+  return `${scoreboardStorageKey}:display:${boardId}`;
+}
+
+function loadSavedDisplayScoreboardState(boardId: string) {
+  if (typeof window === "undefined" || !boardId) return null;
+
+  try {
+    const raw = window.localStorage.getItem(getDisplayScoreboardStorageKey(boardId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<ScoreboardBoardData> & { updatedAt?: string };
+    return {
+      scoreboard: normalizeScoreboardState(parsed.scoreboard),
+      settings: normalizeOverlaySettings(parsed.settings),
+      updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : ""
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveDisplayScoreboardState(boardId: string, scoreboard: ScoreboardState, settings: OverlaySettings, updatedAt: string) {
+  if (typeof window === "undefined" || !boardId) return;
+
+  window.localStorage.setItem(
+    getDisplayScoreboardStorageKey(boardId),
+    JSON.stringify({
+      scoreboard,
+      settings,
+      updatedAt
+    })
+  );
+}
+
 async function resolveScoreboardLogosForOutput(scoreboard: ScoreboardState) {
   const teams = await Promise.all(
     scoreboard.teams.map(async (team) => {
@@ -413,6 +447,7 @@ export default function ScoreboardPage() {
   const cloudSaveInFlightRef = useRef(false);
   const liveBroadcasterRef = useRef<ReturnType<typeof createScoreboardBoardBroadcaster<ScoreboardBoardData>> | null>(null);
   const displayLastUpdatedAtRef = useRef("");
+  const displayStateUpdatedAtRef = useRef("");
   const screenSize = getScreenSize(settings);
   const previewScale = previewSize.width > 0 ? previewSize.width / screenSize.width : 1;
   const displayScale = displaySize.width > 0
@@ -426,6 +461,17 @@ export default function ScoreboardPage() {
   );
 
   useEffect(() => {
+    if (isDisplayMode) {
+      const savedDisplayState = loadSavedDisplayScoreboardState(displayBoardId);
+      if (savedDisplayState) {
+        setScoreboard(savedDisplayState.scoreboard);
+        setSettings(savedDisplayState.settings);
+        displayLastUpdatedAtRef.current = savedDisplayState.updatedAt;
+        displayStateUpdatedAtRef.current = savedDisplayState.updatedAt;
+      }
+      return;
+    }
+
     if (!isDisplayMode) {
       const savedScoreboardState = loadSavedScoreboardState();
       if (savedScoreboardState) {
@@ -444,12 +490,17 @@ export default function ScoreboardPage() {
     if (typeof window !== "undefined") {
       setCloudBoardId((current) => current || window.localStorage.getItem("bracket-arena-scoreboard-board-id") || "");
     }
-  }, [isDisplayMode]);
+  }, [displayBoardId, isDisplayMode]);
 
   useEffect(() => {
     if (isDisplayMode || !localStateReady) return;
     saveScoreboardState(scoreboard, settings, cloudBoardId);
   }, [cloudBoardId, isDisplayMode, localStateReady, scoreboard, settings]);
+
+  useEffect(() => {
+    if (!isDisplayMode) return;
+    saveDisplayScoreboardState(displayBoardId, scoreboard, settings, displayStateUpdatedAtRef.current);
+  }, [displayBoardId, isDisplayMode, scoreboard, settings]);
 
   useEffect(() => {
     if (!isDisplayMode) return;
@@ -464,8 +515,12 @@ export default function ScoreboardPage() {
     const applyBoardData = (data: ScoreboardBoardData, updatedAt = "") => {
       if (updatedAt && displayLastUpdatedAtRef.current === updatedAt) return;
       if (updatedAt) displayLastUpdatedAtRef.current = updatedAt;
-      setScoreboard(normalizeScoreboardState(data.scoreboard));
-      setSettings((current) => ({ ...current, ...normalizeOverlaySettings(data.settings) }));
+      const nextScoreboard = normalizeScoreboardState(data.scoreboard);
+      const nextSettings = normalizeOverlaySettings(data.settings);
+      setScoreboard(nextScoreboard);
+      setSettings((current) => ({ ...current, ...nextSettings }));
+      saveDisplayScoreboardState(displayBoardId, nextScoreboard, nextSettings, updatedAt);
+      displayStateUpdatedAtRef.current = updatedAt;
     };
     const loadBoard = async () => {
       try {
