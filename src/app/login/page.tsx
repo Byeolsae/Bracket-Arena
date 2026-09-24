@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Cloud, Download, FolderOpen, LogIn, LogOut, Trophy, Upload, Users } from "lucide-react";
+import { Cloud, Download, Eye, EyeOff, FolderOpen, LogIn, LogOut, Trophy, Upload, Users } from "lucide-react";
 import {
   downloadSavedTournamentLibrary,
   downloadTeamLibrary,
@@ -29,6 +29,7 @@ export default function LoginPage() {
   const [session, setSession] = useState<CloudSession | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState("로그인하면 팀과 저장된 대회를 클라우드에 보관할 수 있습니다.");
   const [busy, setBusy] = useState(false);
 
@@ -229,14 +230,25 @@ export default function LoginPage() {
               </label>
               <label className="block">
                 <span className="mb-2 block text-xs font-black uppercase tracking-wide text-ink">비밀번호</span>
-                <input
-                  className="input"
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  minLength={6}
-                  required
-                />
+                <div className="relative">
+                  <input
+                    className="input pr-12"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    minLength={6}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded border border-transparent text-muted transition hover:border-cyan hover:text-cyan"
+                    onClick={() => setShowPassword((current) => !current)}
+                    aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+                    aria-pressed={showPassword}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </label>
               <div className="flex flex-wrap gap-2">
                 <button type="submit" className="button-primary" disabled={busy}>
