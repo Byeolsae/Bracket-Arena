@@ -449,14 +449,25 @@ export default function ScoreboardPage() {
       return;
     }
 
-    setCloudStatus("OBS 보드를 만드는 중...");
+    if (cloudBoardId) {
+      setCloudStatus("고정 출력 코드에 현재 설정을 저장하는 중...");
+      try {
+        await updateScoreboardBoard<ScoreboardBoardData>(cloudSession, cloudBoardId, { scoreboard, settings });
+        setCloudStatus("고정 출력 코드가 준비됐습니다. OBS 링크는 그대로 두고 편집만 계속하면 됩니다.");
+      } catch (error) {
+        setCloudStatus(error instanceof Error ? error.message : "고정 출력 코드를 갱신하지 못했습니다.");
+      }
+      return;
+    }
+
+    setCloudStatus("고정 출력 코드를 만드는 중...");
     try {
       const board = await createScoreboardBoard<ScoreboardBoardData>(cloudSession, "Scoreboard", { scoreboard, settings });
       setCloudBoardId(board.id);
       window.localStorage.setItem("bracket-arena-scoreboard-board-id", board.id);
-      setCloudStatus("OBS 보드를 만들었습니다. 출력 링크를 OBS 브라우저 소스에 넣으세요.");
+      setCloudStatus("고정 출력 코드를 만들었습니다. 이 링크를 OBS 브라우저 소스에 한 번만 넣으면 됩니다.");
     } catch (error) {
-      setCloudStatus(error instanceof Error ? error.message : "OBS 보드를 만들지 못했습니다.");
+      setCloudStatus(error instanceof Error ? error.message : "고정 출력 코드를 만들지 못했습니다.");
     }
   };
 
@@ -1187,7 +1198,7 @@ export default function ScoreboardPage() {
           </div>
           <button type="button" className="button-primary" onClick={createCloudBoard} disabled={!configured}>
             <RadioTower className="h-4 w-4" />
-            OBS 보드 만들기
+            {cloudBoardId ? "고정 출력 갱신" : "고정 출력 코드 만들기"}
           </button>
           <button type="button" className="button-muted" onClick={copyDisplayUrl} disabled={!cloudBoardId}>
             <Copy className="h-4 w-4" />
@@ -1216,9 +1227,14 @@ export default function ScoreboardPage() {
                 </p>
               ) : null}
               {displayUrl ? (
-                <div className="rounded-md border border-line bg-arena px-3 py-2 font-mono text-xs text-cyan break-all">
-                  {displayUrl}
-                </div>
+                <>
+                  <div className="rounded-md border border-lime/40 bg-lime/10 px-3 py-2 text-xs font-black uppercase tracking-wide text-lime">
+                    고정 출력 코드: {cloudBoardId}
+                  </div>
+                  <div className="rounded-md border border-line bg-arena px-3 py-2 font-mono text-xs text-cyan break-all">
+                    {displayUrl}
+                  </div>
+                </>
               ) : null}
               <div className="rounded-md border border-cyan/35 bg-cyan/10 px-3 py-2 text-xs font-black uppercase tracking-wide text-cyan">
                 OBS 브라우저 소스 크기: {screenSize.width} x {screenSize.height}
