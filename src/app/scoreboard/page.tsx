@@ -2552,7 +2552,9 @@ function SetScoreMarkers({
   const markerCount = Math.max(1, Math.floor(maxSetScore));
   const filledCount = clamp(Math.floor(setScore), 0, markerCount);
   const size = Math.max(0, markerSize);
-  const offset = size + 5;
+  const markerWidth = Math.max(8, Math.round(size * 2.4));
+  const markerHeight = Math.max(3, Math.round(size * 0.55));
+  const offset = markerHeight + 6;
   const alignClass =
     align === "center"
       ? "left-1/2 -translate-x-1/2 justify-center"
@@ -2567,7 +2569,7 @@ function SetScoreMarkers({
         alignClass
       ].join(" ")}
       style={{
-        height: size,
+        height: markerHeight,
         top: edge === "top" ? -offset : undefined,
         bottom: edge === "bottom" ? -offset : undefined
       }}
@@ -2577,10 +2579,10 @@ function SetScoreMarkers({
         <span
           key={index}
           className={[
-            "h-1.5 w-1.5 rounded-full border border-white/70 shadow-[0_0_5px_rgba(255,255,255,0.35)]",
+            "rounded-[2px] border border-white/70 shadow-[0_0_5px_rgba(255,255,255,0.35)]",
             index < filledCount ? "bg-gold" : "bg-slate-950/80"
           ].join(" ")}
-          style={{ width: size, height: size }}
+          style={{ width: markerWidth, height: markerHeight }}
         />
       ))}
     </div>
