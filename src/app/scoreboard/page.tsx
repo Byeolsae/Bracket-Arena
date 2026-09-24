@@ -2270,6 +2270,7 @@ function SplitTeamBracket({
     settings.scoreFontSize
   );
   const setScoreMarkerSize = Math.max(2, Math.round(visibleScoreFontSize * 0.22));
+  const scoreColumnLeft = teamFirst ? size.teamWidth : 0;
   const gridTemplateColumns = teamFirst
     ? `${size.teamWidth}px ${size.scoreWidth}px`
     : `${size.scoreWidth}px ${size.teamWidth}px`;
@@ -2315,6 +2316,8 @@ function SplitTeamBracket({
           setScore={team.setScore}
           maxSetScore={settings.maxSetScore}
           markerSize={setScoreMarkerSize}
+          scoreColumnLeft={scoreColumnLeft}
+          scoreColumnWidth={size.scoreWidth}
           edge={team.setScoreEdge}
           align={team.setScoreAlign}
         />
@@ -2552,12 +2555,16 @@ function SetScoreMarkers({
   setScore,
   maxSetScore,
   markerSize,
+  scoreColumnLeft,
+  scoreColumnWidth,
   edge,
   align
 }: {
   setScore: number;
   maxSetScore: number;
   markerSize: number;
+  scoreColumnLeft: number;
+  scoreColumnWidth: number;
   edge: SetScoreEdge;
   align: SetScoreAlign;
 }) {
@@ -2585,16 +2592,17 @@ function SetScoreMarkers({
     <div
       className={[
         "pointer-events-none absolute z-20 flex gap-1",
-        isSideEdge ? "flex-col items-center" : "items-center",
-        alignClass
+        isSideEdge ? `flex-col items-center ${alignClass}` : "items-center"
       ].join(" ")}
       style={{
-        width: isSideEdge ? circleSize : undefined,
+        width: isSideEdge ? circleSize : scoreColumnWidth,
         height: isSideEdge ? undefined : markerHeight,
         top: edge === "top" ? -offset : undefined,
         right: edge === "right" ? -offset : undefined,
         bottom: edge === "bottom" ? -offset : undefined,
-        left: edge === "left" ? -offset : undefined
+        left: isSideEdge
+          ? edge === "left" ? -offset : undefined
+          : scoreColumnLeft
       }}
       aria-label={`세트점수 ${filledCount}`}
     >
@@ -2608,7 +2616,8 @@ function SetScoreMarkers({
           ].join(" ")}
           style={{
             width: isSideEdge ? circleSize : markerWidth,
-            height: isSideEdge ? circleSize : markerHeight
+            height: isSideEdge ? circleSize : markerHeight,
+            flex: isSideEdge ? undefined : 1
           }}
         />
       ))}
