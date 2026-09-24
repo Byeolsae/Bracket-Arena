@@ -23,7 +23,7 @@ type ScreenResolution = "fhd" | "qhd" | "uhd" | "custom";
 type AccentSide = "left" | "right";
 type AccentColorMode = "team" | "default" | "custom";
 type ScoreSide = "left" | "right";
-type SetScoreEdge = "top" | "bottom";
+type SetScoreEdge = "top" | "bottom" | "left" | "right";
 type SetScoreAlign = "left" | "center" | "right";
 type XAnchor = "left" | "right";
 type LabelAlign = "left" | "center" | "right";
@@ -1631,8 +1631,8 @@ export default function ScoreboardPage() {
                       </div>
                     </div>
                     <div className="mt-3 rounded-md border border-line/80 bg-arena/60 p-3">
-                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-ink">세트점수 상하</p>
-                      <div className="grid grid-cols-2 gap-2">
+                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-ink">세트점수 위치</p>
+                      <div className="grid grid-cols-4 gap-2">
                         <ToggleButton
                           active={team.setScoreEdge === "top"}
                           onClick={() => updateTeam(team.id, "setScoreEdge", "top")}
@@ -1644,6 +1644,18 @@ export default function ScoreboardPage() {
                           onClick={() => updateTeam(team.id, "setScoreEdge", "bottom")}
                         >
                           아래
+                        </ToggleButton>
+                        <ToggleButton
+                          active={team.setScoreEdge === "left"}
+                          onClick={() => updateTeam(team.id, "setScoreEdge", "left")}
+                        >
+                          좌
+                        </ToggleButton>
+                        <ToggleButton
+                          active={team.setScoreEdge === "right"}
+                          onClick={() => updateTeam(team.id, "setScoreEdge", "right")}
+                        >
+                          우
                         </ToggleButton>
                       </div>
                     </div>
@@ -2552,11 +2564,18 @@ function SetScoreMarkers({
   const markerCount = Math.max(1, Math.floor(maxSetScore));
   const filledCount = clamp(Math.floor(setScore), 0, markerCount);
   const size = Math.max(0, markerSize);
+  const isSideEdge = edge === "left" || edge === "right";
   const markerWidth = Math.max(8, Math.round(size * 2.4));
   const markerHeight = Math.max(3, Math.round(size * 0.55));
-  const offset = markerHeight + 6;
-  const alignClass =
-    align === "center"
+  const circleSize = Math.max(4, size);
+  const offset = (isSideEdge ? circleSize : markerHeight) + 6;
+  const alignClass = isSideEdge
+    ? align === "center"
+      ? "top-1/2 -translate-y-1/2 justify-center"
+      : align === "right"
+        ? "bottom-1 justify-end"
+        : "top-1 justify-start"
+    : align === "center"
       ? "left-1/2 -translate-x-1/2 justify-center"
       : align === "right"
         ? "right-1 justify-end"
@@ -2565,13 +2584,17 @@ function SetScoreMarkers({
   return (
     <div
       className={[
-        "pointer-events-none absolute z-20 flex items-center gap-1",
+        "pointer-events-none absolute z-20 flex gap-1",
+        isSideEdge ? "flex-col items-center" : "items-center",
         alignClass
       ].join(" ")}
       style={{
-        height: markerHeight,
+        width: isSideEdge ? circleSize : undefined,
+        height: isSideEdge ? undefined : markerHeight,
         top: edge === "top" ? -offset : undefined,
-        bottom: edge === "bottom" ? -offset : undefined
+        right: edge === "right" ? -offset : undefined,
+        bottom: edge === "bottom" ? -offset : undefined,
+        left: edge === "left" ? -offset : undefined
       }}
       aria-label={`세트점수 ${filledCount}`}
     >
@@ -2579,10 +2602,14 @@ function SetScoreMarkers({
         <span
           key={index}
           className={[
-            "rounded-[2px] border border-white/70 shadow-[0_0_5px_rgba(255,255,255,0.35)]",
+            isSideEdge ? "rounded-full" : "rounded-[2px]",
+            "border border-white/70 shadow-[0_0_5px_rgba(255,255,255,0.35)]",
             index < filledCount ? "bg-gold" : "bg-slate-950/80"
           ].join(" ")}
-          style={{ width: markerWidth, height: markerHeight }}
+          style={{
+            width: isSideEdge ? circleSize : markerWidth,
+            height: isSideEdge ? circleSize : markerHeight
+          }}
         />
       ))}
     </div>
