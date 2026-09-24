@@ -310,7 +310,7 @@ export async function downloadScoreboardBoard<Data>(boardId: string, session?: C
 
 export function subscribeScoreboardBoard<Data>(
   boardId: string,
-  onBoardData: (data: Data) => void,
+  onBoardData: (data: Data, updatedAt?: string) => void,
   onStatus?: (status: string) => void
 ) {
   const url = getSupabaseRealtimeUrl();
@@ -323,7 +323,7 @@ export function subscribeScoreboardBoard<Data>(
 
   let ref = 1;
   let closed = false;
-  const topic = `realtime:public:${scoreboardTableName}:${boardId}`;
+  const topic = `realtime:public:${scoreboardTableName}`;
   const socket = new WebSocket(`${url}?apikey=${encodeURIComponent(anonKey)}&vsn=1.0.0`);
 
   const send = (event: string, payload: unknown, messageTopic = topic) => {
@@ -364,7 +364,7 @@ export function subscribeScoreboardBoard<Data>(
 
       const record = message.payload?.data?.record ?? message.payload?.record;
       if (!record?.data) return;
-      onBoardData(record.data);
+      onBoardData(record.data, record.updated_at);
       onStatus?.("OBS 실시간 반영됨");
     } catch {
       onStatus?.("OBS 실시간 메시지를 처리하지 못했습니다.");
@@ -429,6 +429,8 @@ async function supabaseFetch(path: string, session?: CloudSession | null, init?:
     ...init,
     headers: {
       apikey: anonKey,
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
       ...(session ? { Authorization: `Bearer ${session.accessToken}` } : null),
       ...(init?.headers ?? {})
     }

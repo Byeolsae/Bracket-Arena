@@ -307,6 +307,7 @@ export default function ScoreboardPage() {
   const pendingCloudSaveRef = useRef<ScoreboardBoardData | null>(null);
   const cloudSaveTimerRef = useRef<number | null>(null);
   const cloudSaveInFlightRef = useRef(false);
+  const displayLastUpdatedAtRef = useRef("");
   const screenSize = getScreenSize(settings);
   const previewScale = previewSize.width > 0 ? previewSize.width / screenSize.width : 1;
   const displayScale = displaySize.width > 0
@@ -337,7 +338,9 @@ export default function ScoreboardPage() {
     if (!isDisplayMode) return;
 
     let cancelled = false;
-    const applyBoardData = (data: ScoreboardBoardData) => {
+    const applyBoardData = (data: ScoreboardBoardData, updatedAt = "") => {
+      if (updatedAt && displayLastUpdatedAtRef.current === updatedAt) return;
+      if (updatedAt) displayLastUpdatedAtRef.current = updatedAt;
       setScoreboard(data.scoreboard ?? defaultScoreboard);
       setSettings((current) => ({ ...current, ...(data.settings ?? defaultSettings) }));
     };
@@ -345,7 +348,7 @@ export default function ScoreboardPage() {
       try {
         const board = await downloadScoreboardBoard<ScoreboardBoardData>(displayBoardId);
         if (cancelled || !board?.data) return;
-        applyBoardData(board.data);
+        applyBoardData(board.data, board.updatedAt);
       } catch {
         if (!cancelled) setCloudStatus("스코어보드 보드를 불러오지 못했습니다.");
       }
@@ -354,15 +357,15 @@ export default function ScoreboardPage() {
     void loadBoard();
     const unsubscribe = subscribeScoreboardBoard<ScoreboardBoardData>(
       displayBoardId,
-      (data) => {
+      (data, updatedAt) => {
         if (cancelled) return;
-        applyBoardData(data);
+        applyBoardData(data, updatedAt);
       },
       (status) => {
         if (!cancelled) setCloudStatus(status);
       }
     );
-    const intervalId = window.setInterval(loadBoard, 2500);
+    const intervalId = window.setInterval(loadBoard, 500);
     return () => {
       cancelled = true;
       unsubscribe();
@@ -423,13 +426,13 @@ export default function ScoreboardPage() {
         .finally(() => {
           cloudSaveInFlightRef.current = false;
           if (pendingCloudSaveRef.current && !cloudSaveTimerRef.current) {
-            cloudSaveTimerRef.current = window.setTimeout(flushCloudSave, 180);
+            cloudSaveTimerRef.current = window.setTimeout(flushCloudSave, 120);
           }
         });
     };
 
     if (!cloudSaveTimerRef.current && !cloudSaveInFlightRef.current) {
-      cloudSaveTimerRef.current = window.setTimeout(flushCloudSave, 180);
+      cloudSaveTimerRef.current = window.setTimeout(flushCloudSave, 120);
     }
   }, [cloudBoardId, cloudSession, isDisplayMode, scoreboard, settings]);
 
