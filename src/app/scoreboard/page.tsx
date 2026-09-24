@@ -325,6 +325,12 @@ export default function ScoreboardPage() {
 
   useEffect(() => {
     if (!isDisplayMode) return;
+    document.body.classList.add("scoreboard-display-mode");
+    return () => document.body.classList.remove("scoreboard-display-mode");
+  }, [isDisplayMode]);
+
+  useEffect(() => {
+    if (!isDisplayMode) return;
 
     let cancelled = false;
     const loadBoard = async () => {
@@ -1094,7 +1100,7 @@ export default function ScoreboardPage() {
 
   if (isDisplayMode) {
     return (
-      <main ref={displayRef} className="fixed inset-0 overflow-hidden" style={getOutputBackgroundStyle(settings)}>
+      <main ref={displayRef} className="fixed inset-0 z-[9999] overflow-hidden" style={getOutputBackgroundStyle(settings)}>
         <div
           className="absolute left-0 top-0"
           style={{
@@ -1171,6 +1177,12 @@ export default function ScoreboardPage() {
                   {displayUrl}
                 </div>
               ) : null}
+              <div className="rounded-md border border-cyan/35 bg-cyan/10 px-3 py-2 text-xs font-black uppercase tracking-wide text-cyan">
+                OBS 브라우저 소스 크기: {screenSize.width} x {screenSize.height}
+              </div>
+              <p className="text-xs leading-5 text-muted">
+                OBS 브라우저 소스의 너비와 높이를 위 해상도와 똑같이 설정하세요.
+              </p>
             </div>
           </div>
 
