@@ -29,6 +29,7 @@ type LogoSide = "left" | "right";
 type FontFamily = "sans" | "condensed" | "mono" | "serif";
 type TimerMode = "manual" | "countUp";
 type OverlayTheme = "dark" | "light";
+type OutputBackgroundMode = "transparent" | "green" | "black";
 type ResizeHandle =
   | "left"
   | "right"
@@ -124,6 +125,8 @@ type OverlaySettings = {
   maxSetScore: number;
   fontFamily: FontFamily;
   overlayTheme: OverlayTheme;
+  outputBackgroundMode: OutputBackgroundMode;
+  greenScreenColor: string;
   nameMode: NameMode;
   timerMode: TimerMode;
   timerShowHours: boolean;
@@ -170,6 +173,8 @@ const defaultSettings: OverlaySettings = {
   maxSetScore: 3,
   fontFamily: "sans",
   overlayTheme: "dark",
+  outputBackgroundMode: "transparent",
+  greenScreenColor: "#00ff00",
   nameMode: "short",
   timerMode: "manual",
   timerShowHours: true,
@@ -210,6 +215,20 @@ function getScreenSize(settings: OverlaySettings) {
   }
 
   return resolutionOptions[settings.resolution];
+}
+
+function getOutputBackgroundStyle(settings: OverlaySettings) {
+  if (settings.outputBackgroundMode === "green") {
+    return {
+      backgroundColor: isValidHexColor(settings.greenScreenColor) ? settings.greenScreenColor : "#00ff00"
+    };
+  }
+
+  if (settings.outputBackgroundMode === "black") {
+    return { backgroundColor: "#000000" };
+  }
+
+  return { backgroundColor: "transparent" };
 }
 
 function normalizeShortName(team: Team) {
@@ -1075,7 +1094,7 @@ export default function ScoreboardPage() {
 
   if (isDisplayMode) {
     return (
-      <main ref={displayRef} className="fixed inset-0 overflow-hidden bg-transparent">
+      <main ref={displayRef} className="fixed inset-0 overflow-hidden" style={getOutputBackgroundStyle(settings)}>
         <div
           className="absolute left-0 top-0"
           style={{
@@ -1394,6 +1413,38 @@ export default function ScoreboardPage() {
               </div>
             </div>
 
+            <div className="mt-4">
+              <p className="mb-2 text-xs font-black uppercase tracking-wide text-ink">OBS 출력 배경</p>
+              <div className="grid grid-cols-3 gap-2">
+                <ToggleButton
+                  active={settings.outputBackgroundMode === "transparent"}
+                  onClick={() => updateSetting("outputBackgroundMode", "transparent")}
+                >
+                  투명
+                </ToggleButton>
+                <ToggleButton
+                  active={settings.outputBackgroundMode === "green"}
+                  onClick={() => updateSetting("outputBackgroundMode", "green")}
+                >
+                  그린
+                </ToggleButton>
+                <ToggleButton
+                  active={settings.outputBackgroundMode === "black"}
+                  onClick={() => updateSetting("outputBackgroundMode", "black")}
+                >
+                  검정
+                </ToggleButton>
+              </div>
+              {settings.outputBackgroundMode === "green" ? (
+                <ColorField
+                  label="그린스크린 색상"
+                  value={settings.greenScreenColor}
+                  onChange={(value) => updateSetting("greenScreenColor", value)}
+                  fallback="#00ff00"
+                />
+              ) : null}
+            </div>
+
             <div className="mt-4 grid grid-cols-2 gap-2">
               <CheckButton active={settings.showLogo} onClick={() => updateSetting("showLogo", !settings.showLogo)}>
                 로고
@@ -1589,13 +1640,19 @@ export default function ScoreboardPage() {
           <div className="grid min-h-[520px] place-items-center bg-[radial-gradient(circle_at_50%_28%,rgba(47,230,255,0.1),transparent_34%),hsl(var(--arena))] p-4 sm:min-h-[620px] sm:p-6 xl:min-h-[calc(100vh-170px)]">
             <div
               ref={previewRef}
-              className="relative w-full max-w-6xl overflow-hidden rounded-md border border-line bg-[#111318] shadow-panel"
+              className="relative w-full max-w-6xl overflow-hidden rounded-md border border-line shadow-panel"
               style={{
-                aspectRatio: `${screenSize.width} / ${screenSize.height}`
+                aspectRatio: `${screenSize.width} / ${screenSize.height}`,
+                ...getOutputBackgroundStyle(settings)
               }}
             >
-              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:52px_52px]" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_48%_24%,rgba(255,255,255,0.08),transparent_18%)]" />
+              {settings.outputBackgroundMode === "transparent" ? (
+                <>
+                  <div className="absolute inset-0 bg-[#111318]" />
+                  <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:52px_52px]" />
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_48%_24%,rgba(255,255,255,0.08),transparent_18%)]" />
+                </>
+              ) : null}
               <div
                 className="absolute left-0 top-0"
                 style={{
@@ -2203,11 +2260,13 @@ function NumberField({
 function ColorField({
   label,
   value,
-  onChange
+  onChange,
+  fallback = "#3b82f6"
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  fallback?: string;
 }) {
   return (
     <label className="mt-3 block">
@@ -2215,7 +2274,7 @@ function ColorField({
       <div className="flex items-center gap-2">
         <input
           type="color"
-          value={isValidHexColor(value) ? value : "#3b82f6"}
+          value={isValidHexColor(value) ? value : fallback}
           onChange={(event) => onChange(event.target.value)}
           className="h-10 w-12 shrink-0 cursor-pointer rounded-md border border-line bg-field p-1"
         />
