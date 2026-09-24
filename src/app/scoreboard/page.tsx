@@ -29,7 +29,7 @@ type XAnchor = "left" | "right";
 type LabelAlign = "left" | "center" | "right";
 type LogoSide = "left" | "right";
 type FontFamily = "sans" | "condensed" | "mono" | "serif";
-type TimerMode = "manual" | "countUp" | "countDown";
+type TimerMode = "currentTime" | "countUp" | "countDown";
 type OverlayTheme = "dark" | "light";
 type OutputBackgroundMode = "transparent" | "green" | "black";
 type ResizeHandle =
@@ -134,6 +134,7 @@ type OverlaySettings = {
   greenScreenColor: string;
   nameMode: NameMode;
   timerMode: TimerMode;
+  timerTimeZone: string;
   timerShowHours: boolean;
   timerShowMinutes: boolean;
   timerShowSeconds: boolean;
@@ -187,7 +188,8 @@ const defaultSettings: OverlaySettings = {
   outputBackgroundMode: "transparent",
   greenScreenColor: "#00ff00",
   nameMode: "short",
-  timerMode: "manual",
+  timerMode: "currentTime",
+  timerTimeZone: "Asia/Seoul",
   timerShowHours: true,
   timerShowMinutes: true,
   timerShowSeconds: true,
@@ -206,6 +208,17 @@ const resolutionOptions: Record<ScreenResolution, { label: string; width: number
   uhd: { label: "UHD", width: 3840, height: 2160 },
   custom: { label: "직접", width: 1920, height: 1080 }
 };
+
+const timeZoneOptions = [
+  { label: "한국 서울", value: "Asia/Seoul" },
+  { label: "일본 도쿄", value: "Asia/Tokyo" },
+  { label: "중국 상하이", value: "Asia/Shanghai" },
+  { label: "미국 LA", value: "America/Los_Angeles" },
+  { label: "미국 뉴욕", value: "America/New_York" },
+  { label: "영국 런던", value: "Europe/London" },
+  { label: "독일 베를린", value: "Europe/Berlin" },
+  { label: "UTC", value: "UTC" }
+];
 
 const snapDistance = 24;
 const hiddenDragGuides: DragGuides = {
@@ -238,9 +251,18 @@ function normalizeScoreboardState(scoreboard?: Partial<ScoreboardState>): Scoreb
 }
 
 function normalizeOverlaySettings(settings?: Partial<OverlaySettings>): OverlaySettings {
+  const timerMode = (settings as { timerMode?: string } | undefined)?.timerMode;
+  const normalizedTimerMode: TimerMode =
+    timerMode === "manual"
+      ? "currentTime"
+      : timerMode === "currentTime" || timerMode === "countUp" || timerMode === "countDown"
+        ? timerMode
+        : defaultSettings.timerMode;
   return {
     ...defaultSettings,
-    ...settings
+    ...settings,
+    timerMode: normalizedTimerMode,
+    timerTimeZone: settings?.timerTimeZone ?? defaultSettings.timerTimeZone
   };
 }
 
@@ -383,6 +405,7 @@ export default function ScoreboardPage() {
   const [cloudBoardId, setCloudBoardId] = useState("");
   const [cloudStatus, setCloudStatus] = useState("OBS 출력용 보드를 만들면 변경사항이 자동 저장됩니다.");
   const [localStateReady, setLocalStateReady] = useState(false);
+  const [nowTimestamp, setNowTimestamp] = useState(() => Date.now());
   const previewRef = useRef<HTMLDivElement>(null);
   const displayRef = useRef<HTMLDivElement>(null);
   const pendingCloudSaveRef = useRef<ScoreboardBoardData | null>(null);
@@ -637,17 +660,20 @@ export default function ScoreboardPage() {
     return () => window.clearInterval(intervalId);
   }, [scoreboard.timerRunning, settings.timerMode]);
 
+  useEffect(() => {
+    if (settings.timerMode !== "currentTime") return;
+
+    const intervalId = window.setInterval(() => setNowTimestamp(Date.now()), 1000);
+    return () => window.clearInterval(intervalId);
+  }, [settings.timerMode]);
+
   const displayTimer =
     settings.timerMode === "countUp" || settings.timerMode === "countDown"
       ? formatTimer(scoreboard.elapsedSeconds, settings)
-      : formatManualTimer(scoreboard.timer, settings);
+      : formatCurrentTime(nowTimestamp, settings);
 
   const updateSetting = <Key extends keyof OverlaySettings>(key: Key, value: OverlaySettings[Key]) => {
     setSettings((current) => ({ ...current, [key]: value }));
-  };
-
-  const updateTimer = (timer: string) => {
-    setScoreboard((current) => ({ ...current, timer, timerFinished: false }));
   };
 
   const updateElapsedPart = (part: "hours" | "minutes" | "seconds", value: number) => {
@@ -1704,8 +1730,8 @@ export default function ScoreboardPage() {
             </div>
             <div className="grid gap-3">
               <div className="grid grid-cols-3 gap-2">
-                <ToggleButton active={settings.timerMode === "manual"} onClick={() => updateSetting("timerMode", "manual")}>
-                  직접입력
+                <ToggleButton active={settings.timerMode === "currentTime"} onClick={() => updateSetting("timerMode", "currentTime")}>
+                  현재 시간
                 </ToggleButton>
                 <ToggleButton active={settings.timerMode === "countUp"} onClick={() => updateSetting("timerMode", "countUp")}>
                   0부터 진행
@@ -1714,8 +1740,21 @@ export default function ScoreboardPage() {
                   카운트다운
                 </ToggleButton>
               </div>
-              {settings.timerMode === "manual" ? (
-                <TextField label="타이머 표시" value={scoreboard.timer} onChange={updateTimer} />
+              {settings.timerMode === "currentTime" ? (
+                <label className="block">
+                  <span className="mb-2 block text-xs font-black uppercase tracking-wide text-ink">지역</span>
+                  <select
+                    className="input"
+                    value={settings.timerTimeZone}
+                    onChange={(event) => updateSetting("timerTimeZone", event.target.value)}
+                  >
+                    {timeZoneOptions.map((timeZone) => (
+                      <option key={timeZone.value} value={timeZone.value}>
+                        {timeZone.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               ) : (
                 <>
                   <div className="grid grid-cols-3 gap-2">
@@ -2251,27 +2290,27 @@ function formatTimer(totalSeconds: number, settings: OverlaySettings) {
   return parts.join(":");
 }
 
-function formatManualTimer(timer: string, settings: OverlaySettings) {
-  const parsedSeconds = parseTimerToSeconds(timer);
+function formatCurrentTime(timestamp: number, settings: OverlaySettings) {
+  const options: Intl.DateTimeFormatOptions = {
+    hour12: false,
+    timeZone: settings.timerTimeZone
+  };
 
-  if (parsedSeconds === null) return timer;
+  if (settings.timerShowHours) options.hour = "2-digit";
+  if (settings.timerShowMinutes) options.minute = "2-digit";
+  if (settings.timerShowSeconds) options.second = "2-digit";
 
-  return formatTimer(parsedSeconds, settings);
-}
+  if (!settings.timerShowHours && !settings.timerShowMinutes && !settings.timerShowSeconds) {
+    options.hour = "2-digit";
+    options.minute = "2-digit";
+    options.second = "2-digit";
+  }
 
-function parseTimerToSeconds(timer: string) {
-  const parts = timer.trim().split(":");
-
-  if (parts.length < 1 || parts.length > 3) return null;
-  if (!parts.every((part) => /^\d+$/.test(part))) return null;
-
-  const numbers = parts.map((part) => Number(part));
-
-  if (numbers.some((value) => !Number.isFinite(value))) return null;
-  if (numbers.length === 1) return numbers[0];
-  if (numbers.length === 2) return numbers[0] * 60 + numbers[1];
-
-  return numbers[0] * 3600 + numbers[1] * 60 + numbers[2];
+  try {
+    return new Intl.DateTimeFormat("ko-KR", options).format(new Date(timestamp));
+  } catch {
+    return new Intl.DateTimeFormat("ko-KR", { ...options, timeZone: defaultSettings.timerTimeZone }).format(new Date(timestamp));
+  }
 }
 
 function AlignmentGuides({ guides }: { guides: DragGuides }) {
