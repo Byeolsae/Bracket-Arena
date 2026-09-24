@@ -24,7 +24,6 @@ type AccentSide = "left" | "right";
 type AccentColorMode = "team" | "default" | "custom";
 type ScoreSide = "left" | "right";
 type SetScoreEdge = "top" | "bottom" | "left" | "right";
-type SetScoreAlign = "left" | "center" | "right";
 type XAnchor = "left" | "right";
 type LabelAlign = "left" | "center" | "right";
 type LogoSide = "left" | "right";
@@ -76,7 +75,6 @@ type ScoreboardTeam = {
   customAccentColor: string;
   scoreSide: ScoreSide;
   setScoreEdge: SetScoreEdge;
-  setScoreAlign: SetScoreAlign;
   labelAlign: LabelAlign;
   logoSide: LogoSide;
   xAnchor: XAnchor;
@@ -158,8 +156,8 @@ const defaultScoreboard: ScoreboardState = {
   timerRunning: false,
   timerFinished: false,
   teams: [
-    { id: "team-1", name: "Team 1", shortName: "TM1", score: 0, setScore: 0, accentSide: "left", accentColorMode: "default", customAccentColor: "#3b82f6", scoreSide: "right", setScoreEdge: "bottom", setScoreAlign: "right", labelAlign: "center", logoSide: "left", xAnchor: "left", x: 0, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
-    { id: "team-2", name: "Team 2", shortName: "TM2", score: 0, setScore: 0, accentSide: "right", accentColorMode: "default", customAccentColor: "#ef4444", scoreSide: "left", setScoreEdge: "bottom", setScoreAlign: "left", labelAlign: "center", logoSide: "right", xAnchor: "right", x: 0, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
+    { id: "team-1", name: "Team 1", shortName: "TM1", score: 0, setScore: 0, accentSide: "left", accentColorMode: "default", customAccentColor: "#3b82f6", scoreSide: "right", setScoreEdge: "bottom", labelAlign: "center", logoSide: "left", xAnchor: "left", x: 0, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 },
+    { id: "team-2", name: "Team 2", shortName: "TM2", score: 0, setScore: 0, accentSide: "right", accentColorMode: "default", customAccentColor: "#ef4444", scoreSide: "left", setScoreEdge: "bottom", labelAlign: "center", logoSide: "right", xAnchor: "right", x: 0, y: 4, teamWidth: 205, scoreWidth: 54, rowHeight: 48 }
   ]
 };
 
@@ -817,7 +815,6 @@ export default function ScoreboardPage() {
             customAccentColor: nextNumber % 2 === 1 ? "#3b82f6" : "#ef4444",
             scoreSide: nextNumber % 2 === 1 ? "right" : "left",
             setScoreEdge: "top",
-            setScoreAlign: "center",
             labelAlign: "center",
             logoSide: nextNumber % 2 === 1 ? "left" : "right",
             xAnchor: "left",
@@ -1659,29 +1656,6 @@ export default function ScoreboardPage() {
                         </ToggleButton>
                       </div>
                     </div>
-                    <div className="mt-3 rounded-md border border-line/80 bg-arena/60 p-3">
-                      <p className="mb-2 text-xs font-black uppercase tracking-wide text-ink">세트점수 정렬</p>
-                      <div className="grid grid-cols-3 gap-2">
-                        <ToggleButton
-                          active={team.setScoreAlign === "left"}
-                          onClick={() => updateTeam(team.id, "setScoreAlign", "left")}
-                        >
-                          좌
-                        </ToggleButton>
-                        <ToggleButton
-                          active={team.setScoreAlign === "center"}
-                          onClick={() => updateTeam(team.id, "setScoreAlign", "center")}
-                        >
-                          중
-                        </ToggleButton>
-                        <ToggleButton
-                          active={team.setScoreAlign === "right"}
-                          onClick={() => updateTeam(team.id, "setScoreAlign", "right")}
-                        >
-                          우
-                        </ToggleButton>
-                      </div>
-                    </div>
                   </div>
                 ))}
                 <button
@@ -2318,8 +2292,8 @@ function SplitTeamBracket({
           markerSize={setScoreMarkerSize}
           scoreColumnLeft={scoreColumnLeft}
           scoreColumnWidth={size.scoreWidth}
+          rowHeight={size.rowHeight}
           edge={team.setScoreEdge}
-          align={team.setScoreAlign}
         />
       ) : null}
     </div>
@@ -2557,16 +2531,16 @@ function SetScoreMarkers({
   markerSize,
   scoreColumnLeft,
   scoreColumnWidth,
+  rowHeight,
   edge,
-  align
 }: {
   setScore: number;
   maxSetScore: number;
   markerSize: number;
   scoreColumnLeft: number;
   scoreColumnWidth: number;
+  rowHeight: number;
   edge: SetScoreEdge;
-  align: SetScoreAlign;
 }) {
   const markerCount = Math.max(1, Math.floor(maxSetScore));
   const filledCount = clamp(Math.floor(setScore), 0, markerCount);
@@ -2574,29 +2548,20 @@ function SetScoreMarkers({
   const isSideEdge = edge === "left" || edge === "right";
   const markerWidth = Math.max(8, Math.round(size * 2.4));
   const markerHeight = Math.max(3, Math.round(size * 0.55));
-  const circleSize = Math.max(4, size);
+  const sideGap = 4;
+  const availableCircleHeight = Math.max(4, rowHeight - sideGap * Math.max(0, markerCount - 1));
+  const circleSize = Math.max(4, Math.floor(availableCircleHeight / markerCount));
   const offset = (isSideEdge ? circleSize : markerHeight) + 6;
-  const alignClass = isSideEdge
-    ? align === "center"
-      ? "top-1/2 -translate-y-1/2 justify-center"
-      : align === "right"
-        ? "bottom-1 justify-end"
-        : "top-1 justify-start"
-    : align === "center"
-      ? "left-1/2 -translate-x-1/2 justify-center"
-      : align === "right"
-        ? "right-1 justify-end"
-        : "left-1 justify-start";
 
   return (
     <div
       className={[
         "pointer-events-none absolute z-20 flex gap-1",
-        isSideEdge ? `flex-col items-center ${alignClass}` : "items-center"
+        isSideEdge ? "flex-col items-center justify-center" : "items-center"
       ].join(" ")}
       style={{
         width: isSideEdge ? circleSize : scoreColumnWidth,
-        height: isSideEdge ? undefined : markerHeight,
+        height: isSideEdge ? rowHeight : markerHeight,
         top: edge === "top" ? -offset : undefined,
         right: edge === "right" ? -offset : undefined,
         bottom: edge === "bottom" ? -offset : undefined,
