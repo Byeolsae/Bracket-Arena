@@ -163,6 +163,7 @@ const defaultScoreboard: ScoreboardState = {
 };
 
 const scoreboardStorageKey = "bracket-arena-scoreboard-state";
+const scoreboardLogoFields = ["logoDefault", "logoLight", "logoDark"] as const;
 
 const defaultSettings: OverlaySettings = {
   customWidth: 1920,
@@ -271,6 +272,30 @@ function saveScoreboardState(scoreboard: ScoreboardState, settings: OverlaySetti
       cloudBoardId
     })
   );
+}
+
+async function resolveScoreboardLogosForOutput(scoreboard: ScoreboardState) {
+  const teams = await Promise.all(
+    scoreboard.teams.map(async (team) => {
+      const nextTeam = { ...team };
+
+      await Promise.all(
+        scoreboardLogoFields.map(async (field) => {
+          const logo = nextTeam[field];
+          if (!logo) return;
+          const resolvedLogo = await resolveStoredLogo(logo);
+          if (resolvedLogo) nextTeam[field] = resolvedLogo;
+        })
+      );
+
+      return nextTeam;
+    })
+  );
+
+  return {
+    ...scoreboard,
+    teams
+  };
 }
 
 function getOutputBackgroundStyle(settings: OverlaySettings) {
@@ -482,10 +507,6 @@ export default function ScoreboardPage() {
   useEffect(() => {
     if (isDisplayMode || !cloudSession || !cloudBoardId) return;
 
-    const payload = { scoreboard, settings };
-    liveBroadcasterRef.current?.send(payload);
-    pendingCloudSaveRef.current = payload;
-
     const flushCloudSave = () => {
       cloudSaveTimerRef.current = null;
       if (cloudSaveInFlightRef.current) return;
@@ -511,6 +532,22 @@ export default function ScoreboardPage() {
     if (!cloudSaveTimerRef.current && !cloudSaveInFlightRef.current) {
       cloudSaveTimerRef.current = window.setTimeout(flushCloudSave, 120);
     }
+
+    let cancelled = false;
+    void resolveScoreboardLogosForOutput(scoreboard).then((resolvedScoreboard) => {
+      if (cancelled) return;
+      const payload = { scoreboard: resolvedScoreboard, settings };
+      liveBroadcasterRef.current?.send(payload);
+      pendingCloudSaveRef.current = payload;
+
+      if (!cloudSaveTimerRef.current && !cloudSaveInFlightRef.current) {
+        cloudSaveTimerRef.current = window.setTimeout(flushCloudSave, 120);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [cloudBoardId, cloudSession, isDisplayMode, scoreboard, settings]);
 
   useEffect(() => {
@@ -543,7 +580,8 @@ export default function ScoreboardPage() {
     if (cloudBoardId) {
       setCloudStatus("고정 출력 코드에 현재 설정을 저장하는 중...");
       try {
-        await updateScoreboardBoard<ScoreboardBoardData>(cloudSession, cloudBoardId, { scoreboard, settings });
+        const resolvedScoreboard = await resolveScoreboardLogosForOutput(scoreboard);
+        await updateScoreboardBoard<ScoreboardBoardData>(cloudSession, cloudBoardId, { scoreboard: resolvedScoreboard, settings });
         setCloudStatus("고정 출력 코드가 준비됐습니다. OBS 링크는 그대로 두고 편집만 계속하면 됩니다.");
       } catch (error) {
         setCloudStatus(error instanceof Error ? error.message : "고정 출력 코드를 갱신하지 못했습니다.");
@@ -553,7 +591,8 @@ export default function ScoreboardPage() {
 
     setCloudStatus("고정 출력 코드를 만드는 중...");
     try {
-      const board = await createScoreboardBoard<ScoreboardBoardData>(cloudSession, "Scoreboard", { scoreboard, settings });
+      const resolvedScoreboard = await resolveScoreboardLogosForOutput(scoreboard);
+      const board = await createScoreboardBoard<ScoreboardBoardData>(cloudSession, "Scoreboard", { scoreboard: resolvedScoreboard, settings });
       setCloudBoardId(board.id);
       window.localStorage.setItem("bracket-arena-scoreboard-board-id", board.id);
       setCloudStatus("고정 출력 코드를 만들었습니다. 이 링크를 OBS 브라우저 소스에 한 번만 넣으면 됩니다.");
