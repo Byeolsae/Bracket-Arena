@@ -316,6 +316,33 @@ export async function downloadScoreboardBoard<Data>(boardId: string, session?: C
   } satisfies CloudScoreboardBoard<Data>;
 }
 
+export async function downloadLatestScoreboardBoard<Data>(session: CloudSession) {
+  const response = await supabaseFetch(
+    `/rest/v1/${scoreboardTableName}?owner_id=eq.${encodeURIComponent(session.userId)}&select=id,owner_id,name,data,updated_at&order=updated_at.desc&limit=1`,
+    session
+  );
+
+  if (!response.ok) throw new Error(await getResponseError(response, "저장된 스코어보드를 불러오지 못했습니다."));
+
+  const rows = (await response.json()) as Array<{
+    id: string;
+    owner_id?: string;
+    name?: string;
+    data?: Data;
+    updated_at?: string;
+  }>;
+  const row = rows[0];
+  if (!row?.id) return null;
+
+  return {
+    id: row.id,
+    ownerId: row.owner_id,
+    name: row.name ?? "Scoreboard",
+    data: row.data as Data,
+    updatedAt: row.updated_at ?? ""
+  } satisfies CloudScoreboardBoard<Data>;
+}
+
 export function subscribeScoreboardBoard<Data>(
   boardId: string,
   onBoardData: (data: Data, updatedAt?: string) => void,

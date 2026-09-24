@@ -8,6 +8,7 @@ import {
   createScoreboardBoard,
   createScoreboardBoardBroadcaster,
   downloadScoreboardBoard,
+  downloadLatestScoreboardBoard,
   getSavedCloudSession,
   isCloudSyncConfigured,
   subscribeScoreboardBoard,
@@ -472,12 +473,14 @@ export default function ScoreboardPage() {
   const [cloudBoardId, setCloudBoardId] = useState("");
   const [cloudStatus, setCloudStatus] = useState("OBS 출력용 보드를 만들면 변경사항이 자동 저장됩니다.");
   const [localStateReady, setLocalStateReady] = useState(false);
+  const [cloudStateReady, setCloudStateReady] = useState(false);
   const [nowTimestamp, setNowTimestamp] = useState(() => Date.now());
   const previewRef = useRef<HTMLDivElement>(null);
   const displayRef = useRef<HTMLDivElement>(null);
   const pendingCloudSaveRef = useRef<ScoreboardBoardData | null>(null);
   const cloudSaveTimerRef = useRef<number | null>(null);
   const cloudSaveInFlightRef = useRef(false);
+  const cloudBootstrapUserRef = useRef("");
   const liveBroadcasterRef = useRef<ReturnType<typeof createScoreboardBoardBroadcaster<ScoreboardBoardData>> | null>(null);
   const displayLastUpdatedAtRef = useRef("");
   const displayStateUpdatedAtRef = useRef("");
@@ -520,10 +523,78 @@ export default function ScoreboardPage() {
 
     const saved = getSavedCloudSession();
     setCloudSession(saved);
+    if (!saved) setCloudStateReady(true);
     if (typeof window !== "undefined") {
       setCloudBoardId((current) => current || window.localStorage.getItem("bracket-arena-scoreboard-board-id") || "");
     }
   }, [displayBoardId, isDisplayMode]);
+
+  useEffect(() => {
+    if (isDisplayMode || !localStateReady) return;
+
+    if (!cloudSession) {
+      setCloudStateReady(true);
+      return;
+    }
+
+    if (cloudBootstrapUserRef.current === cloudSession.userId) return;
+
+    let cancelled = false;
+    cloudBootstrapUserRef.current = cloudSession.userId;
+    setCloudStateReady(false);
+    setCloudStatus("계정에 저장된 스코어보드를 불러오는 중...");
+
+    const loadAccountScoreboard = async () => {
+      try {
+        const savedBoardId = typeof window !== "undefined"
+          ? window.localStorage.getItem("bracket-arena-scoreboard-board-id") || ""
+          : "";
+        const savedBoard = savedBoardId
+          ? await downloadScoreboardBoard<ScoreboardBoardData>(savedBoardId, cloudSession).catch(() => null)
+          : null;
+        const board = savedBoard?.ownerId === cloudSession.userId
+          ? savedBoard
+          : await downloadLatestScoreboardBoard<ScoreboardBoardData>(cloudSession);
+
+        if (cancelled) return;
+
+        if (board?.data) {
+          const nextScoreboard = normalizeScoreboardState(board.data.scoreboard);
+          const nextSettings = normalizeOverlaySettings(board.data.settings);
+          setScoreboard(nextScoreboard);
+          setSettings(nextSettings);
+          setCloudBoardId(board.id);
+          window.localStorage.setItem("bracket-arena-scoreboard-board-id", board.id);
+          saveScoreboardState(nextScoreboard, nextSettings, board.id);
+          setCloudStatus("계정에 저장된 스코어보드를 불러왔습니다.");
+          return;
+        }
+
+        const resolvedScoreboard = await resolveScoreboardLogosForOutput(scoreboard);
+        if (cancelled) return;
+        const createdBoard = await createScoreboardBoard<ScoreboardBoardData>(
+          cloudSession,
+          "Scoreboard",
+          { scoreboard: resolvedScoreboard, settings }
+        );
+        setCloudBoardId(createdBoard.id);
+        window.localStorage.setItem("bracket-arena-scoreboard-board-id", createdBoard.id);
+        saveScoreboardState(scoreboard, settings, createdBoard.id);
+        setCloudStatus("계정용 스코어보드를 새로 만들었습니다. 이제 다른 기기에서도 불러옵니다.");
+      } catch (error) {
+        if (!cancelled) {
+          setCloudStatus(error instanceof Error ? error.message : "계정 스코어보드를 불러오지 못했습니다.");
+        }
+      } finally {
+        if (!cancelled) setCloudStateReady(true);
+      }
+    };
+
+    void loadAccountScoreboard();
+    return () => {
+      cancelled = true;
+    };
+  }, [cloudSession, isDisplayMode, localStateReady, scoreboard, settings]);
 
   useEffect(() => {
     if (isDisplayMode || !localStateReady) return;
@@ -616,7 +687,7 @@ export default function ScoreboardPage() {
   }, [isDisplayMode]);
 
   useEffect(() => {
-    if (isDisplayMode || !cloudSession || !cloudBoardId) return;
+    if (isDisplayMode || !cloudSession || !cloudBoardId || !cloudStateReady) return;
 
     const flushCloudSave = () => {
       cloudSaveTimerRef.current = null;
@@ -659,7 +730,7 @@ export default function ScoreboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [cloudBoardId, cloudSession, isDisplayMode, scoreboard, settings]);
+  }, [cloudBoardId, cloudSession, cloudStateReady, isDisplayMode, scoreboard, settings]);
 
   useEffect(() => {
     return () => {
