@@ -124,6 +124,8 @@ type OverlaySettings = {
   logoSize: number;
   fontSize: number;
   scoreFontSize: number;
+  setScoreMarkerSize: number;
+  accentThickness: number;
   maxSetScore: number;
   fontFamily: FontFamily;
   overlayTheme: OverlayTheme;
@@ -172,6 +174,8 @@ const defaultSettings: OverlaySettings = {
   logoSize: 30,
   fontSize: 30,
   scoreFontSize: 40,
+  setScoreMarkerSize: 6,
+  accentThickness: 4,
   maxSetScore: 3,
   fontFamily: "sans",
   overlayTheme: "dark",
@@ -914,8 +918,8 @@ export default function ScoreboardPage() {
       const deltaY = (moveEvent.clientY - event.clientY) / metrics.scaleY;
       const widthDelta = resizeFromLeft ? -deltaX : resizeFromRight ? deltaX : 0;
       const heightDelta = resizeFromTop ? -deltaY : resizeFromBottom ? deltaY : 0;
-      const nextTeamWidth = Math.round(clamp(startTeamWidth + widthDelta, 80, 620));
-      const nextRowHeight = Math.round(clamp(startRowHeight + heightDelta, 24, 160));
+      const nextTeamWidth = Math.round(clamp(startTeamWidth + widthDelta, 1, 10000));
+      const nextRowHeight = Math.round(clamp(startRowHeight + heightDelta, 1, 10000));
       const nextWidth = nextTeamWidth + startScoreWidth;
       const xShift = resizeFromLeft ? startTeamWidth - nextTeamWidth : 0;
       const yShift = resizeFromTop ? startRowHeight - nextRowHeight : 0;
@@ -994,7 +998,7 @@ export default function ScoreboardPage() {
     const handlePointerMove = (moveEvent: PointerEvent) => {
       const deltaX = (moveEvent.clientX - event.clientX) / metrics.scaleX;
       const widthDelta = resizeFromLeft ? -deltaX : deltaX;
-      const nextScoreWidth = Math.round(clamp(startScoreWidth + widthDelta, 28, 220));
+      const nextScoreWidth = Math.round(clamp(startScoreWidth + widthDelta, 1, 10000));
       const nextWidth = targetTeam.teamWidth + nextScoreWidth;
       const xShift = resizeFromLeft ? startScoreWidth - nextScoreWidth : 0;
       const nextLeft = clamp(startLeft + xShift, 0, Math.max(0, metrics.width - nextWidth));
@@ -1700,8 +1704,26 @@ export default function ScoreboardPage() {
             </div>
             <div className="grid gap-3">
               <RangeField label="로고 크기" value={settings.logoSize} min={0} max={80} onChange={(value) => updateSetting("logoSize", value)} suffix="px" />
-              <RangeField label="팀명 글자" value={settings.fontSize} min={14} max={64} onChange={(value) => updateSetting("fontSize", value)} suffix="px" />
-              <RangeField label="점수 숫자" value={settings.scoreFontSize} min={16} max={96} onChange={(value) => updateSetting("scoreFontSize", value)} suffix="px" />
+              <NumberField
+                label="팀명 글자(px)"
+                value={settings.fontSize}
+                onChange={(value) => updateSetting("fontSize", Math.max(1, Math.floor(value)))}
+              />
+              <NumberField
+                label="점수 숫자(px)"
+                value={settings.scoreFontSize}
+                onChange={(value) => updateSetting("scoreFontSize", Math.max(1, Math.floor(value)))}
+              />
+              <NumberField
+                label="세트점수 크기(px)"
+                value={settings.setScoreMarkerSize ?? defaultSettings.setScoreMarkerSize}
+                onChange={(value) => updateSetting("setScoreMarkerSize", Math.max(0, Math.floor(value)))}
+              />
+              <NumberField
+                label="브래킷 색 두께(px)"
+                value={settings.accentThickness ?? defaultSettings.accentThickness}
+                onChange={(value) => updateSetting("accentThickness", Math.max(0, Math.floor(value)))}
+              />
               <NumberField
                 label="최대 세트"
                 value={settings.maxSetScore}
@@ -2031,6 +2053,7 @@ function SplitTeamBracket({
         <SetScoreMarkers
           setScore={team.setScore}
           maxSetScore={settings.maxSetScore}
+          markerSize={settings.setScoreMarkerSize ?? defaultSettings.setScoreMarkerSize}
           edge={team.setScoreEdge}
           align={team.setScoreAlign}
         />
@@ -2193,18 +2216,22 @@ function TeamCell({
         : "justify-start";
   const logoFirst = team.logoSide === "left";
   const logoSize = Math.min(settings.logoSize, Math.max(0, size.rowHeight - 8));
+  const accentThickness = settings.accentThickness ?? defaultSettings.accentThickness;
   const teamCell = (
     <div
       key="team"
       className={[
         "flex min-w-0 items-center gap-2 px-3",
         teamThemeClass,
-        justifyClass,
-        accentRight ? "border-r-4" : "border-l-4"
+        justifyClass
       ].join(" ")}
       style={{
         height: size.rowHeight,
+        borderLeftStyle: accentRight || accentThickness <= 0 ? undefined : "solid",
+        borderLeftWidth: accentRight ? undefined : accentThickness,
         borderLeftColor: accentRight ? undefined : accentColor,
+        borderRightStyle: !accentRight || accentThickness <= 0 ? undefined : "solid",
+        borderRightWidth: accentRight ? accentThickness : undefined,
         borderRightColor: accentRight ? accentColor : undefined,
         color: textColor
       }}
@@ -2265,16 +2292,20 @@ function ScoreCell({
 function SetScoreMarkers({
   setScore,
   maxSetScore,
+  markerSize,
   edge,
   align
 }: {
   setScore: number;
   maxSetScore: number;
+  markerSize: number;
   edge: SetScoreEdge;
   align: SetScoreAlign;
 }) {
-  const markerCount = clamp(Math.floor(maxSetScore), 1, 20);
+  const markerCount = Math.max(1, Math.floor(maxSetScore));
   const filledCount = clamp(Math.floor(setScore), 0, markerCount);
+  const size = Math.max(0, markerSize);
+  const offset = size + 5;
   const alignClass =
     align === "center"
       ? "left-1/2 -translate-x-1/2 justify-center"
@@ -2285,10 +2316,14 @@ function SetScoreMarkers({
   return (
     <div
       className={[
-        "pointer-events-none absolute z-20 flex h-2 items-center gap-1",
-        edge === "top" ? "-top-3" : "-bottom-3",
+        "pointer-events-none absolute z-20 flex items-center gap-1",
         alignClass
       ].join(" ")}
+      style={{
+        height: size,
+        top: edge === "top" ? -offset : undefined,
+        bottom: edge === "bottom" ? -offset : undefined
+      }}
       aria-label={`세트점수 ${filledCount}`}
     >
       {Array.from({ length: markerCount }).map((_, index) => (
@@ -2298,6 +2333,7 @@ function SetScoreMarkers({
             "h-1.5 w-1.5 rounded-full border border-white/70 shadow-[0_0_5px_rgba(255,255,255,0.35)]",
             index < filledCount ? "bg-gold" : "bg-slate-950/80"
           ].join(" ")}
+          style={{ width: size, height: size }}
         />
       ))}
     </div>
