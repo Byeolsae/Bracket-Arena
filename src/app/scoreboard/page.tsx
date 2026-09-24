@@ -2252,13 +2252,17 @@ function SplitTeamBracket({
   const scoreSide = team.scoreSide ?? (team.accentSide === "right" ? "left" : "right");
   const teamFirst = scoreSide === "right";
   const size = getBracketSize(team, settings);
+  const accentRight = team.accentSide === "right";
+  const fallbackAccentColor = side === "left" ? "#3b82f6" : "#ef4444";
+  const accentColor = getScoreboardAccentColor(team, fallbackAccentColor);
+  const accentThickness = settings.accentThickness ?? defaultSettings.accentThickness;
   const gridTemplateColumns = teamFirst
     ? `${size.teamWidth}px ${size.scoreWidth}px`
     : `${size.scoreWidth}px ${size.teamWidth}px`;
 
   return (
     <div
-      className="group pointer-events-auto absolute z-10 grid cursor-move touch-none select-none"
+      className="group pointer-events-auto absolute z-10 grid cursor-move touch-none select-none overflow-visible"
       onPointerDown={(event) => onPointerDown(team.id, event)}
       style={{
         left: team.xAnchor === "left" ? `${team.x}%` : "auto",
@@ -2268,9 +2272,19 @@ function SplitTeamBracket({
       }}
       title="팀 브래킷 드래그"
     >
+      {accentThickness > 0 ? (
+        <span
+          className="pointer-events-none absolute bottom-0 top-0 z-30"
+          style={{
+            [accentRight ? "right" : "left"]: 0,
+            width: accentThickness,
+            backgroundColor: accentColor
+          }}
+          aria-hidden="true"
+        />
+      ) : null}
       <TeamCell
         team={team}
-        side={side}
         settings={settings}
       />
       <ResizeHandles
@@ -2406,11 +2420,9 @@ function AlignmentGuides({ guides }: { guides: DragGuides }) {
 
 function TeamCell({
   team,
-  side,
   settings
 }: {
   team: ScoreboardTeam;
-  side: "left" | "right";
   settings: OverlaySettings;
 }) {
   const accentRight = team.accentSide === "right";
@@ -2418,8 +2430,6 @@ function TeamCell({
   const scoreFirst = scoreSide === "left";
   const label = settings.nameMode === "short" ? team.shortName : team.name;
   const size = getBracketSize(team, settings);
-  const fallbackAccentColor = side === "left" ? "#3b82f6" : "#ef4444";
-  const accentColor = getScoreboardAccentColor(team, fallbackAccentColor);
   const textColor = getTeamThemeTextColor(team, settings.overlayTheme === "light" ? "#ffffff" : "#07111f");
   const scoreCell = (
     <ScoreCell
@@ -2450,6 +2460,7 @@ function TeamCell({
   const logoFirst = team.logoSide === "left";
   const logoSize = Math.min(settings.logoSize, Math.max(0, size.rowHeight - 8));
   const accentThickness = settings.accentThickness ?? defaultSettings.accentThickness;
+  const accentPadding = accentThickness > 0 ? Math.min(accentThickness, 24) + 8 : 12;
   const teamCell = (
     <div
       key="team"
@@ -2460,22 +2471,11 @@ function TeamCell({
       ].join(" ")}
       style={{
         height: size.rowHeight,
-        paddingLeft: accentRight ? undefined : Math.max(12, accentThickness + 8),
-        paddingRight: accentRight ? Math.max(12, accentThickness + 8) : undefined,
+        paddingLeft: accentRight ? undefined : accentPadding,
+        paddingRight: accentRight ? accentPadding : undefined,
         color: textColor
       }}
     >
-      {accentThickness > 0 ? (
-        <span
-          className="pointer-events-none absolute bottom-0 top-0 z-0"
-          style={{
-            [accentRight ? "right" : "left"]: 0,
-            width: accentThickness,
-            backgroundColor: accentColor
-          }}
-          aria-hidden="true"
-        />
-      ) : null}
       {logoFirst && settings.showLogo && logoSize > 0 ? (
         <LogoBox label={team.shortName} size={logoSize} team={team} theme={settings.overlayTheme} />
       ) : null}
