@@ -1,5 +1,6 @@
 import type { Team, TeamFolder, TeamSetPreset } from "@/lib/core/models";
 import type { SavedTournament } from "@/store/savedTournamentStore";
+import { resolveStoredLogo } from "@/lib/browser/logoStorage";
 
 export type CloudTeamLibrary = {
   teams: Team[];
@@ -37,6 +38,14 @@ type LibraryRow = {
 const sessionStorageKey = "bracket-arena-cloud-session";
 const tableName = "team_libraries";
 const tournamentTableName = "saved_tournament_libraries";
+const teamLogoFields = [
+  "logoDefault",
+  "logoLight",
+  "logoDark",
+  "logoVictory",
+  "logoVictoryLight",
+  "logoVictoryDark"
+] as const;
 
 export function isCloudSyncConfigured() {
   return Boolean(getSupabaseUrl() && getSupabaseAnonKey());
@@ -83,7 +92,7 @@ export async function signInCloudAccount(email: string, password: string) {
 export async function uploadTeamLibrary(session: CloudSession, library: Omit<CloudTeamLibrary, "updatedAt">) {
   const updatedAt = new Date().toISOString();
   const data: CloudTeamLibrary = {
-    teams: library.teams,
+    teams: await resolveTeamLogosForCloud(library.teams),
     folders: library.folders,
     presets: library.presets,
     updatedAt
@@ -105,6 +114,25 @@ export async function uploadTeamLibrary(session: CloudSession, library: Omit<Clo
   if (!response.ok) throw new Error(await getResponseError(response, "팀 라이브러리를 업로드하지 못했습니다."));
 
   return data;
+}
+
+async function resolveTeamLogosForCloud(teams: Team[]) {
+  return Promise.all(
+    teams.map(async (team) => {
+      const nextTeam = { ...team };
+
+      await Promise.all(
+        teamLogoFields.map(async (field) => {
+          const logo = nextTeam[field];
+          if (!logo) return;
+          const resolvedLogo = await resolveStoredLogo(logo);
+          if (resolvedLogo) nextTeam[field] = resolvedLogo;
+        })
+      );
+
+      return nextTeam;
+    })
+  );
 }
 
 export async function downloadTeamLibrary(session: CloudSession): Promise<CloudTeamLibrary | null> {
