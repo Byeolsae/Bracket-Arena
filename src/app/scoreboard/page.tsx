@@ -1828,6 +1828,7 @@ function TeamCell({
         ? "justify-end"
         : "justify-start";
   const logoFirst = team.logoSide === "left";
+  const logoSize = Math.min(settings.logoSize, Math.max(0, size.rowHeight - 8));
   const teamCell = (
     <div
       key="team"
@@ -1844,8 +1845,8 @@ function TeamCell({
         color: textColor
       }}
     >
-      {logoFirst && settings.showLogo && settings.logoSize > 0 ? (
-        <LogoBox label={team.shortName} size={settings.logoSize} team={team} theme={settings.overlayTheme} />
+      {logoFirst && settings.showLogo && logoSize > 0 ? (
+        <LogoBox label={team.shortName} size={logoSize} team={team} theme={settings.overlayTheme} />
       ) : null}
       <span
         className={["min-w-0 flex-1 truncate font-black uppercase leading-none", labelAlignClass, getFontFamilyClass(settings.fontFamily)].join(" ")}
@@ -1853,8 +1854,8 @@ function TeamCell({
       >
         {label}
       </span>
-      {!logoFirst && settings.showLogo && settings.logoSize > 0 ? (
-        <LogoBox label={team.shortName} size={settings.logoSize} team={team} theme={settings.overlayTheme} />
+      {!logoFirst && settings.showLogo && logoSize > 0 ? (
+        <LogoBox label={team.shortName} size={logoSize} team={team} theme={settings.overlayTheme} />
       ) : null}
     </div>
   );
@@ -2129,12 +2130,12 @@ function LogoBox({
 
   return (
     <span
-      className="grid shrink-0 place-items-center overflow-hidden rounded-sm border border-white/20 bg-white/10 font-black uppercase text-white"
+      className="grid shrink-0 place-items-center overflow-hidden font-black uppercase text-white"
       style={{ width: size, height: size, fontSize: Math.max(8, size * 0.34) }}
     >
       {resolvedLogo ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={resolvedLogo} alt={`${team.name} 로고`} className="h-full w-full object-contain p-0.5" />
+        <img src={resolvedLogo} alt={`${team.name} 로고`} className="max-h-full max-w-full object-contain" />
       ) : (
         label.slice(0, 2)
       )}
