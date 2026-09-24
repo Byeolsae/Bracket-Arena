@@ -59,6 +59,10 @@ type RealtimeMessage<Data> = {
     data?: {
       record?: ScoreboardRealtimeRow<Data>;
     };
+    payload?: {
+      data?: Data;
+      updatedAt?: string;
+    };
     record?: ScoreboardRealtimeRow<Data>;
   };
   ref?: string | null;
@@ -267,7 +271,7 @@ export async function updateScoreboardBoard<Data>(session: CloudSession, boardId
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
-      Prefer: "return=minimal"
+      Prefer: "return=representation"
     },
     body: JSON.stringify({
       name: name.trim() || "Scoreboard",
@@ -278,7 +282,11 @@ export async function updateScoreboardBoard<Data>(session: CloudSession, boardId
 
   if (!response.ok) throw new Error(await getResponseError(response, "스코어보드 보드를 저장하지 못했습니다."));
 
-  return updatedAt;
+  const rows = (await response.json()) as Array<{ id?: string; updated_at?: string }>;
+  const row = rows[0];
+  if (!row?.id) throw new Error("스코어보드 저장 대상이 없습니다. 고정 출력 코드를 다시 만들어주세요.");
+
+  return row.updated_at ?? updatedAt;
 }
 
 export async function downloadScoreboardBoard<Data>(boardId: string, session?: CloudSession | null) {
@@ -324,6 +332,7 @@ export function subscribeScoreboardBoard<Data>(
   let ref = 1;
   let closed = false;
   const topic = `realtime:public:${scoreboardTableName}`;
+  const broadcastTopic = `realtime:scoreboard:${boardId}`;
   const socket = new WebSocket(`${url}?apikey=${encodeURIComponent(anonKey)}&vsn=1.0.0`);
 
   const send = (event: string, payload: unknown, messageTopic = topic) => {
@@ -337,6 +346,13 @@ export function subscribeScoreboardBoard<Data>(
 
   socket.addEventListener("open", () => {
     onStatus?.("OBS 실시간 연결 중...");
+    send("phx_join", {
+      config: {
+        broadcast: { self: false, ack: false },
+        presence: { key: "" }
+      },
+      access_token: anonKey
+    }, broadcastTopic);
     send("phx_join", {
       config: {
         postgres_changes: [
@@ -357,6 +373,14 @@ export function subscribeScoreboardBoard<Data>(
       const message = JSON.parse(String(event.data)) as RealtimeMessage<Data>;
       if (message.event === "phx_reply" && message.payload?.status === "ok") {
         onStatus?.("OBS 실시간 연결됨");
+        return;
+      }
+
+      if (message.event === "broadcast") {
+        const broadcastData = message.payload?.payload?.data;
+        if (!broadcastData) return;
+        onBoardData(broadcastData, message.payload?.payload?.updatedAt);
+        onStatus?.("OBS 실시간 반영됨");
         return;
       }
 
@@ -386,16 +410,95 @@ export function subscribeScoreboardBoard<Data>(
   };
 }
 
+export function createScoreboardBoardBroadcaster<Data>(boardId: string, onStatus?: (status: string) => void) {
+  const url = getSupabaseRealtimeUrl();
+  const anonKey = getSupabaseAnonKey();
+
+  if (!url || !anonKey || typeof WebSocket === "undefined") {
+    onStatus?.("실시간 송신을 사용할 수 없습니다. 서버 저장으로 동기화합니다.");
+    return {
+      send: () => undefined,
+      close: () => undefined
+    };
+  }
+
+  let ref = 1;
+  let joined = false;
+  let closed = false;
+  let queuedPayload: { data: Data; updatedAt: string } | null = null;
+  const topic = `realtime:scoreboard:${boardId}`;
+  const socket = new WebSocket(`${url}?apikey=${encodeURIComponent(anonKey)}&vsn=1.0.0`);
+
+  const sendRaw = (event: string, payload: unknown, messageTopic = topic) => {
+    if (socket.readyState !== WebSocket.OPEN) return;
+    socket.send(JSON.stringify({ topic: messageTopic, event, payload, ref: `${ref++}` }));
+  };
+
+  const sendQueuedPayload = () => {
+    if (!joined || !queuedPayload) return;
+    const payload = queuedPayload;
+    queuedPayload = null;
+    sendRaw("broadcast", {
+      type: "scoreboard_update",
+      event: "scoreboard_update",
+      payload
+    });
+  };
+
+  const heartbeatId = window.setInterval(() => {
+    sendRaw("heartbeat", {}, "phoenix");
+  }, 25000);
+
+  socket.addEventListener("open", () => {
+    sendRaw("phx_join", {
+      config: {
+        broadcast: { self: false, ack: false },
+        presence: { key: "" }
+      },
+      access_token: anonKey
+    });
+  });
+
+  socket.addEventListener("message", (event) => {
+    try {
+      const message = JSON.parse(String(event.data)) as RealtimeMessage<Data>;
+      if (message.event !== "phx_reply" || message.payload?.status !== "ok") return;
+      joined = true;
+      onStatus?.("OBS 실시간 송신 연결됨");
+      sendQueuedPayload();
+    } catch {
+      onStatus?.("OBS 실시간 송신 메시지를 처리하지 못했습니다.");
+    }
+  });
+
+  socket.addEventListener("error", () => {
+    if (!closed) onStatus?.("OBS 실시간 송신 오류: 서버 저장으로 동기화합니다.");
+  });
+
+  return {
+    send: (data: Data, updatedAt = new Date().toISOString()) => {
+      queuedPayload = { data, updatedAt };
+      sendQueuedPayload();
+    },
+    close: () => {
+      closed = true;
+      window.clearInterval(heartbeatId);
+      socket.close();
+    }
+  };
+}
+
 async function authenticate(
   path: string,
   email: string,
   password: string,
-  allowEmailConfirmation = false
+  allowEmailConfirmation = false,
+  overrideBody?: Record<string, string | undefined>
 ): Promise<CloudSession | null> {
   const response = await supabaseFetch(path, null, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password })
+    body: JSON.stringify(overrideBody ?? { email, password })
   });
   const payload = (await response.json().catch(() => ({}))) as AuthResponse;
   const user = payload.user ?? (payload.id ? { id: payload.id, email: payload.email } : undefined);
@@ -424,17 +527,39 @@ async function supabaseFetch(path: string, session?: CloudSession | null, init?:
     throw new Error("Supabase 환경변수가 설정되지 않았습니다.");
   }
 
-  return fetch(`${url.replace(/\/$/, "")}${path}`, {
+  const request = (activeSession?: CloudSession | null) => fetch(`${url.replace(/\/$/, "")}${path}`, {
     cache: "no-store",
     ...init,
     headers: {
       apikey: anonKey,
       "Cache-Control": "no-cache",
       Pragma: "no-cache",
-      ...(session ? { Authorization: `Bearer ${session.accessToken}` } : null),
+      ...(activeSession ? { Authorization: `Bearer ${activeSession.accessToken}` } : null),
       ...(init?.headers ?? {})
     }
   });
+
+  const response = await request(session);
+  if (response.status !== 401 || !session?.refreshToken) return response;
+
+  const refreshedSession = await refreshCloudSession(session);
+  session.accessToken = refreshedSession.accessToken;
+  session.refreshToken = refreshedSession.refreshToken;
+  session.email = refreshedSession.email;
+  saveCloudSession(refreshedSession);
+  return request(refreshedSession);
+}
+
+async function refreshCloudSession(session: CloudSession) {
+  const refreshedSession = await authenticate("/auth/v1/token?grant_type=refresh_token", "", "", false, {
+    refresh_token: session.refreshToken
+  });
+
+  if (!refreshedSession) throw new Error("로그인 세션을 갱신하지 못했습니다. 다시 로그인해주세요.");
+  return {
+    ...refreshedSession,
+    email: refreshedSession.email ?? session.email
+  };
 }
 
 async function getResponseError(response: Response, fallback: string) {

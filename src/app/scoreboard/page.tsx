@@ -6,6 +6,7 @@ import { Copy, Eye, MonitorPlay, Move, Plus, RadioTower, Save, Settings2, Slider
 import { resolveStoredLogo } from "@/lib/browser/logoStorage";
 import {
   createScoreboardBoard,
+  createScoreboardBoardBroadcaster,
   downloadScoreboardBoard,
   getSavedCloudSession,
   isCloudSyncConfigured,
@@ -307,6 +308,7 @@ export default function ScoreboardPage() {
   const pendingCloudSaveRef = useRef<ScoreboardBoardData | null>(null);
   const cloudSaveTimerRef = useRef<number | null>(null);
   const cloudSaveInFlightRef = useRef(false);
+  const liveBroadcasterRef = useRef<ReturnType<typeof createScoreboardBoardBroadcaster<ScoreboardBoardData>> | null>(null);
   const displayLastUpdatedAtRef = useRef("");
   const screenSize = getScreenSize(settings);
   const previewScale = previewSize.width > 0 ? previewSize.width / screenSize.width : 1;
@@ -407,7 +409,9 @@ export default function ScoreboardPage() {
   useEffect(() => {
     if (isDisplayMode || !cloudSession || !cloudBoardId) return;
 
-    pendingCloudSaveRef.current = { scoreboard, settings };
+    const payload = { scoreboard, settings };
+    liveBroadcasterRef.current?.send(payload);
+    pendingCloudSaveRef.current = payload;
 
     const flushCloudSave = () => {
       cloudSaveTimerRef.current = null;
@@ -441,6 +445,17 @@ export default function ScoreboardPage() {
       if (cloudSaveTimerRef.current) window.clearTimeout(cloudSaveTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (isDisplayMode || !cloudBoardId) return;
+
+    const broadcaster = createScoreboardBoardBroadcaster<ScoreboardBoardData>(cloudBoardId, setCloudStatus);
+    liveBroadcasterRef.current = broadcaster;
+    return () => {
+      broadcaster.close();
+      if (liveBroadcasterRef.current === broadcaster) liveBroadcasterRef.current = null;
+    };
+  }, [cloudBoardId, isDisplayMode]);
 
   const displayUrl = cloudBoardId && typeof window !== "undefined"
     ? `${window.location.origin}/scoreboard?display=${encodeURIComponent(cloudBoardId)}`
