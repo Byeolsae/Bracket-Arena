@@ -18,6 +18,8 @@ export type CloudSession = {
 type AuthResponse = {
   access_token?: string;
   refresh_token?: string;
+  id?: string;
+  email?: string;
   user?: {
     id?: string;
     email?: string;
@@ -175,20 +177,21 @@ async function authenticate(
     body: JSON.stringify({ email, password })
   });
   const payload = (await response.json().catch(() => ({}))) as AuthResponse;
+  const user = payload.user ?? (payload.id ? { id: payload.id, email: payload.email } : undefined);
 
-  if (response.ok && allowEmailConfirmation && payload.user?.id && !payload.access_token) {
+  if (response.ok && allowEmailConfirmation && user?.id && !payload.access_token) {
     return null;
   }
 
-  if (!response.ok || !payload.access_token || !payload.user?.id) {
+  if (!response.ok || !payload.access_token || !user?.id) {
     throw new Error(payload.error_description || payload.msg || payload.error || "로그인에 실패했습니다.");
   }
 
   return {
     accessToken: payload.access_token,
     refreshToken: payload.refresh_token,
-    userId: payload.user.id,
-    email: payload.user.email ?? email
+    userId: user.id,
+    email: user.email ?? email
   };
 }
 
