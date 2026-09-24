@@ -1379,11 +1379,12 @@ export default function ScoreboardPage() {
 
       <section className="grid gap-5 xl:grid-cols-[480px_1fr]">
         <aside className="space-y-6">
-          <div className="arena-card p-5">
-            <div className="mb-3 flex items-center gap-2">
+          <details className="arena-card p-5" open>
+            <summary className="mb-3 flex cursor-pointer list-none items-center gap-2 marker:hidden">
               <Save className="h-5 w-5 text-lime" aria-hidden="true" />
               <h2 className="text-lg font-black uppercase tracking-wide text-ink">OBS 실시간 출력</h2>
-            </div>
+              <span className="ml-auto text-xs font-black uppercase tracking-wide text-muted">접기/열기</span>
+            </summary>
             <div className="grid gap-3 text-sm font-bold leading-6 text-muted">
               <p>{cloudStatus}</p>
               {!configured ? (
@@ -1413,13 +1414,14 @@ export default function ScoreboardPage() {
                 OBS 브라우저 소스의 너비와 높이를 위 해상도와 똑같이 설정하세요.
               </p>
             </div>
-          </div>
+          </details>
 
-          <div className="arena-card p-5">
-            <div className="mb-4 flex items-center gap-2">
+          <details className="arena-card p-5" open>
+            <summary className="mb-4 flex cursor-pointer list-none items-center gap-2 marker:hidden">
               <Settings2 className="h-5 w-5 text-cyan" aria-hidden="true" />
               <h2 className="text-lg font-black uppercase tracking-wide text-ink">기본 정보</h2>
-            </div>
+              <span className="ml-auto text-xs font-black uppercase tracking-wide text-muted">접기/열기</span>
+            </summary>
 
             <div className="space-y-4">
               <div className="space-y-3">
@@ -1625,13 +1627,14 @@ export default function ScoreboardPage() {
                 </button>
               </div>
             </div>
-          </div>
+          </details>
 
-          <div className="arena-card p-5">
-            <div className="mb-4 flex items-center gap-2">
+          <details className="arena-card p-5" open>
+            <summary className="mb-4 flex cursor-pointer list-none items-center gap-2 marker:hidden">
               <Eye className="h-5 w-5 text-lime" aria-hidden="true" />
               <h2 className="text-lg font-black uppercase tracking-wide text-ink">표시 방식</h2>
-            </div>
+              <span className="ml-auto text-xs font-black uppercase tracking-wide text-muted">접기/열기</span>
+            </summary>
 
             <div className="grid grid-cols-2 gap-2">
               <ToggleButton active={settings.nameMode === "short"} onClick={() => updateSetting("nameMode", "short")}>
@@ -1721,13 +1724,14 @@ export default function ScoreboardPage() {
                 </ToggleButton>
               </div>
             </div>
-          </div>
+          </details>
 
-          <div className="arena-card p-5">
-            <div className="mb-4 flex items-center gap-2">
+          <details className="arena-card p-5" open>
+            <summary className="mb-4 flex cursor-pointer list-none items-center gap-2 marker:hidden">
               <SlidersHorizontal className="h-5 w-5 text-cyan" aria-hidden="true" />
               <h2 className="text-lg font-black uppercase tracking-wide text-ink">타이머</h2>
-            </div>
+              <span className="ml-auto text-xs font-black uppercase tracking-wide text-muted">접기/열기</span>
+            </summary>
             <div className="grid gap-3">
               <div className="grid grid-cols-3 gap-2">
                 <ToggleButton active={settings.timerMode === "currentTime"} onClick={() => updateSetting("timerMode", "currentTime")}>
@@ -1803,13 +1807,14 @@ export default function ScoreboardPage() {
                 {settings.timerMode === "countDown" && scoreboard.timerFinished ? <span className="ml-2 text-red-300">종료</span> : null}
               </p>
             </div>
-          </div>
+          </details>
 
-          <div className="arena-card p-5">
-            <div className="mb-4 flex items-center gap-2">
+          <details className="arena-card p-5" open>
+            <summary className="mb-4 flex cursor-pointer list-none items-center gap-2 marker:hidden">
               <MonitorPlay className="h-5 w-5 text-cyan" aria-hidden="true" />
               <h2 className="text-lg font-black uppercase tracking-wide text-ink">화면 해상도</h2>
-            </div>
+              <span className="ml-auto text-xs font-black uppercase tracking-wide text-muted">접기/열기</span>
+            </summary>
             <div className="grid grid-cols-4 gap-2">
               {(Object.keys(resolutionOptions) as ScreenResolution[]).map((resolution) => (
                 <ToggleButton
@@ -1838,13 +1843,14 @@ export default function ScoreboardPage() {
             <p className="mt-3 text-xs font-bold text-muted">
               {getScreenSize(settings).width} x {getScreenSize(settings).height}
             </p>
-          </div>
+          </details>
 
-          <div className="arena-card p-5">
-            <div className="mb-4 flex items-center gap-2">
+          <details className="arena-card p-5" open>
+            <summary className="mb-4 flex cursor-pointer list-none items-center gap-2 marker:hidden">
               <Move className="h-5 w-5 text-gold" aria-hidden="true" />
               <h2 className="text-lg font-black uppercase tracking-wide text-ink">위치</h2>
-            </div>
+              <span className="ml-auto text-xs font-black uppercase tracking-wide text-muted">접기/열기</span>
+            </summary>
             <div className="grid gap-3">
               <div className="rounded-md border border-line bg-arena/70 px-3 py-3">
                 <p className="text-xs font-bold leading-5 text-muted">
@@ -1860,13 +1866,14 @@ export default function ScoreboardPage() {
                 위치 / 크기 리셋
               </button>
             </div>
-          </div>
+          </details>
 
-          <div className="arena-card p-5">
-            <div className="mb-4 flex items-center gap-2">
+          <details className="arena-card p-5" open>
+            <summary className="mb-4 flex cursor-pointer list-none items-center gap-2 marker:hidden">
               <SlidersHorizontal className="h-5 w-5 text-magenta" aria-hidden="true" />
               <h2 className="text-lg font-black uppercase tracking-wide text-ink">브래킷 크기</h2>
-            </div>
+              <span className="ml-auto text-xs font-black uppercase tracking-wide text-muted">접기/열기</span>
+            </summary>
             <div className="grid gap-3">
               <RangeField label="로고 크기" value={settings.logoSize} min={0} max={80} onChange={(value) => updateSetting("logoSize", value)} suffix="px" />
               <NumberField
@@ -1899,7 +1906,7 @@ export default function ScoreboardPage() {
                 브래킷 오른쪽 가장자리를 드래그하면 넓이가, 아래쪽 가장자리를 드래그하면 높이가 바뀝니다.
               </p>
             </div>
-          </div>
+          </details>
         </aside>
 
         <div className="arena-card overflow-hidden xl:sticky xl:top-5 xl:self-start">
@@ -2392,26 +2399,33 @@ function TeamCell({
     <div
       key="team"
       className={[
-        "flex min-w-0 items-center gap-2 px-3",
+        "relative flex min-w-0 items-center gap-2 overflow-visible px-3",
         teamThemeClass,
         justifyClass
       ].join(" ")}
       style={{
         height: size.rowHeight,
-        borderLeftStyle: accentRight || accentThickness <= 0 ? undefined : "solid",
-        borderLeftWidth: accentRight ? undefined : accentThickness,
-        borderLeftColor: accentRight ? undefined : accentColor,
-        borderRightStyle: !accentRight || accentThickness <= 0 ? undefined : "solid",
-        borderRightWidth: accentRight ? accentThickness : undefined,
-        borderRightColor: accentRight ? accentColor : undefined,
+        paddingLeft: accentRight ? undefined : Math.max(12, accentThickness + 8),
+        paddingRight: accentRight ? Math.max(12, accentThickness + 8) : undefined,
         color: textColor
       }}
     >
+      {accentThickness > 0 ? (
+        <span
+          className="pointer-events-none absolute bottom-0 top-0 z-0"
+          style={{
+            [accentRight ? "right" : "left"]: 0,
+            width: accentThickness,
+            backgroundColor: accentColor
+          }}
+          aria-hidden="true"
+        />
+      ) : null}
       {logoFirst && settings.showLogo && logoSize > 0 ? (
         <LogoBox label={team.shortName} size={logoSize} team={team} theme={settings.overlayTheme} />
       ) : null}
       <span
-        className={["min-w-0 flex-1 truncate font-black uppercase leading-none", labelAlignClass, getFontFamilyClass(settings.fontFamily)].join(" ")}
+        className={["relative z-10 min-w-0 flex-1 truncate font-black uppercase leading-none", labelAlignClass, getFontFamilyClass(settings.fontFamily)].join(" ")}
         style={{ fontSize: settings.fontSize }}
       >
         {label}
@@ -2703,7 +2717,7 @@ function LogoBox({
 
   return (
     <span
-      className="grid shrink-0 place-items-center overflow-hidden font-black uppercase text-white"
+      className="relative z-10 grid shrink-0 place-items-center overflow-hidden font-black uppercase text-white"
       style={{ width: size, height: size, fontSize: Math.max(8, size * 0.34) }}
     >
       {resolvedLogo ? (
