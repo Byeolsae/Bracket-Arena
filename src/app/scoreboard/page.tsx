@@ -1942,11 +1942,6 @@ export default function ScoreboardPage() {
                 onChange={(value) => updateSetting("scoreFontSize", Math.max(1, Math.floor(value)))}
               />
               <NumberField
-                label="세트점수 크기(px)"
-                value={settings.setScoreMarkerSize ?? defaultSettings.setScoreMarkerSize}
-                onChange={(value) => updateSetting("setScoreMarkerSize", Math.max(0, Math.floor(value)))}
-              />
-              <NumberField
                 label="브래킷 색 두께(px)"
                 value={settings.accentThickness ?? defaultSettings.accentThickness}
                 onChange={(value) => updateSetting("accentThickness", Math.max(0, Math.floor(value)))}
@@ -2256,6 +2251,13 @@ function SplitTeamBracket({
   const fallbackAccentColor = side === "left" ? "#3b82f6" : "#ef4444";
   const accentColor = getScoreboardAccentColor(team, fallbackAccentColor);
   const accentThickness = settings.accentThickness ?? defaultSettings.accentThickness;
+  const visibleScoreFontSize = getVisibleScoreFontSize(
+    team.score,
+    size.rowHeight,
+    size.scoreWidth,
+    settings.scoreFontSize
+  );
+  const setScoreMarkerSize = Math.max(2, Math.round(visibleScoreFontSize * 0.22));
   const gridTemplateColumns = teamFirst
     ? `${size.teamWidth}px ${size.scoreWidth}px`
     : `${size.scoreWidth}px ${size.teamWidth}px`;
@@ -2300,7 +2302,7 @@ function SplitTeamBracket({
         <SetScoreMarkers
           setScore={team.setScore}
           maxSetScore={settings.maxSetScore}
-          markerSize={settings.setScoreMarkerSize ?? defaultSettings.setScoreMarkerSize}
+          markerSize={setScoreMarkerSize}
           edge={team.setScoreEdge}
           align={team.setScoreAlign}
         />
@@ -2509,12 +2511,7 @@ function ScoreCell({
   fontFamily: FontFamily;
   overlayTheme: OverlayTheme;
 }) {
-  const digits = String(score).length;
-  const autoFitFontSize = Math.max(
-    12,
-    Math.min(rowHeight * 0.82, (scoreWidth / Math.max(1, digits)) * 1.12)
-  );
-  const visibleScoreFontSize = Math.max(12, Math.min(scoreFontSize, autoFitFontSize));
+  const visibleScoreFontSize = getVisibleScoreFontSize(score, rowHeight, scoreWidth, scoreFontSize);
   const scoreThemeClass = overlayTheme === "light"
     ? "bg-slate-100 text-slate-950 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.22)]"
     : "bg-[#020617] text-white";
@@ -2527,6 +2524,16 @@ function ScoreCell({
       {score}
     </div>
   );
+}
+
+function getVisibleScoreFontSize(score: number, rowHeight: number, scoreWidth: number, scoreFontSize: number) {
+  const digits = String(score).length;
+  const autoFitFontSize = Math.max(
+    12,
+    Math.min(rowHeight * 0.82, (scoreWidth / Math.max(1, digits)) * 1.12)
+  );
+
+  return Math.max(12, Math.min(scoreFontSize, autoFitFontSize));
 }
 
 function SetScoreMarkers({
