@@ -16,6 +16,14 @@ export type CloudSession = {
   email?: string;
 };
 
+export type CloudScoreboardBoard<Data = unknown> = {
+  id: string;
+  ownerId?: string;
+  name: string;
+  data: Data;
+  updatedAt: string;
+};
+
 type AuthResponse = {
   access_token?: string;
   refresh_token?: string;
@@ -38,6 +46,7 @@ type LibraryRow = {
 const sessionStorageKey = "bracket-arena-cloud-session";
 const tableName = "team_libraries";
 const tournamentTableName = "saved_tournament_libraries";
+const scoreboardTableName = "scoreboard_boards";
 const teamLogoFields = [
   "logoDefault",
   "logoLight",
@@ -191,6 +200,90 @@ export async function downloadSavedTournamentLibrary(session: CloudSession): Pro
   const rows = (await response.json()) as Array<{ data?: { savedTournaments?: SavedTournament[] } }>;
   const savedTournaments = rows[0]?.data?.savedTournaments;
   return Array.isArray(savedTournaments) ? savedTournaments : null;
+}
+
+export async function createScoreboardBoard<Data>(session: CloudSession, name: string, data: Data) {
+  const updatedAt = new Date().toISOString();
+  const response = await supabaseFetch(`/rest/v1/${scoreboardTableName}`, session, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Prefer: "return=representation"
+    },
+    body: JSON.stringify({
+      owner_id: session.userId,
+      name: name.trim() || "Scoreboard",
+      data,
+      updated_at: updatedAt
+    })
+  });
+
+  if (!response.ok) throw new Error(await getResponseError(response, "스코어보드 보드를 만들지 못했습니다."));
+
+  const rows = (await response.json()) as Array<{
+    id: string;
+    owner_id?: string;
+    name?: string;
+    data?: Data;
+    updated_at?: string;
+  }>;
+  const row = rows[0];
+  if (!row?.id) throw new Error("스코어보드 보드 응답이 올바르지 않습니다.");
+
+  return {
+    id: row.id,
+    ownerId: row.owner_id,
+    name: row.name ?? name,
+    data: row.data as Data,
+    updatedAt: row.updated_at ?? updatedAt
+  } satisfies CloudScoreboardBoard<Data>;
+}
+
+export async function updateScoreboardBoard<Data>(session: CloudSession, boardId: string, data: Data, name = "Scoreboard") {
+  const updatedAt = new Date().toISOString();
+  const response = await supabaseFetch(`/rest/v1/${scoreboardTableName}?id=eq.${encodeURIComponent(boardId)}`, session, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Prefer: "return=minimal"
+    },
+    body: JSON.stringify({
+      name: name.trim() || "Scoreboard",
+      data,
+      updated_at: updatedAt
+    })
+  });
+
+  if (!response.ok) throw new Error(await getResponseError(response, "스코어보드 보드를 저장하지 못했습니다."));
+
+  return updatedAt;
+}
+
+export async function downloadScoreboardBoard<Data>(boardId: string, session?: CloudSession | null) {
+  const response = await supabaseFetch(
+    `/rest/v1/${scoreboardTableName}?id=eq.${encodeURIComponent(boardId)}&select=id,owner_id,name,data,updated_at&limit=1`,
+    session
+  );
+
+  if (!response.ok) throw new Error(await getResponseError(response, "스코어보드 보드를 불러오지 못했습니다."));
+
+  const rows = (await response.json()) as Array<{
+    id: string;
+    owner_id?: string;
+    name?: string;
+    data?: Data;
+    updated_at?: string;
+  }>;
+  const row = rows[0];
+  if (!row?.id) return null;
+
+  return {
+    id: row.id,
+    ownerId: row.owner_id,
+    name: row.name ?? "Scoreboard",
+    data: row.data as Data,
+    updatedAt: row.updated_at ?? ""
+  } satisfies CloudScoreboardBoard<Data>;
 }
 
 async function authenticate(

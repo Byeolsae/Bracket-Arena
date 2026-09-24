@@ -108,6 +108,39 @@ on public.saved_tournament_libraries
 for update
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
+
+create table if not exists public.scoreboard_boards (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid references auth.users(id) on delete cascade,
+  name text not null default 'Scoreboard',
+  data jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.scoreboard_boards enable row level security;
+
+create policy "Anyone can read scoreboard boards"
+on public.scoreboard_boards
+for select
+using (true);
+
+create policy "Users can insert their own scoreboard boards"
+on public.scoreboard_boards
+for insert
+with check (auth.uid() = owner_id);
+
+create policy "Users can update their own scoreboard boards"
+on public.scoreboard_boards
+for update
+using (auth.uid() = owner_id)
+with check (auth.uid() = owner_id);
+
+create policy "Users can delete their own scoreboard boards"
+on public.scoreboard_boards
+for delete
+using (auth.uid() = owner_id);
+
+alter publication supabase_realtime add table public.scoreboard_boards;
 ```
 
 ## 주요 기능

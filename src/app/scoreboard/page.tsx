@@ -2,8 +2,16 @@
 
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Eye, MonitorPlay, Move, Plus, Settings2, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Copy, Eye, MonitorPlay, Move, Plus, RadioTower, Save, Settings2, SlidersHorizontal, Trash2 } from "lucide-react";
 import { resolveStoredLogo } from "@/lib/browser/logoStorage";
+import {
+  createScoreboardBoard,
+  downloadScoreboardBoard,
+  getSavedCloudSession,
+  isCloudSyncConfigured,
+  updateScoreboardBoard,
+  type CloudSession
+} from "@/lib/cloud/supabaseTeams";
 import { getTeamBracketAccentColor, getTeamThemeTextColor } from "@/lib/core/color";
 import type { Team, TeamFolder } from "@/lib/core/models";
 import { useTeamStore } from "@/store/teamStore";
@@ -128,6 +136,11 @@ type OverlaySettings = {
   showTimer: boolean;
   showSetScore: boolean;
   opacity: number;
+};
+
+type ScoreboardBoardData = {
+  scoreboard: ScoreboardState;
+  settings: OverlaySettings;
 };
 
 const defaultScoreboard: ScoreboardState = {
@@ -257,17 +270,62 @@ function buildManagedTeamGroups(folders: TeamFolder[], teams: Team[]): ManagedTe
 export default function ScoreboardPage() {
   const managedTeams = useTeamStore((state) => state.teams);
   const managedFolders = useTeamStore((state) => state.folders);
+  const [displayBoardId] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("display") ?? "";
+  });
   const [scoreboard, setScoreboard] = useState<ScoreboardState>(defaultScoreboard);
   const [settings, setSettings] = useState<OverlaySettings>(defaultSettings);
   const [dragGuides, setDragGuides] = useState<DragGuides>(hiddenDragGuides);
   const [previewSize, setPreviewSize] = useState({ width: 0, height: 0 });
+  const [displaySize, setDisplaySize] = useState({ width: 0, height: 0 });
+  const [cloudSession, setCloudSession] = useState<CloudSession | null>(null);
+  const [cloudBoardId, setCloudBoardId] = useState("");
+  const [cloudStatus, setCloudStatus] = useState("OBS 출력용 보드를 만들면 변경사항이 자동 저장됩니다.");
   const previewRef = useRef<HTMLDivElement>(null);
+  const displayRef = useRef<HTMLDivElement>(null);
   const screenSize = getScreenSize(settings);
   const previewScale = previewSize.width > 0 ? previewSize.width / screenSize.width : 1;
+  const displayScale = displaySize.width > 0
+    ? Math.min(displaySize.width / screenSize.width, displaySize.height / screenSize.height)
+    : 1;
+  const isDisplayMode = Boolean(displayBoardId);
+  const configured = isCloudSyncConfigured();
   const managedTeamGroups = useMemo(
     () => buildManagedTeamGroups(managedFolders, managedTeams),
     [managedFolders, managedTeams]
   );
+
+  useEffect(() => {
+    const saved = getSavedCloudSession();
+    setCloudSession(saved);
+    if (typeof window !== "undefined") {
+      setCloudBoardId(window.localStorage.getItem("bracket-arena-scoreboard-board-id") ?? "");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isDisplayMode) return;
+
+    let cancelled = false;
+    const loadBoard = async () => {
+      try {
+        const board = await downloadScoreboardBoard<ScoreboardBoardData>(displayBoardId);
+        if (cancelled || !board?.data) return;
+        setScoreboard(board.data.scoreboard ?? defaultScoreboard);
+        setSettings((current) => ({ ...current, ...(board.data.settings ?? defaultSettings) }));
+      } catch {
+        if (!cancelled) setCloudStatus("스코어보드 보드를 불러오지 못했습니다.");
+      }
+    };
+
+    void loadBoard();
+    const intervalId = window.setInterval(loadBoard, 800);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [displayBoardId, isDisplayMode]);
 
   useEffect(() => {
     const previewElement = previewRef.current;
@@ -283,6 +341,66 @@ export default function ScoreboardPage() {
     observer.observe(previewElement);
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (!isDisplayMode) return;
+    const displayElement = displayRef.current;
+    if (!displayElement) return;
+
+    const updateDisplaySize = () => {
+      const rect = displayElement.getBoundingClientRect();
+      setDisplaySize({ width: rect.width, height: rect.height });
+    };
+    updateDisplaySize();
+
+    const observer = new ResizeObserver(updateDisplaySize);
+    observer.observe(displayElement);
+    return () => observer.disconnect();
+  }, [isDisplayMode]);
+
+  useEffect(() => {
+    if (isDisplayMode || !cloudSession || !cloudBoardId) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setCloudStatus("스코어보드 저장 중...");
+      updateScoreboardBoard<ScoreboardBoardData>(cloudSession, cloudBoardId, { scoreboard, settings })
+        .then(() => setCloudStatus("스코어보드 자동 저장 완료"))
+        .catch((error) => setCloudStatus(error instanceof Error ? error.message : "스코어보드 저장 실패"));
+    }, 500);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [cloudBoardId, cloudSession, isDisplayMode, scoreboard, settings]);
+
+  const displayUrl = cloudBoardId && typeof window !== "undefined"
+    ? `${window.location.origin}/scoreboard?display=${encodeURIComponent(cloudBoardId)}`
+    : "";
+
+  const createCloudBoard = async () => {
+    if (!cloudSession) {
+      setCloudStatus("먼저 로그인해야 OBS 보드를 만들 수 있습니다.");
+      return;
+    }
+
+    setCloudStatus("OBS 보드를 만드는 중...");
+    try {
+      const board = await createScoreboardBoard<ScoreboardBoardData>(cloudSession, "Scoreboard", { scoreboard, settings });
+      setCloudBoardId(board.id);
+      window.localStorage.setItem("bracket-arena-scoreboard-board-id", board.id);
+      setCloudStatus("OBS 보드를 만들었습니다. 출력 링크를 OBS 브라우저 소스에 넣으세요.");
+    } catch (error) {
+      setCloudStatus(error instanceof Error ? error.message : "OBS 보드를 만들지 못했습니다.");
+    }
+  };
+
+  const copyDisplayUrl = async () => {
+    if (!displayUrl) {
+      setCloudStatus("먼저 OBS 보드를 만들어야 합니다.");
+      return;
+    }
+
+    await navigator.clipboard.writeText(displayUrl);
+    setCloudStatus("OBS 출력 링크를 복사했습니다.");
+  };
 
   useEffect(() => {
     if (settings.timerMode !== "countUp" || !scoreboard.timerRunning) return;
@@ -955,6 +1073,33 @@ export default function ScoreboardPage() {
     window.addEventListener("pointerup", handlePointerUp);
   };
 
+  if (isDisplayMode) {
+    return (
+      <main ref={displayRef} className="fixed inset-0 overflow-hidden bg-transparent">
+        <div
+          className="absolute left-0 top-0"
+          style={{
+            width: screenSize.width,
+            height: screenSize.height,
+            transform: `scale(${displayScale})`,
+            transformOrigin: "top left"
+          }}
+        >
+          <CustomScoreboardOverlay
+            scoreboard={scoreboard}
+            displayTimer={displayTimer}
+            settings={settings}
+            onTeamPointerDown={() => undefined}
+            onBracketResizePointerDown={() => undefined}
+            onScoreResizePointerDown={() => undefined}
+            onTimerResizePointerDown={() => undefined}
+            onTimerPointerDown={() => undefined}
+          />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-[calc(100vh-73px)] px-4 py-8 sm:px-6 2xl:px-8">
       <section className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -967,14 +1112,49 @@ export default function ScoreboardPage() {
             프리셋 대신 위치, 넓이, 칸 크기, 로고 크기, 표시 방식을 직접 조절합니다.
           </p>
         </div>
-        <div className="inline-flex items-center gap-2 rounded-md border border-line bg-panel px-4 py-2 text-sm font-black uppercase tracking-wide text-cyan">
-          <MonitorPlay className="h-4 w-4" aria-hidden="true" />
-          Custom Overlay
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex items-center gap-2 rounded-md border border-line bg-panel px-4 py-2 text-sm font-black uppercase tracking-wide text-cyan">
+            <MonitorPlay className="h-4 w-4" aria-hidden="true" />
+            Custom Overlay
+          </div>
+          <button type="button" className="button-primary" onClick={createCloudBoard} disabled={!configured}>
+            <RadioTower className="h-4 w-4" />
+            OBS 보드 만들기
+          </button>
+          <button type="button" className="button-muted" onClick={copyDisplayUrl} disabled={!cloudBoardId}>
+            <Copy className="h-4 w-4" />
+            출력 링크 복사
+          </button>
         </div>
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[480px_1fr]">
         <aside className="space-y-6">
+          <div className="arena-card p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <Save className="h-5 w-5 text-lime" aria-hidden="true" />
+              <h2 className="text-lg font-black uppercase tracking-wide text-ink">OBS 실시간 출력</h2>
+            </div>
+            <div className="grid gap-3 text-sm font-bold leading-6 text-muted">
+              <p>{cloudStatus}</p>
+              {!configured ? (
+                <p className="rounded-md border border-gold/40 bg-gold/10 px-3 py-2 text-gold">
+                  Vercel에 Supabase 환경변수를 넣고 재배포해야 OBS 보드를 만들 수 있습니다.
+                </p>
+              ) : null}
+              {!cloudSession ? (
+                <p className="rounded-md border border-line bg-field px-3 py-2">
+                  로그인 페이지에서 먼저 로그인하세요. 로그인 후 이 페이지로 돌아오면 보드를 만들 수 있습니다.
+                </p>
+              ) : null}
+              {displayUrl ? (
+                <div className="rounded-md border border-line bg-arena px-3 py-2 font-mono text-xs text-cyan break-all">
+                  {displayUrl}
+                </div>
+              ) : null}
+            </div>
+          </div>
+
           <div className="arena-card p-5">
             <div className="mb-4 flex items-center gap-2">
               <Settings2 className="h-5 w-5 text-cyan" aria-hidden="true" />
