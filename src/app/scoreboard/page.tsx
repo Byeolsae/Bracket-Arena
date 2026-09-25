@@ -141,6 +141,13 @@ type OverlaySettings = {
   overlayTheme: OverlayTheme;
   outputBackgroundMode: OutputBackgroundMode;
   greenScreenColor: string;
+  useCustomOverlayColors: boolean;
+  bracketBackgroundColor: string;
+  bracketTextColor: string;
+  scoreBackgroundColor: string;
+  scoreTextColor: string;
+  setScoreFillColor: string;
+  setScoreEmptyColor: string;
   nameMode: NameMode;
   timerMode: TimerMode;
   timerTimeZone: string;
@@ -204,6 +211,13 @@ const defaultSettings: OverlaySettings = {
   overlayTheme: "dark",
   outputBackgroundMode: "transparent",
   greenScreenColor: "#00ff00",
+  useCustomOverlayColors: false,
+  bracketBackgroundColor: "#07111f",
+  bracketTextColor: "#ffffff",
+  scoreBackgroundColor: "#020617",
+  scoreTextColor: "#ffffff",
+  setScoreFillColor: "#f8c84e",
+  setScoreEmptyColor: "#020617",
   nameMode: "short",
   timerMode: "currentTime",
   timerTimeZone: "Asia/Seoul",
@@ -1984,6 +1998,68 @@ export default function ScoreboardPage() {
               </div>
             </div>
 
+            <div className="mt-4 rounded-md border border-line/80 bg-arena/60 p-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-xs font-black uppercase tracking-wide text-ink">스코어보드 색상</p>
+                <CheckButton
+                  active={settings.useCustomOverlayColors}
+                  onClick={() => updateSetting("useCustomOverlayColors", !settings.useCustomOverlayColors)}
+                >
+                  커스텀
+                </CheckButton>
+              </div>
+              {settings.useCustomOverlayColors ? (
+                <div className="grid gap-2">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <ColorField
+                      label="브래킷 배경"
+                      value={settings.bracketBackgroundColor}
+                      onChange={(value) => updateSetting("bracketBackgroundColor", value)}
+                      fallback={defaultSettings.bracketBackgroundColor}
+                    />
+                    <ColorField
+                      label="브래킷 글자"
+                      value={settings.bracketTextColor}
+                      onChange={(value) => updateSetting("bracketTextColor", value)}
+                      fallback={defaultSettings.bracketTextColor}
+                    />
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <ColorField
+                      label="점수칸 배경"
+                      value={settings.scoreBackgroundColor}
+                      onChange={(value) => updateSetting("scoreBackgroundColor", value)}
+                      fallback={defaultSettings.scoreBackgroundColor}
+                    />
+                    <ColorField
+                      label="점수 글자"
+                      value={settings.scoreTextColor}
+                      onChange={(value) => updateSetting("scoreTextColor", value)}
+                      fallback={defaultSettings.scoreTextColor}
+                    />
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <ColorField
+                      label="세트점수 채움"
+                      value={settings.setScoreFillColor}
+                      onChange={(value) => updateSetting("setScoreFillColor", value)}
+                      fallback={defaultSettings.setScoreFillColor}
+                    />
+                    <ColorField
+                      label="세트점수 빈칸"
+                      value={settings.setScoreEmptyColor}
+                      onChange={(value) => updateSetting("setScoreEmptyColor", value)}
+                      fallback={defaultSettings.setScoreEmptyColor}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs font-bold leading-5 text-muted">
+                  꺼두면 다크/라이트 모드 기본 색상을 사용합니다.
+                </p>
+              )}
+            </div>
+
             <div className="mt-4">
               <p className="mb-2 text-xs font-black uppercase tracking-wide text-ink">OBS 출력 배경</p>
               <div className="grid grid-cols-3 gap-2">
@@ -2692,6 +2768,7 @@ function SplitTeamBracket({
           scoreColumnWidth={size.scoreWidth}
           rowHeight={size.rowHeight}
           edge={team.setScoreEdge}
+          settings={settings}
         />
       ) : null}
     </div>
@@ -2819,7 +2896,9 @@ function TeamCell({
   const scoreFirst = scoreSide === "left";
   const label = settings.nameMode === "short" ? team.shortName : team.name;
   const size = getBracketSize(team, settings);
-  const textColor = getTeamThemeTextColor(team, settings.overlayTheme === "light" ? "#ffffff" : "#07111f");
+  const customBracketBackground = getCustomOverlayColor(settings, "bracketBackgroundColor");
+  const customBracketText = getCustomOverlayColor(settings, "bracketTextColor");
+  const textColor = customBracketText ?? getTeamThemeTextColor(team, settings.overlayTheme === "light" ? "#ffffff" : "#07111f");
   const scoreCell = (
     <ScoreCell
       key="score"
@@ -2828,7 +2907,7 @@ function TeamCell({
       scoreWidth={size.scoreWidth}
       scoreFontSize={settings.scoreFontSize}
       fontFamily={settings.fontFamily}
-      overlayTheme={settings.overlayTheme}
+      settings={settings}
     />
   );
   const teamThemeClass = settings.overlayTheme === "light"
@@ -2862,7 +2941,8 @@ function TeamCell({
         height: size.rowHeight,
         paddingLeft: accentRight ? undefined : accentPadding,
         paddingRight: accentRight ? accentPadding : undefined,
-        color: textColor
+        color: textColor,
+        backgroundColor: customBracketBackground
       }}
     >
       {logoFirst && settings.showLogo && logoSize > 0 ? (
@@ -2889,24 +2969,31 @@ function ScoreCell({
   scoreWidth,
   scoreFontSize,
   fontFamily,
-  overlayTheme
+  settings
 }: {
   score: number;
   rowHeight: number;
   scoreWidth: number;
   scoreFontSize: number;
   fontFamily: FontFamily;
-  overlayTheme: OverlayTheme;
+  settings: OverlaySettings;
 }) {
   const visibleScoreFontSize = getVisibleScoreFontSize(score, rowHeight, scoreWidth, scoreFontSize);
-  const scoreThemeClass = overlayTheme === "light"
+  const customScoreBackground = getCustomOverlayColor(settings, "scoreBackgroundColor");
+  const customScoreText = getCustomOverlayColor(settings, "scoreTextColor");
+  const scoreThemeClass = settings.overlayTheme === "light"
     ? "bg-slate-100 text-slate-950 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.22)]"
     : "bg-[#020617] text-white";
 
   return (
     <div
       className={`grid place-items-center overflow-hidden font-black leading-none ${scoreThemeClass} ${getFontFamilyClass(fontFamily)}`}
-      style={{ height: rowHeight, fontSize: visibleScoreFontSize }}
+      style={{
+        height: rowHeight,
+        fontSize: visibleScoreFontSize,
+        backgroundColor: customScoreBackground,
+        color: customScoreText
+      }}
     >
       {score}
     </div>
@@ -2931,6 +3018,7 @@ function SetScoreMarkers({
   scoreColumnWidth,
   rowHeight,
   edge,
+  settings
 }: {
   setScore: number;
   maxSetScore: number;
@@ -2939,6 +3027,7 @@ function SetScoreMarkers({
   scoreColumnWidth: number;
   rowHeight: number;
   edge: SetScoreEdge;
+  settings: OverlaySettings;
 }) {
   const markerCount = Math.max(1, Math.floor(maxSetScore));
   const filledCount = clamp(Math.floor(setScore), 0, markerCount);
@@ -2950,6 +3039,8 @@ function SetScoreMarkers({
   const availableCircleHeight = Math.max(4, rowHeight - sideGap * Math.max(0, markerCount - 1));
   const circleSize = Math.max(4, Math.floor(availableCircleHeight / markerCount));
   const offset = (isSideEdge ? circleSize : markerHeight) + 6;
+  const filledColor = getCustomOverlayColor(settings, "setScoreFillColor");
+  const emptyColor = getCustomOverlayColor(settings, "setScoreEmptyColor");
 
   return (
     <div
@@ -2980,7 +3071,8 @@ function SetScoreMarkers({
           style={{
             width: isSideEdge ? circleSize : markerWidth,
             height: isSideEdge ? circleSize : markerHeight,
-            flex: isSideEdge ? undefined : 1
+            flex: isSideEdge ? undefined : 1,
+            backgroundColor: index < filledCount ? filledColor : emptyColor
           }}
         />
       ))}
@@ -3212,6 +3304,20 @@ function getScoreboardAccentColor(team: ScoreboardTeam, fallbackAccentColor: str
   }
 
   return fallbackAccentColor;
+}
+
+function getCustomOverlayColor(settings: OverlaySettings, key: keyof Pick<
+  OverlaySettings,
+  | "bracketBackgroundColor"
+  | "bracketTextColor"
+  | "scoreBackgroundColor"
+  | "scoreTextColor"
+  | "setScoreFillColor"
+  | "setScoreEmptyColor"
+>) {
+  if (!settings.useCustomOverlayColors) return undefined;
+  const color = settings[key];
+  return isValidHexColor(color) ? color : undefined;
 }
 
 function isValidHexColor(value: string) {
