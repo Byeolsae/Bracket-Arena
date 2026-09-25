@@ -467,6 +467,27 @@ function pickScoreboardTeamVisuals(team: Team) {
   };
 }
 
+function syncLinkedScoreboardTeamVisuals(scoreboard: ScoreboardState, managedTeams: Team[]): ScoreboardState {
+  if (!managedTeams.length) return scoreboard;
+
+  const managedTeamById = new Map(managedTeams.map((team) => [team.id, team]));
+  let changed = false;
+  const teams = scoreboard.teams.map((team) => {
+    if (!team.linkedTeamId) return team;
+
+    const managedTeam = managedTeamById.get(team.linkedTeamId);
+    if (!managedTeam) return team;
+
+    changed = true;
+    return {
+      ...team,
+      ...pickScoreboardTeamVisuals(managedTeam)
+    };
+  });
+
+  return changed ? { ...scoreboard, teams } : scoreboard;
+}
+
 function buildManagedTeamGroups(folders: TeamFolder[], teams: Team[]): ManagedTeamGroup[] {
   const teamsById = new Map(teams.map((team) => [team.id, team]));
   const usedTeamIds = new Set<string>();
@@ -538,6 +559,10 @@ export default function ScoreboardPage() {
   const managedTeamGroups = useMemo(
     () => buildManagedTeamGroups(managedFolders, managedTeams),
     [managedFolders, managedTeams]
+  );
+  const displayScoreboard = useMemo(
+    () => syncLinkedScoreboardTeamVisuals(scoreboard, managedTeams),
+    [scoreboard, managedTeams]
   );
 
   useEffect(() => {
@@ -614,7 +639,7 @@ export default function ScoreboardPage() {
           return;
         }
 
-        const resolvedScoreboard = await resolveScoreboardLogosForOutput(scoreboard);
+        const resolvedScoreboard = await resolveScoreboardLogosForOutput(displayScoreboard);
         if (cancelled) return;
         const createdBoard = await createScoreboardBoard<ScoreboardBoardData>(
           cloudSession,
@@ -638,7 +663,7 @@ export default function ScoreboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [cloudSession, isDisplayMode, localStateReady, scoreboard, settings]);
+  }, [cloudSession, displayScoreboard, isDisplayMode, localStateReady, scoreboard, settings]);
 
   useEffect(() => {
     if (isDisplayMode || !localStateReady) return;
@@ -760,7 +785,7 @@ export default function ScoreboardPage() {
     }
 
     let cancelled = false;
-    void resolveScoreboardLogosForOutput(scoreboard).then((resolvedScoreboard) => {
+    void resolveScoreboardLogosForOutput(displayScoreboard).then((resolvedScoreboard) => {
       if (cancelled) return;
       const payload = { scoreboard: resolvedScoreboard, settings };
       liveBroadcasterRef.current?.send(payload);
@@ -774,7 +799,7 @@ export default function ScoreboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [cloudBoardId, cloudSession, cloudStateReady, isDisplayMode, scoreboard, settings]);
+  }, [cloudBoardId, cloudSession, cloudStateReady, displayScoreboard, isDisplayMode, settings]);
 
   useEffect(() => {
     return () => {
@@ -806,7 +831,7 @@ export default function ScoreboardPage() {
     if (cloudBoardId) {
       setCloudStatus("고정 출력 코드에 현재 설정을 저장하는 중...");
       try {
-        const resolvedScoreboard = await resolveScoreboardLogosForOutput(scoreboard);
+        const resolvedScoreboard = await resolveScoreboardLogosForOutput(displayScoreboard);
         await updateScoreboardBoard<ScoreboardBoardData>(cloudSession, cloudBoardId, { scoreboard: resolvedScoreboard, settings });
         setCloudStatus("고정 출력 코드가 준비됐습니다. OBS 링크는 그대로 두고 편집만 계속하면 됩니다.");
       } catch (error) {
@@ -817,7 +842,7 @@ export default function ScoreboardPage() {
 
     setCloudStatus("고정 출력 코드를 만드는 중...");
     try {
-      const resolvedScoreboard = await resolveScoreboardLogosForOutput(scoreboard);
+      const resolvedScoreboard = await resolveScoreboardLogosForOutput(displayScoreboard);
       const board = await createScoreboardBoard<ScoreboardBoardData>(cloudSession, "Scoreboard", { scoreboard: resolvedScoreboard, settings });
       setCloudBoardId(board.id);
       window.localStorage.setItem("bracket-arena-scoreboard-board-id", board.id);
@@ -1715,7 +1740,7 @@ export default function ScoreboardPage() {
           }}
         >
           <CustomScoreboardOverlay
-            scoreboard={scoreboard}
+            scoreboard={displayScoreboard}
             displayTimer={displayTimer}
             settings={settings}
             onTeamPointerDown={() => undefined}
@@ -2433,7 +2458,7 @@ export default function ScoreboardPage() {
               >
                 <AlignmentGuides guides={dragGuides} />
                 <CustomScoreboardOverlay
-                  scoreboard={scoreboard}
+                  scoreboard={displayScoreboard}
                   displayTimer={displayTimer}
                   settings={settings}
                   onTeamPointerDown={handleTeamDragStart}
@@ -2939,8 +2964,8 @@ function TeamCell({
   const size = getBracketSize(team, settings);
   const useTeamVictoryVisuals = settings.overlayTheme === "victory" && team.victoryColorEnabled;
   const teamVictoryBackground = useTeamVictoryVisuals ? getTeamVictoryColor(team) : undefined;
-  const bracketBackground = getOverlayThemeColor(settings, "bracketBackground") ?? teamVictoryBackground;
-  const bracketText = getOverlayThemeColor(settings, "bracketText");
+  const bracketBackground = teamVictoryBackground ?? getOverlayThemeColor(settings, "bracketBackground");
+  const bracketText = useTeamVictoryVisuals ? undefined : getOverlayThemeColor(settings, "bracketText");
   const textColor = bracketText ?? (
     useTeamVictoryVisuals
       ? getTeamVictoryTextColor(team, teamVictoryBackground)
@@ -3353,14 +3378,16 @@ function getScoreboardLogoCandidates(team: ScoreboardTeam, theme: OverlayTheme) 
 }
 
 function getScoreboardAccentColor(team: ScoreboardTeam, fallbackAccentColor: string, theme: OverlayTheme) {
+  if (theme === "victory") {
+    return getTeamWinnerAccentColor(team) ?? getTeamBracketAccentColor(team) ?? fallbackAccentColor;
+  }
+
   if (team.accentColorMode === "custom") {
     return isValidHexColor(team.customAccentColor) ? team.customAccentColor : fallbackAccentColor;
   }
 
   if (team.accentColorMode === "team") {
-    return theme === "victory"
-      ? getTeamWinnerAccentColor(team) ?? getTeamBracketAccentColor(team) ?? fallbackAccentColor
-      : getTeamBracketAccentColor(team) ?? fallbackAccentColor;
+    return getTeamBracketAccentColor(team) ?? fallbackAccentColor;
   }
 
   return fallbackAccentColor;
