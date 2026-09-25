@@ -15,7 +15,7 @@ import {
   updateScoreboardBoard,
   type CloudSession
 } from "@/lib/cloud/supabaseTeams";
-import { getTeamBracketAccentColor, getTeamThemeTextColor } from "@/lib/core/color";
+import { getTeamBracketAccentColor, getTeamThemeTextColor, getTeamVictoryColor, getTeamVictoryTextColor, getTeamWinnerAccentColor } from "@/lib/core/color";
 import type { Team, TeamFolder } from "@/lib/core/models";
 import { useTeamStore } from "@/store/teamStore";
 
@@ -30,7 +30,7 @@ type LabelAlign = "left" | "center" | "right";
 type LogoSide = "left" | "right";
 type FontFamily = "sans" | "condensed" | "mono" | "serif";
 type TimerMode = "currentTime" | "countUp" | "countDown";
-type OverlayTheme = "dark" | "light" | "victory";
+type OverlayTheme = "dark" | "light";
 type OutputBackgroundMode = "transparent" | "green" | "black";
 type ResizeHandle =
   | "left"
@@ -90,12 +90,25 @@ type ScoreboardTeam = {
     | "logoDefault"
     | "logoLight"
     | "logoDark"
+    | "logoVictory"
+    | "logoVictoryLight"
+    | "logoVictoryDark"
     | "primaryColor"
     | "primaryColorLight"
     | "primaryColorDark"
     | "bracketAccentColor"
     | "bracketAccentColorLight"
     | "bracketAccentColorDark"
+    | "victoryColor"
+    | "victoryColorLight"
+    | "victoryColorDark"
+    | "victoryAccentColor"
+    | "victoryAccentColorLight"
+    | "victoryAccentColorDark"
+    | "victoryColorEnabled"
+    | "victoryTextColor"
+    | "victoryTextColorLight"
+    | "victoryTextColorDark"
     | "textColor"
     | "textColorLight"
     | "textColorDark"
@@ -188,7 +201,7 @@ const defaultScoreboard: ScoreboardState = {
 };
 
 const scoreboardStorageKey = "bracket-arena-scoreboard-state";
-const scoreboardLogoFields = ["logoDefault", "logoLight", "logoDark"] as const;
+const scoreboardLogoFields = ["logoDefault", "logoLight", "logoDark", "logoVictory", "logoVictoryLight", "logoVictoryDark"] as const;
 
 const defaultSettings: OverlaySettings = {
   customWidth: 1920,
@@ -287,15 +300,19 @@ function normalizeScoreboardState(scoreboard?: Partial<ScoreboardState>): Scoreb
 
 function normalizeOverlaySettings(settings?: Partial<OverlaySettings>): OverlaySettings {
   const timerMode = (settings as { timerMode?: string } | undefined)?.timerMode;
+  const overlayTheme = (settings as { overlayTheme?: string } | undefined)?.overlayTheme;
   const normalizedTimerMode: TimerMode =
     timerMode === "manual"
       ? "currentTime"
       : timerMode === "currentTime" || timerMode === "countUp" || timerMode === "countDown"
         ? timerMode
         : defaultSettings.timerMode;
+  const normalizedOverlayTheme: OverlayTheme =
+    overlayTheme === "dark" || overlayTheme === "light" ? overlayTheme : defaultSettings.overlayTheme;
   return {
     ...defaultSettings,
     ...settings,
+    overlayTheme: normalizedOverlayTheme,
     timerMode: normalizedTimerMode,
     timerTimeZone: settings?.timerTimeZone ?? defaultSettings.timerTimeZone
   };
@@ -425,12 +442,25 @@ function pickScoreboardTeamVisuals(team: Team) {
     logoDefault: team.logoDefault,
     logoLight: team.logoLight,
     logoDark: team.logoDark,
+    logoVictory: team.logoVictory,
+    logoVictoryLight: team.logoVictoryLight,
+    logoVictoryDark: team.logoVictoryDark,
     primaryColor: team.primaryColor,
     primaryColorLight: team.primaryColorLight,
     primaryColorDark: team.primaryColorDark,
     bracketAccentColor: team.bracketAccentColor,
     bracketAccentColorLight: team.bracketAccentColorLight,
     bracketAccentColorDark: team.bracketAccentColorDark,
+    victoryColor: team.victoryColor,
+    victoryColorLight: team.victoryColorLight,
+    victoryColorDark: team.victoryColorDark,
+    victoryAccentColor: team.victoryAccentColor,
+    victoryAccentColorLight: team.victoryAccentColorLight,
+    victoryAccentColorDark: team.victoryAccentColorDark,
+    victoryColorEnabled: team.victoryColorEnabled,
+    victoryTextColor: team.victoryTextColor,
+    victoryTextColorLight: team.victoryTextColorLight,
+    victoryTextColorDark: team.victoryTextColorDark,
     textColor: team.textColor,
     textColorLight: team.textColorLight,
     textColorDark: team.textColorDark
@@ -1988,15 +2018,12 @@ export default function ScoreboardPage() {
 
             <div className="mt-4">
               <p className="mb-2 text-xs font-black uppercase tracking-wide text-ink">브래킷 / 타이머 모드</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <ToggleButton active={settings.overlayTheme === "dark"} onClick={() => updateSetting("overlayTheme", "dark")}>
                   다크
                 </ToggleButton>
                 <ToggleButton active={settings.overlayTheme === "light"} onClick={() => updateSetting("overlayTheme", "light")}>
                   라이트
-                </ToggleButton>
-                <ToggleButton active={settings.overlayTheme === "victory"} onClick={() => updateSetting("overlayTheme", "victory")}>
-                  승리
                 </ToggleButton>
               </div>
             </div>
@@ -2058,7 +2085,7 @@ export default function ScoreboardPage() {
                 </div>
               ) : (
                 <p className="text-xs font-bold leading-5 text-muted">
-                  꺼두면 다크/라이트/승리 모드 기본 색상을 사용합니다.
+                  꺼두면 다크/라이트 모드 기본 색상을 사용합니다. 팀에 승리 브래킷이 설정되어 있으면 팀 브래킷에 우선 적용됩니다.
                 </p>
               )}
             </div>
@@ -2494,9 +2521,7 @@ function GameIconBoxView({
 }) {
   const themeClass = settings.overlayTheme === "light"
     ? "border-slate-300 bg-white text-slate-950 shadow-[0_8px_20px_rgba(15,23,42,0.16)]"
-    : settings.overlayTheme === "victory"
-      ? "border-gold/70 shadow-[0_0_26px_rgba(252,211,77,0.35)]"
-      : "border-white/15 bg-[#07111f] text-white shadow-[0_8px_20px_rgba(0,0,0,0.45)]";
+    : "border-white/15 bg-[#07111f] text-white shadow-[0_8px_20px_rgba(0,0,0,0.45)]";
   const backgroundColor = getOverlayThemeColor(settings, "bracketBackground");
   const textColor = getOverlayThemeColor(settings, "bracketText");
 
@@ -2547,9 +2572,7 @@ function TimerBlock({
 }) {
   const timerThemeClass = settings.overlayTheme === "light"
     ? "border border-slate-300 bg-white text-slate-950 shadow-[0_8px_20px_rgba(15,23,42,0.16)]"
-    : settings.overlayTheme === "victory"
-      ? "border border-gold/70 shadow-[0_0_26px_rgba(252,211,77,0.35)]"
-      : "border border-white/10 bg-[#07111f] text-white shadow-[0_8px_20px_rgba(0,0,0,0.45)]";
+    : "border border-white/10 bg-[#07111f] text-white shadow-[0_8px_20px_rgba(0,0,0,0.45)]";
   const timerFinishedClass = finished
     ? "border-red-400 bg-red-600 text-white shadow-[0_0_26px_rgba(248,113,113,0.75)]"
     : timerThemeClass;
@@ -2911,9 +2934,14 @@ function TeamCell({
   const scoreFirst = scoreSide === "left";
   const label = settings.nameMode === "short" ? team.shortName : team.name;
   const size = getBracketSize(team, settings);
-  const bracketBackground = getOverlayThemeColor(settings, "bracketBackground");
+  const teamVictoryBackground = getTeamVictoryColor(team);
+  const bracketBackground = getOverlayThemeColor(settings, "bracketBackground") ?? teamVictoryBackground;
   const bracketText = getOverlayThemeColor(settings, "bracketText");
-  const textColor = bracketText ?? getTeamThemeTextColor(team, settings.overlayTheme === "light" ? "#ffffff" : "#07111f");
+  const textColor = bracketText ?? (
+    team.victoryColorEnabled
+      ? getTeamVictoryTextColor(team, teamVictoryBackground)
+      : getTeamThemeTextColor(team, settings.overlayTheme === "light" ? "#ffffff" : "#07111f")
+  );
   const scoreCell = (
     <ScoreCell
       key="score"
@@ -2998,8 +3026,6 @@ function ScoreCell({
   const scoreText = getOverlayThemeColor(settings, "scoreText");
   const scoreThemeClass = settings.overlayTheme === "light"
     ? "bg-slate-100 text-slate-950 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.22)]"
-    : settings.overlayTheme === "victory"
-      ? "bg-gold text-slate-950 shadow-[inset_0_0_0_1px_rgba(120,53,15,0.32)]"
     : "bg-[#020617] text-white";
 
   return (
@@ -3303,6 +3329,15 @@ function LogoBox({
 }
 
 function getScoreboardLogoCandidates(team: ScoreboardTeam, theme: OverlayTheme) {
+  if (team.victoryColorEnabled) {
+    const victoryCandidates =
+      theme === "light"
+        ? [team.logoVictoryLight, team.logoVictory, team.logoVictoryDark, team.logoLight, team.logoDefault, team.logoDark]
+        : [team.logoVictoryDark, team.logoVictory, team.logoVictoryLight, team.logoDark, team.logoDefault, team.logoLight];
+
+    return victoryCandidates.filter((candidate): candidate is string => Boolean(candidate));
+  }
+
   const candidates =
     theme === "light"
       ? [team.logoLight, team.logoDefault, team.logoDark]
@@ -3317,7 +3352,7 @@ function getScoreboardAccentColor(team: ScoreboardTeam, fallbackAccentColor: str
   }
 
   if (team.accentColorMode === "team") {
-    return getTeamBracketAccentColor(team) ?? fallbackAccentColor;
+    return getTeamWinnerAccentColor(team) ?? getTeamBracketAccentColor(team) ?? fallbackAccentColor;
   }
 
   return fallbackAccentColor;
@@ -3330,15 +3365,6 @@ type OverlayColorToken =
   | "scoreText"
   | "setScoreFill"
   | "setScoreEmpty";
-
-const victoryOverlayColors: Record<OverlayColorToken, string> = {
-  bracketBackground: "#7c2d12",
-  bracketText: "#fff7ed",
-  scoreBackground: "#facc15",
-  scoreText: "#1c1917",
-  setScoreFill: "#facc15",
-  setScoreEmpty: "#451a03"
-};
 
 function getOverlayThemeColor(settings: OverlaySettings, token: OverlayColorToken) {
   const customKeyByToken: Record<OverlayColorToken, keyof Pick<
@@ -3359,7 +3385,6 @@ function getOverlayThemeColor(settings: OverlaySettings, token: OverlayColorToke
   };
   const customColor = getCustomOverlayColor(settings, customKeyByToken[token]);
   if (customColor) return customColor;
-  if (settings.overlayTheme === "victory") return victoryOverlayColors[token];
   return undefined;
 }
 
