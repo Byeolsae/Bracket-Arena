@@ -3062,7 +3062,7 @@ function ScoreCell({
 }) {
   const visibleScoreFontSize = getVisibleScoreFontSize(score, rowHeight, scoreWidth, scoreFontSize);
   const victoryScoreBackground = isVictoryOverlayTheme(settings.overlayTheme)
-    ? getScoreboardTeamVictoryColor(team, settings.overlayTheme)
+    ? getScoreboardTeamVictoryAccentColor(team, settings.overlayTheme)
     : undefined;
   const scoreBackground = victoryScoreBackground ?? getOverlayThemeColor(settings, "scoreBackground");
   const scoreText = victoryScoreBackground
