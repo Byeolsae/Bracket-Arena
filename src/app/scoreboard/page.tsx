@@ -30,7 +30,7 @@ type LabelAlign = "left" | "center" | "right";
 type LogoSide = "left" | "right";
 type FontFamily = "sans" | "condensed" | "mono" | "serif";
 type TimerMode = "currentTime" | "countUp" | "countDown";
-type OverlayTheme = "dark" | "light";
+type OverlayTheme = "dark" | "light" | "victory";
 type OutputBackgroundMode = "transparent" | "green" | "black";
 type ResizeHandle =
   | "left"
@@ -308,7 +308,7 @@ function normalizeOverlaySettings(settings?: Partial<OverlaySettings>): OverlayS
         ? timerMode
         : defaultSettings.timerMode;
   const normalizedOverlayTheme: OverlayTheme =
-    overlayTheme === "dark" || overlayTheme === "light" ? overlayTheme : defaultSettings.overlayTheme;
+    overlayTheme === "dark" || overlayTheme === "light" || overlayTheme === "victory" ? overlayTheme : defaultSettings.overlayTheme;
   return {
     ...defaultSettings,
     ...settings,
@@ -2018,12 +2018,15 @@ export default function ScoreboardPage() {
 
             <div className="mt-4">
               <p className="mb-2 text-xs font-black uppercase tracking-wide text-ink">브래킷 / 타이머 모드</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <ToggleButton active={settings.overlayTheme === "dark"} onClick={() => updateSetting("overlayTheme", "dark")}>
                   다크
                 </ToggleButton>
                 <ToggleButton active={settings.overlayTheme === "light"} onClick={() => updateSetting("overlayTheme", "light")}>
                   라이트
+                </ToggleButton>
+                <ToggleButton active={settings.overlayTheme === "victory"} onClick={() => updateSetting("overlayTheme", "victory")}>
+                  승리
                 </ToggleButton>
               </div>
             </div>
@@ -2085,7 +2088,7 @@ export default function ScoreboardPage() {
                 </div>
               ) : (
                 <p className="text-xs font-bold leading-5 text-muted">
-                  꺼두면 다크/라이트 모드 기본 색상을 사용합니다. 팀에 승리 브래킷이 설정되어 있으면 팀 브래킷에 우선 적용됩니다.
+                  꺼두면 선택한 모드의 기본 색상을 사용합니다. 승리 모드는 팀 설정의 승리 브래킷과 승리 로고를 우선 적용합니다.
                 </p>
               )}
             </div>
@@ -2747,7 +2750,7 @@ function SplitTeamBracket({
   const size = getBracketSize(team, settings);
   const accentRight = team.accentSide === "right";
   const fallbackAccentColor = side === "left" ? "#3b82f6" : "#ef4444";
-  const accentColor = getScoreboardAccentColor(team, fallbackAccentColor);
+  const accentColor = getScoreboardAccentColor(team, fallbackAccentColor, settings.overlayTheme);
   const accentThickness = settings.accentThickness ?? defaultSettings.accentThickness;
   const visibleScoreFontSize = getVisibleScoreFontSize(
     team.score,
@@ -2934,11 +2937,12 @@ function TeamCell({
   const scoreFirst = scoreSide === "left";
   const label = settings.nameMode === "short" ? team.shortName : team.name;
   const size = getBracketSize(team, settings);
-  const teamVictoryBackground = getTeamVictoryColor(team);
+  const useTeamVictoryVisuals = settings.overlayTheme === "victory" && team.victoryColorEnabled;
+  const teamVictoryBackground = useTeamVictoryVisuals ? getTeamVictoryColor(team) : undefined;
   const bracketBackground = getOverlayThemeColor(settings, "bracketBackground") ?? teamVictoryBackground;
   const bracketText = getOverlayThemeColor(settings, "bracketText");
   const textColor = bracketText ?? (
-    team.victoryColorEnabled
+    useTeamVictoryVisuals
       ? getTeamVictoryTextColor(team, teamVictoryBackground)
       : getTeamThemeTextColor(team, settings.overlayTheme === "light" ? "#ffffff" : "#07111f")
   );
@@ -3329,13 +3333,15 @@ function LogoBox({
 }
 
 function getScoreboardLogoCandidates(team: ScoreboardTeam, theme: OverlayTheme) {
-  if (team.victoryColorEnabled) {
-    const victoryCandidates =
-      theme === "light"
-        ? [team.logoVictoryLight, team.logoVictory, team.logoVictoryDark, team.logoLight, team.logoDefault, team.logoDark]
-        : [team.logoVictoryDark, team.logoVictory, team.logoVictoryLight, team.logoDark, team.logoDefault, team.logoLight];
-
-    return victoryCandidates.filter((candidate): candidate is string => Boolean(candidate));
+  if (theme === "victory" && team.victoryColorEnabled) {
+    return [
+      team.logoVictoryDark,
+      team.logoVictory,
+      team.logoVictoryLight,
+      team.logoDark,
+      team.logoDefault,
+      team.logoLight
+    ].filter((candidate): candidate is string => Boolean(candidate));
   }
 
   const candidates =
@@ -3346,13 +3352,15 @@ function getScoreboardLogoCandidates(team: ScoreboardTeam, theme: OverlayTheme) 
   return candidates.filter((candidate): candidate is string => Boolean(candidate));
 }
 
-function getScoreboardAccentColor(team: ScoreboardTeam, fallbackAccentColor: string) {
+function getScoreboardAccentColor(team: ScoreboardTeam, fallbackAccentColor: string, theme: OverlayTheme) {
   if (team.accentColorMode === "custom") {
     return isValidHexColor(team.customAccentColor) ? team.customAccentColor : fallbackAccentColor;
   }
 
   if (team.accentColorMode === "team") {
-    return getTeamWinnerAccentColor(team) ?? getTeamBracketAccentColor(team) ?? fallbackAccentColor;
+    return theme === "victory"
+      ? getTeamWinnerAccentColor(team) ?? getTeamBracketAccentColor(team) ?? fallbackAccentColor
+      : getTeamBracketAccentColor(team) ?? fallbackAccentColor;
   }
 
   return fallbackAccentColor;
