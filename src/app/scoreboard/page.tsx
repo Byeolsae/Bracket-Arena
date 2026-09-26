@@ -57,6 +57,13 @@ type SnapRect = {
   width: number;
   height: number;
 };
+type SelectionBox = {
+  active: boolean;
+  startX: number;
+  startY: number;
+  currentX: number;
+  currentY: number;
+};
 
 type ManagedTeamGroup = {
   id: string;
@@ -272,6 +279,13 @@ const hiddenDragGuides: DragGuides = {
   rightEdge: false,
   topEdge: false,
   bottomEdge: false
+};
+const hiddenSelectionBox: SelectionBox = {
+  active: false,
+  startX: 0,
+  startY: 0,
+  currentX: 0,
+  currentY: 0
 };
 
 function getScreenSize(settings: OverlaySettings) {
@@ -536,6 +550,8 @@ export default function ScoreboardPage() {
   const [scoreboard, setScoreboard] = useState<ScoreboardState>(defaultScoreboard);
   const [settings, setSettings] = useState<OverlaySettings>(defaultSettings);
   const [dragGuides, setDragGuides] = useState<DragGuides>(hiddenDragGuides);
+  const [selectionBox, setSelectionBox] = useState<SelectionBox>(hiddenSelectionBox);
+  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [previewSize, setPreviewSize] = useState({ width: 0, height: 0 });
   const [displaySize, setDisplaySize] = useState({ width: 0, height: 0 });
   const [cloudSession, setCloudSession] = useState<CloudSession | null>(null);
@@ -1045,6 +1061,7 @@ export default function ScoreboardPage() {
         teams: current.teams.filter((team) => team.id !== teamId)
       };
     });
+    setSelectedTeamIds((current) => current.filter((selectedTeamId) => selectedTeamId !== teamId));
   };
 
   const getPreviewMetrics = () => {
@@ -1109,6 +1126,8 @@ export default function ScoreboardPage() {
   ];
 
   const resetOverlayLayout = () => {
+    setSelectedTeamIds([]);
+    setSelectionBox(hiddenSelectionBox);
     setSettings((current) => ({
       ...current,
       timerCentered: defaultSettings.timerCentered,
@@ -1214,21 +1233,159 @@ export default function ScoreboardPage() {
     };
   };
 
+  const getNormalizedSelectionRect = (box: SelectionBox): SnapRect => {
+    const left = Math.min(box.startX, box.currentX);
+    const top = Math.min(box.startY, box.currentY);
+    const right = Math.max(box.startX, box.currentX);
+    const bottom = Math.max(box.startY, box.currentY);
+
+    return {
+      id: "selection",
+      left,
+      top,
+      width: right - left,
+      height: bottom - top
+    };
+  };
+
+  const rectsIntersect = (left: SnapRect, right: SnapRect) => {
+    return (
+      left.left < right.left + right.width &&
+      left.left + left.width > right.left &&
+      left.top < right.top + right.height &&
+      left.top + left.height > right.top
+    );
+  };
+
+  const handleOverlaySelectionStart = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const metrics = getPreviewMetrics();
+    if (event.button !== 0 || !metrics) return;
+    if (event.target !== event.currentTarget) return;
+
+    const startX = clamp((event.clientX - metrics.rect.left) / metrics.scaleX, 0, metrics.width);
+    const startY = clamp((event.clientY - metrics.rect.top) / metrics.scaleY, 0, metrics.height);
+    const initialBox: SelectionBox = {
+      active: true,
+      startX,
+      startY,
+      currentX: startX,
+      currentY: startY
+    };
+
+    event.preventDefault();
+    setSelectionBox(initialBox);
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const currentX = clamp((moveEvent.clientX - metrics.rect.left) / metrics.scaleX, 0, metrics.width);
+      const currentY = clamp((moveEvent.clientY - metrics.rect.top) / metrics.scaleY, 0, metrics.height);
+      const nextBox = { ...initialBox, currentX, currentY };
+      const selectionRect = getNormalizedSelectionRect(nextBox);
+
+      setSelectionBox(nextBox);
+      setSelectedTeamIds(
+        scoreboard.teams
+          .filter((team) => rectsIntersect(selectionRect, getTeamSnapRect(team)))
+          .map((team) => team.id)
+      );
+    };
+
+    const handlePointerUp = (upEvent: PointerEvent) => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+
+      const endX = clamp((upEvent.clientX - metrics.rect.left) / metrics.scaleX, 0, metrics.width);
+      const endY = clamp((upEvent.clientY - metrics.rect.top) / metrics.scaleY, 0, metrics.height);
+      const moved = Math.hypot(endX - startX, endY - startY);
+      setSelectionBox(hiddenSelectionBox);
+      if (moved < 4) setSelectedTeamIds([]);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+  };
+
+  const moveSelectedTeams = (
+    currentTeams: ScoreboardTeam[],
+    selectedIds: string[],
+    startRects: Map<string, SnapRect>,
+    deltaX: number,
+    deltaY: number,
+    groupClamp: { minDeltaX: number; maxDeltaX: number; minDeltaY: number; maxDeltaY: number }
+  ) => {
+    const selectedIdSet = new Set(selectedIds);
+    const clampedDeltaX = clamp(deltaX, groupClamp.minDeltaX, groupClamp.maxDeltaX);
+    const clampedDeltaY = clamp(deltaY, groupClamp.minDeltaY, groupClamp.maxDeltaY);
+
+    return currentTeams.map((team) => {
+      if (!selectedIdSet.has(team.id)) return team;
+
+      const rect = startRects.get(team.id) ?? getTeamSnapRect(team);
+      const nextLeft = clamp(rect.left + clampedDeltaX, 0, Math.max(0, screenSize.width - rect.width));
+      const nextTop = clamp(rect.top + clampedDeltaY, 0, Math.max(0, screenSize.height - rect.height));
+
+      return {
+        ...team,
+        xAnchor: "left" as const,
+        x: Math.round((nextLeft / Math.max(1, screenSize.width)) * 1000) / 10,
+        y: Math.round((nextTop / Math.max(1, screenSize.height)) * 1000) / 10
+      };
+    });
+  };
+
   const handleTeamDragStart = (teamId: string, event: ReactPointerEvent<HTMLDivElement>) => {
     const metrics = getPreviewMetrics();
     if (event.button !== 0 || !metrics) return;
 
+    const groupSelectedTeamIds = selectedTeamIds.includes(teamId) && selectedTeamIds.length > 1 ? selectedTeamIds : [];
     const teamRect = event.currentTarget.getBoundingClientRect();
     const teamSize = getBracketSize(scoreboard.teams.find((team) => team.id === teamId) ?? defaultScoreboard.teams[0], settings);
     const teamWidth = teamSize.teamWidth + teamSize.scoreWidth;
     const teamHeight = teamSize.rowHeight;
     const grabOffsetX = (event.clientX - teamRect.left) / metrics.scaleX;
     const grabOffsetY = (event.clientY - teamRect.top) / metrics.scaleY;
+    const startPointerX = (event.clientX - metrics.rect.left) / metrics.scaleX;
+    const startPointerY = (event.clientY - metrics.rect.top) / metrics.scaleY;
+    const selectedRects = groupSelectedTeamIds
+      .map((selectedTeamId) => scoreboard.teams.find((team) => team.id === selectedTeamId))
+      .filter((team): team is ScoreboardTeam => Boolean(team))
+      .map((team) => getTeamSnapRect(team));
+    const selectedStartRectById = new Map(selectedRects.map((rect) => [rect.id, rect]));
+    const groupBounds = selectedRects.length
+      ? {
+          left: Math.min(...selectedRects.map((rect) => rect.left)),
+          top: Math.min(...selectedRects.map((rect) => rect.top)),
+          right: Math.max(...selectedRects.map((rect) => rect.left + rect.width)),
+          bottom: Math.max(...selectedRects.map((rect) => rect.top + rect.height))
+        }
+      : null;
+    const groupClamp = groupBounds
+      ? {
+          minDeltaX: -groupBounds.left,
+          maxDeltaX: metrics.width - groupBounds.right,
+          minDeltaY: -groupBounds.top,
+          maxDeltaY: metrics.height - groupBounds.bottom
+        }
+      : null;
 
     event.preventDefault();
     event.stopPropagation();
+    if (!selectedTeamIds.includes(teamId)) setSelectedTeamIds([teamId]);
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
+      if (groupSelectedTeamIds.length > 1 && groupClamp) {
+        const pointerX = (moveEvent.clientX - metrics.rect.left) / metrics.scaleX;
+        const pointerY = (moveEvent.clientY - metrics.rect.top) / metrics.scaleY;
+        const deltaX = pointerX - startPointerX;
+        const deltaY = pointerY - startPointerY;
+
+        setScoreboard((current) => ({
+          ...current,
+          teams: moveSelectedTeams(current.teams, groupSelectedTeamIds, selectedStartRectById, deltaX, deltaY, groupClamp)
+        }));
+        setDragGuides(hiddenDragGuides);
+        return;
+      }
+
       const maxLeft = Math.max(0, metrics.width - teamWidth);
       const maxTop = Math.max(0, metrics.height - teamHeight);
       const centerLeft = maxLeft / 2;
@@ -1747,6 +1904,7 @@ export default function ScoreboardPage() {
             scoreboard={displayScoreboard}
             displayTimer={displayTimer}
             settings={settings}
+            selectedTeamIds={[]}
             onTeamPointerDown={() => undefined}
             onBracketResizePointerDown={() => undefined}
             onScoreResizePointerDown={() => undefined}
@@ -2455,7 +2613,8 @@ export default function ScoreboardPage() {
                 </>
               ) : null}
               <div
-                className="absolute left-0 top-0"
+                className="absolute left-0 top-0 touch-none"
+                onPointerDown={handleOverlaySelectionStart}
                 style={{
                   width: screenSize.width,
                   height: screenSize.height,
@@ -2464,10 +2623,12 @@ export default function ScoreboardPage() {
                 }}
               >
                 <AlignmentGuides guides={dragGuides} />
+                <SelectionMarquee box={selectionBox} />
                 <CustomScoreboardOverlay
                   scoreboard={displayScoreboard}
                   displayTimer={displayTimer}
                   settings={settings}
+                  selectedTeamIds={selectedTeamIds}
                   onTeamPointerDown={handleTeamDragStart}
                   onBracketResizePointerDown={handleBracketResizeStart}
                   onScoreResizePointerDown={handleScoreResizeStart}
@@ -2495,11 +2656,13 @@ function CustomScoreboardOverlay({
   onTimerResizePointerDown,
   onTimerPointerDown,
   onGameIconPointerDown,
-  onGameIconResizePointerDown
+  onGameIconResizePointerDown,
+  selectedTeamIds
 }: {
   scoreboard: ScoreboardState;
   displayTimer: string;
   settings: OverlaySettings;
+  selectedTeamIds: string[];
   onTeamPointerDown: (teamId: string, event: ReactPointerEvent<HTMLDivElement>) => void;
   onBracketResizePointerDown: (teamId: string | null, handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
   onScoreResizePointerDown: (teamId: string, handle: ScoreResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
@@ -2508,6 +2671,8 @@ function CustomScoreboardOverlay({
   onGameIconPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onGameIconResizePointerDown: (handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
 }) {
+  const selectedTeamIdSet = new Set(selectedTeamIds);
+
   return (
     <div className="absolute inset-0 z-10 pointer-events-none" style={{ opacity: settings.opacity / 100 }}>
       {scoreboard.gameIcon.enabled ? (
@@ -2534,12 +2699,31 @@ function CustomScoreboardOverlay({
           team={team}
           index={index}
           settings={settings}
+          selected={selectedTeamIdSet.has(team.id)}
           onPointerDown={onTeamPointerDown}
           onResizePointerDown={onBracketResizePointerDown}
           onScoreResizePointerDown={onScoreResizePointerDown}
         />
       ))}
     </div>
+  );
+}
+
+function SelectionMarquee({ box }: { box: SelectionBox }) {
+  if (!box.active) return null;
+
+  const rect = {
+    left: Math.min(box.startX, box.currentX),
+    top: Math.min(box.startY, box.currentY),
+    width: Math.abs(box.currentX - box.startX),
+    height: Math.abs(box.currentY - box.startY)
+  };
+
+  return (
+    <div
+      className="pointer-events-none absolute z-40 border border-cyan-300 bg-cyan-300/12 shadow-[0_0_0_1px_rgba(8,145,178,0.35)]"
+      style={rect}
+    />
   );
 }
 
@@ -2765,6 +2949,7 @@ function SplitTeamBracket({
   team,
   index,
   settings,
+  selected,
   onPointerDown,
   onResizePointerDown,
   onScoreResizePointerDown
@@ -2772,6 +2957,7 @@ function SplitTeamBracket({
   team: ScoreboardTeam;
   index: number;
   settings: OverlaySettings;
+  selected: boolean;
   onPointerDown: (teamId: string, event: ReactPointerEvent<HTMLDivElement>) => void;
   onResizePointerDown: (teamId: string | null, handle: ResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
   onScoreResizePointerDown: (teamId: string, handle: ScoreResizeHandle, event: ReactPointerEvent<HTMLDivElement>) => void;
@@ -2808,6 +2994,12 @@ function SplitTeamBracket({
       }}
       title="팀 브래킷 드래그"
     >
+      {selected ? (
+        <span
+          className="pointer-events-none absolute -inset-2 z-40 rounded-sm border border-cyan-300 shadow-[0_0_0_1px_rgba(8,145,178,0.35),0_0_18px_rgba(34,211,238,0.28)]"
+          aria-hidden="true"
+        />
+      ) : null}
       {accentThickness > 0 ? (
         <span
           className="pointer-events-none absolute bottom-0 top-0 z-30"
