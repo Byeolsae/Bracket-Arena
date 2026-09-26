@@ -13,6 +13,7 @@ import {
 } from "@/lib/core/groupElimination";
 import { createGroupDoubleEliminationStage, getGroupDoubleEliminationAdvancingTeams } from "@/lib/core/groupDoubleElimination";
 import { createLeagueStage } from "@/lib/core/league";
+import { createBattleRoyaleStage, calculateBattleRoyaleStandings, isBattleRoyaleComplete, type BattleRoyaleStage } from "@/lib/core/battleRoyale";
 import { getStageAdvancingTeams } from "@/lib/core/advancement";
 import { calculateLeagueStandings } from "@/lib/core/ranking";
 import { createSwissStage, getRankedSwissRecords, getRecommendedSwissConfig } from "@/lib/core/swiss";
@@ -41,6 +42,10 @@ import { useSavedTournamentStore, type SavedTournamentSnapshot } from "@/store/s
 
 const BracketView = dynamic(
   () => import("@/components/bracket/BracketView").then((mod) => mod.BracketView),
+  { ssr: false }
+);
+const BattleRoyaleStageView = dynamic(
+  () => import("@/components/tournament/BattleRoyaleStageView").then((mod) => mod.BattleRoyaleStageView),
   { ssr: false }
 );
 const DoubleEliminationView = dynamic(
@@ -92,6 +97,7 @@ type ActiveStage = {
 
 type TournamentMode = "two-stage" | "final-only";
 type DrawImportSetup = {
+  battleRoundCount?: number;
   tournamentName?: string;
   mode?: TournamentMode;
   qualifierFormat?: StageFormat;
@@ -247,6 +253,7 @@ function getFinalFormatDisabledReason(format: StageFormat, teamCount: number) {
 }
 
 function getEffectiveGroupCount(format: StageFormat, teamCount: number, requestedGroupCount: number) {
+  if (format === "battle_royale") return 3;
   const fixedConfig = getFixedGroupConfig(format);
   if (fixedConfig) return Math.max(1, Math.ceil(Math.max(1, teamCount) / fixedConfig.teamsPerGroup));
   return Math.max(1, Math.min(Math.max(1, requestedGroupCount), Math.max(1, teamCount)));
@@ -265,7 +272,7 @@ function buildGroupAssignments(
   const fixedConfig = getFixedGroupConfig(format);
   const groupLimits = Array.from(
     { length: Math.max(1, groupCount) },
-    () => fixedConfig?.teamsPerGroup ?? Number.POSITIVE_INFINITY
+    () => format === "battle_royale" ? 8 : fixedConfig?.teamsPerGroup ?? Number.POSITIVE_INFINITY
   );
   const groupSizes = Array.from({ length: Math.max(1, groupCount) }, () => 0);
   const next: Record<string, number> = {};
@@ -401,8 +408,14 @@ export default function MakerPage() {
   const [swissStage, setSwissStage] = useState<SwissStage>();
   const [tripleStage, setTripleStage] = useState<TripleEliminationStage>();
   const [creationNotice, setCreationNotice] = useState<string>();
+  const [battleQualifier, setBattleQualifier] = useState<BattleRoyaleStage>();
+  const [battleFinal, setBattleFinal] = useState<BattleRoyaleStage>();
+  const [battleRoundCount, setBattleRoundCount] = useState(5);
 
   const buildCurrentSnapshot = (): SavedTournamentSnapshot => ({
+    battleQualifier,
+    battleFinal,
+    battleRoundCount,
     selectedTeamIds,
     tournamentName,
     mode,
@@ -423,6 +436,9 @@ export default function MakerPage() {
   });
 
   const applySnapshot = (snapshot: SavedTournamentSnapshot) => {
+    setBattleQualifier(snapshot.battleQualifier);
+    setBattleFinal(snapshot.battleFinal);
+    setBattleRoundCount(snapshot.battleRoundCount === 6 ? 6 : 5);
     setSelectedTeamIds(snapshot.selectedTeamIds.filter((teamId) => teams.some((team) => team.id === teamId)));
     setTournamentName(snapshot.tournamentName || "저장된 대회");
     if (isTournamentMode(snapshot.mode)) setMode(snapshot.mode);
@@ -487,6 +503,7 @@ export default function MakerPage() {
       if (isStageFormat(payload.setup?.qualifierFormat)) setQualifierFormat(payload.setup.qualifierFormat);
       if (isStageFormat(payload.setup?.finalFormat)) setFinalFormat(payload.setup.finalFormat);
       if (payload.setup?.groupCount) setGroupCount(Math.max(1, payload.setup.groupCount));
+      setBattleRoundCount(payload.setup?.battleRoundCount === 6 ? 6 : 5);
 
       setSelectedTeamIds(teamIds);
       if (payload.type === "group") {
@@ -624,6 +641,12 @@ export default function MakerPage() {
   }
 
   function getCurrentAdvancingTeams(): Team[] {
+    if (qualifierFormat === "battle_royale" && battleQualifier && isBattleRoyaleComplete(battleQualifier)) {
+      return calculateBattleRoyaleStandings(battleQualifier).slice(0, 16).flatMap((row, index) => {
+        const team = selectedTeams.find((item) => item.id === row.teamId);
+        return team ? [{ ...team, defaultSeed: index + 1 }] : [];
+      });
+    }
     const advanceCount = leagueAdvanceCount;
     const rule = {
       id: "maker-auto-advance",
@@ -659,12 +682,18 @@ export default function MakerPage() {
   function getTeamsForStage(role: ActiveStage["role"]): Team[] {
     if (role === "qualifier") return selectedTeams;
     if (mode === "final-only") return selectedTeams;
+    if (qualifierFormat === "battle_royale") return getCurrentAdvancingTeams();
 
     const advancingTeams = getCurrentAdvancingTeams();
     return activeStage?.role === "qualifier" ? advancingTeams : selectedTeams;
   }
 
   function createStage(format: StageFormat, role: ActiveStage["role"]) {
+    if (role === "final" && mode === "two-stage" && qualifierFormat === "battle_royale" &&
+      (!battleQualifier || !isBattleRoyaleComplete(battleQualifier))) {
+      setCreationNotice("AB·AC·BC 모든 경기의 순위를 입력하면 상위 16팀으로 본선을 생성할 수 있습니다.");
+      return;
+    }
     let stageTeams = getTeamsForStage(role);
     if (role === "final" && mode === "two-stage" && activeStage?.format === "group" && groupStage) {
       const fixedPlayoff = createFixedGroupPlayoffSeeding(groupStage, selectedTeams);
@@ -684,7 +713,18 @@ export default function MakerPage() {
       return;
     }
     if (format === "battle_royale") {
-      setCreationNotice("배틀로얄 생성/점수 로직은 제거되었습니다. 브래킷 시작 설정만 남아 있습니다.");
+      try {
+        const stage = createBattleRoyaleStage(stageTeams.map((team) => team.id), role, battleRoundCount,
+          role === "qualifier" ? teamGroupAssignments : {});
+        if (role === "qualifier") {
+          setBattleQualifier(stage);
+          setBattleFinal(undefined);
+        } else setBattleFinal(stage);
+        setActiveStage({ format, role, teamCount: stageTeams.length });
+        setCreationNotice(undefined);
+      } catch (error) {
+        setCreationNotice(error instanceof Error ? error.message : "배틀로얄을 생성하지 못했습니다.");
+      }
       return;
     }
     setCreationNotice(undefined);
@@ -804,7 +844,23 @@ export default function MakerPage() {
         {creationNotice ? <span className="text-sm font-semibold text-gold">{creationNotice}</span> : null}
       </div>
 
-      <ActiveStageView
+      {activeStage?.format === "battle_royale" ? (
+        <div className="space-y-4">
+          {battleQualifier && battleFinal ? <div className="flex gap-2" role="tablist" aria-label="배틀로얄 단계">
+            {(["qualifier", "final"] as const).map((role) => <button key={role} type="button" role="tab"
+              aria-selected={activeStage.role === role} className={activeStage.role === role ? "button-primary" : "button-muted"}
+              onClick={() => setActiveStage({ format: "battle_royale", role, teamCount: role === "qualifier" ? 24 : 16 })}>
+              {role === "qualifier" ? "예선" : "본선"}
+            </button>)}
+          </div> : null}
+          {(activeStage.role === "qualifier" ? battleQualifier : battleFinal) ? <BattleRoyaleStageView
+            key={activeStage.role}
+            stage={(activeStage.role === "qualifier" ? battleQualifier : battleFinal)!}
+            teams={selectedTeams}
+            onChange={activeStage.role === "qualifier" ? setBattleQualifier : setBattleFinal}
+          /> : null}
+        </div>
+      ) : <ActiveStageView
         activeStage={activeStage}
         selectedFormat={selectedFormat}
         teams={selectedTeams}
@@ -827,7 +883,7 @@ export default function MakerPage() {
         setDoubleResult={setDoubleResult}
         setStepladderResult={setStepladderResult}
         clearResult={clearResult}
-      />
+      />}
     </main>
   );
 }

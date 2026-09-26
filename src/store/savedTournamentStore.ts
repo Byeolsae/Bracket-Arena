@@ -21,6 +21,9 @@ export type SavedTournamentSnapshot = {
   groupTripleStage?: unknown;
   swissStage?: unknown;
   tripleStage?: unknown;
+  battleQualifier?: import("@/lib/core/battleRoyale").BattleRoyaleStage;
+  battleFinal?: import("@/lib/core/battleRoyale").BattleRoyaleStage;
+  battleRoundCount?: number;
 };
 
 export type SavedTournament = {

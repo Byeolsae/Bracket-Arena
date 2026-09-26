@@ -11,6 +11,10 @@ import { createSwissStage } from "../src/lib/core/swiss";
 import { getTeamInitial } from "../src/lib/core/team";
 import { buildSeedOrder } from "../src/lib/core/bye";
 import {
+  createBattleRoyaleStage, updateBattleRoyaleResult, calculateBattleRoyaleStandings,
+  getBattleRoyaleScore, getBattleRoyalePlacementPoints, isBattleRoyaleComplete
+} from "../src/lib/core/battleRoyale";
+import {
   getDoubleLosersMatchCountByRound,
   getDoubleLosersRoundCount,
   getEliminationBracketSize,
@@ -19,6 +23,72 @@ import {
   getUpperBracketRoundCount,
   getUpperFirstRoundMatchCount
 } from "../src/lib/core/eliminationSizing";
+
+test("battle royale starts unranked and scores placement plus kills immediately", () => {
+  const stage = createBattleRoyaleStage(teams(24).map((team) => team.id), "qualifier", 6);
+  assert.equal(stage.lobbies.length, 3);
+  assert.ok(stage.lobbies.every((lobby) => lobby.matches.length === 6));
+  assert.ok(calculateBattleRoyaleStandings(stage).every((row) => row.totalPoints === 0 && row.played === 0));
+  assert.equal(isBattleRoyaleComplete(stage), false);
+  const cases = [[1, 5, 15], [2, 4, 10], [3, 7, 12], [4, 2, 6], [5, 11, 14], [2, 8, 14], [1, 2, 12]];
+  for (const [placement, kills, expected] of cases) {
+    const updated = updateBattleRoyaleResult(stage, "AB", "AB-1", "team-1", { placement, kills });
+    const row = calculateBattleRoyaleStandings(updated).find((item) => item.teamId === "team-1")!;
+    assert.equal(row.totalPoints, expected);
+    assert.equal(row.killPoints, kills);
+    assert.equal(row.placementPoints, expected - kills);
+  }
+  assert.equal(getBattleRoyalePlacementPoints(9), 0);
+  assert.equal(getBattleRoyalePlacementPoints(16), 0);
+  assert.deepEqual(getBattleRoyaleScore({ teamId: "x", placement: null, kills: 8 }),
+    { placementPoints: 0, killPoints: 8, totalPoints: 8 });
+  assert.equal(stage.lobbies[0].matches[0].results[0].placement, null);
+});
+
+test("battle royale partial updates preserve the other input and reject duplicate placement", () => {
+  let stage = createBattleRoyaleStage(teams(16).map((team) => team.id), "final", 5);
+  stage = updateBattleRoyaleResult(stage, "본선", "본선-1", "team-1", { placement: 2 });
+  stage = updateBattleRoyaleResult(stage, "본선", "본선-1", "team-1", { kills: 8 });
+  assert.equal(calculateBattleRoyaleStandings(stage)[0].totalPoints, 14);
+  assert.throws(() => updateBattleRoyaleResult(stage, "본선", "본선-1", "team-2", { placement: 2 }));
+  stage = updateBattleRoyaleResult(stage, "본선", "본선-1", "team-1", { placement: null });
+  assert.equal(calculateBattleRoyaleStandings(stage)[0].totalPoints, 8);
+  stage = updateBattleRoyaleResult(stage, "본선", "본선-1", "team-1", { kills: -3 });
+  assert.equal(calculateBattleRoyaleStandings(stage)[0].totalPoints, 0);
+});
+
+for (const roundCount of [5, 6]) test(`battle royale ${roundCount * 3} matches aggregate without double counting`, () => {
+  let stage = createBattleRoyaleStage(teams(24).map((team) => team.id), "qualifier", roundCount);
+  for (const lobby of stage.lobbies) for (const match of lobby.matches) {
+    for (const [index, teamId] of lobby.teamIds.entries()) {
+      stage = updateBattleRoyaleResult(stage, lobby.id, match.id, teamId, { placement: index + 1, kills: index });
+    }
+  }
+  assert.equal(isBattleRoyaleComplete(stage), true);
+  const rows = calculateBattleRoyaleStandings(stage);
+  assert.equal(rows.length, 24);
+  assert.ok(rows.every((row) => row.played === roundCount * 2));
+  // Every lobby contributes 32 placement points and 120 kills per match.
+  assert.equal(rows.reduce((sum, row) => sum + row.totalPoints, 0), roundCount * 3 * 152);
+  assert.ok(rows.every((row, index) => index === 0 || rows[index - 1].totalPoints >= row.totalPoints));
+  for (const row of rows) {
+    const lobbySum = stage.lobbies.reduce((sum, lobby) => sum +
+      (calculateBattleRoyaleStandings(stage, lobby.id).find((item) => item.teamId === row.teamId)?.totalPoints ?? 0), 0);
+    assert.equal(row.totalPoints, lobbySum);
+  }
+  const final = createBattleRoyaleStage(rows.slice(0, 16).map((row) => row.teamId), "final", roundCount);
+  assert.ok(calculateBattleRoyaleStandings(final).every((row) => row.totalPoints === 0));
+  assert.deepEqual(calculateBattleRoyaleStandings(JSON.parse(JSON.stringify(stage))), rows);
+});
+
+test("battle royale preserves draw groups and validates team counts", () => {
+  const ids = teams(24).map((team) => team.id);
+  const assignments = Object.fromEntries(ids.map((id, index) => [id, index % 3]));
+  const stage = createBattleRoyaleStage(ids, "qualifier", 5, assignments);
+  assert.deepEqual(stage.groups[0].teamIds, ids.filter((_, index) => index % 3 === 0));
+  assert.throws(() => createBattleRoyaleStage(ids.slice(0, 23), "qualifier", 5));
+  assert.throws(() => createBattleRoyaleStage(ids, "qualifier", 5, Object.fromEntries(ids.map((id) => [id, 0]))));
+});
 
 function teams(count: number): Team[] {
   return Array.from({ length: count }, (_, index) => ({
