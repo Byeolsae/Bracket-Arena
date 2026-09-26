@@ -141,3 +141,30 @@ export function isBattleRoyaleComplete(stage: BattleRoyaleStage) {
       match.results.every((result) => result.placement !== null) &&
       new Set(match.results.map((result) => result.placement)).size === lobby.teamIds.length));
 }
+
+export function randomizeBattleRoyaleResults(
+  stage: BattleRoyaleStage,
+  target: { lobbyId?: string; matchId?: string } = {},
+  random: () => number = Math.random
+): BattleRoyaleStage {
+  return {
+    ...stage,
+    lobbies: stage.lobbies.map((lobby) => target.lobbyId && target.lobbyId !== lobby.id ? lobby : {
+      ...lobby,
+      matches: lobby.matches.map((match) => {
+        if (target.matchId && target.matchId !== match.id) return match;
+        const placements = lobby.teamIds.map((_, index) => index + 1);
+        for (let index = placements.length - 1; index > 0; index -= 1) {
+          const other = Math.floor(random() * (index + 1));
+          [placements[index], placements[other]] = [placements[other], placements[index]];
+        }
+        return {
+          ...match,
+          results: lobby.teamIds.map((teamId, index) => ({
+            teamId, placement: placements[index], kills: Math.floor(random() * 13)
+          }))
+        };
+      })
+    })
+  };
+}

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, type Dispatch, type SetStateAction } from "react";
+import { Dices } from "lucide-react";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import type { Team } from "@/lib/core/models";
 import {
   calculateBattleRoyaleStandings, getBattleRoyalePlacementPoints, getBattleRoyaleScore,
-  updateBattleRoyaleResult, type BattleRoyaleStage, type BattleRoyaleStanding
+  updateBattleRoyaleResult, randomizeBattleRoyaleResults, type BattleRoyaleStage, type BattleRoyaleStanding
 } from "@/lib/core/battleRoyale";
 
 export function BattleRoyaleStageView({ stage, teams, onChange }: {
@@ -39,6 +40,16 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: {
     </section>
   );
   return <div className="space-y-6 text-ink">
+    <div className="flex flex-wrap justify-end gap-2">
+      <button type="button" className="button-muted"
+        onClick={() => onChange(randomizeBattleRoyaleResults(stage, { lobbyId: lobby.id }))}>
+        <Dices className="h-4 w-4" aria-hidden="true" />현재 로비 랜덤
+      </button>
+      <button type="button" className="button-muted"
+        onClick={() => onChange(randomizeBattleRoyaleResults(stage))}>
+        <Dices className="h-4 w-4" aria-hidden="true" />전체 랜덤
+      </button>
+    </div>
     <div className="flex flex-wrap gap-2" role="tablist" aria-label="배틀로얄 로비">
       {stage.lobbies.map((item) => <button key={item.id} type="button" role="tab"
         aria-selected={item.id === lobby.id} className={item.id === lobby.id ? "button-primary" : "button-muted"}
@@ -49,7 +60,15 @@ export function BattleRoyaleStageView({ stage, teams, onChange }: {
       <div className="overflow-x-auto rounded border border-line">
         <table className="w-full border-collapse text-sm tabular-nums">
           <thead className="bg-arena text-muted"><tr><th rowSpan={2} className="sticky left-0 z-10 min-w-36 bg-arena p-3 text-left">팀</th>
-            {lobby.matches.map((match, index) => <th key={match.id} className="border-l border-line p-2">{index + 1}경기</th>)}
+            {lobby.matches.map((match, index) => <th key={match.id} className="border-l border-line p-2">
+              <div className="flex items-center justify-center gap-2"><span>{index + 1}경기</span>
+                <button type="button" className="grid h-7 w-7 place-items-center rounded border border-line bg-field hover:text-cyan"
+                  title={`${lobby.name} ${index + 1}경기 랜덤 결과`} aria-label={`${lobby.name} ${index + 1}경기 랜덤 결과`}
+                  onClick={() => onChange(randomizeBattleRoyaleResults(stage, { lobbyId: lobby.id, matchId: match.id }))}>
+                  <Dices className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            </th>)}
           </tr><tr>{lobby.matches.map((match) => <th key={match.id} className="border-l border-line px-3 pb-2">
             <div className="grid min-w-[220px] grid-cols-[100px_60px_40px] gap-2 text-xs"><span>순위</span><span>킬</span><span>점수</span></div>
           </th>)}</tr></thead>

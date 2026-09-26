@@ -12,7 +12,7 @@ import { getTeamInitial } from "../src/lib/core/team";
 import { buildSeedOrder } from "../src/lib/core/bye";
 import {
   createBattleRoyaleStage, updateBattleRoyaleResult, calculateBattleRoyaleStandings,
-  getBattleRoyaleScore, getBattleRoyalePlacementPoints, isBattleRoyaleComplete
+  getBattleRoyaleScore, getBattleRoyalePlacementPoints, isBattleRoyaleComplete, randomizeBattleRoyaleResults
 } from "../src/lib/core/battleRoyale";
 import {
   getDoubleLosersMatchCountByRound,
@@ -23,6 +23,31 @@ import {
   getUpperBracketRoundCount,
   getUpperFirstRoundMatchCount
 } from "../src/lib/core/eliminationSizing";
+
+test("battle royale random results respect scope and generate complete unique rankings", () => {
+  for (const rounds of [5, 6]) {
+    const original = createBattleRoyaleStage(teams(24).map((team) => team.id), "qualifier", rounds);
+    const single = randomizeBattleRoyaleResults(original, { lobbyId: "AB", matchId: "AB-1" }, () => 0.5);
+    assert.equal(single.lobbies[0].matches[1], original.lobbies[0].matches[1]);
+    assert.equal(single.lobbies[1], original.lobbies[1]);
+    assert.ok(original.lobbies[0].matches[0].results.every((result) => result.placement === null));
+    const lobby = randomizeBattleRoyaleResults(original, { lobbyId: "AC" }, () => 0.5);
+    assert.equal(lobby.lobbies[0], original.lobbies[0]);
+    assert.ok(lobby.lobbies[1].matches.every((match) => match.results.every((result) => result.placement !== null)));
+    const all = randomizeBattleRoyaleResults(original, {}, () => 0.5);
+    assert.ok(isBattleRoyaleComplete(all));
+    for (const room of all.lobbies) for (const match of room.matches) {
+      assert.deepEqual(match.results.map((result) => result.placement).sort((a, b) => a! - b!),
+        Array.from({ length: 16 }, (_, index) => index + 1));
+      assert.ok(match.results.every((result) => result.kills === 6));
+    }
+    const standings = calculateBattleRoyaleStandings(all);
+    assert.ok(standings.every((row) => row.played === rounds * 2));
+    assert.equal(standings.reduce((sum, row) => sum + row.totalPoints, 0), rounds * 3 * (32 + 16 * 6));
+  }
+  const final = createBattleRoyaleStage(teams(16).map((team) => team.id), "final", 5);
+  assert.ok(isBattleRoyaleComplete(randomizeBattleRoyaleResults(final)));
+});
 
 test("battle royale starts unranked and scores placement plus kills immediately", () => {
   const stage = createBattleRoyaleStage(teams(24).map((team) => team.id), "qualifier", 6);
