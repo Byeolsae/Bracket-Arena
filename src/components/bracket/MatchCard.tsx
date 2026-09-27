@@ -113,16 +113,16 @@ export function MatchCard({
       data-match-card="true"
       data-match-id={match.id}
       className={clsx(
-        "relative shrink-0 border border-line bg-panel shadow-panel",
+        "relative shrink-0 rounded border border-line bg-panel",
         bracketTeamLayout === "logo" ? size.logoCard : size.card,
-        active && !isLocked && "ring-2 ring-cyan shadow-[0_0_26px_rgba(47,230,255,0.26)]",
-        match.winnerId && "border-lime",
+        active && !isLocked && "ring-1 ring-ink/45",
+        match.winnerId && "border-ink/40",
         locked && "opacity-60"
       )}
     >
       <div
-        className={`flex items-center justify-between px-2 py-1 text-[10px] font-black uppercase tracking-wider ${
-          roundToneClassName ?? roundHeaderClass(match.roundName)
+        className={`flex items-center justify-between rounded-t border-b border-line px-2 py-1 text-[10px] font-semibold tracking-normal ${
+          roundToneClassName ?? "bracket-heading-tone"
         }`}
       >
         <span>M{match.matchNumber.toString().padStart(2, "0")}</span>
@@ -497,15 +497,4 @@ function getTeamTextStyle(team?: Team, isWinner?: boolean): CSSProperties | unde
 
 function mix(color: string, amount: number) {
   return `color-mix(in srgb, ${color} ${amount}%, transparent)`;
-}
-
-function roundHeaderClass(roundName: string) {
-  if (/3rd/i.test(roundName)) return "bg-panel text-ink";
-  if (/final/i.test(roundName)) return "bg-gold text-arena";
-  if (/semifinal/i.test(roundName)) return "bg-lime text-arena";
-  if (/quarterfinal/i.test(roundName)) return "bg-cyan text-arena";
-  if (/16/.test(roundName)) return "bg-magenta text-white";
-  if (/32/.test(roundName)) return "bg-danger text-white";
-  if (/64|128/.test(roundName)) return "bg-white text-slate-950";
-  return "bg-danger text-white";
 }

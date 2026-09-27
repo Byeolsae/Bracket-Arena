@@ -34,8 +34,6 @@ export function BracketLane({
   subtitle,
   matches,
   teamsById,
-  tone = "red",
-  progressiveTone = false,
   splitBranches = false,
   padToTreeRounds = true,
   expectedFirstRoundMatchCount,
@@ -107,8 +105,8 @@ export function BracketLane({
   return (
     <section className="min-w-0 space-y-3">
       <div className="flex items-center gap-3">
-        <div className={`bracket-ribbon ${toneClass(tone)}`}>{title}</div>
-        {subtitle ? <div className="text-sm font-black uppercase tracking-wide text-muted">{subtitle}</div> : null}
+        <div className="bracket-ribbon text-ink">{title}</div>
+        {subtitle ? <div className="text-xs font-medium text-muted">{subtitle}</div> : null}
       </div>
 
       {splitBranches && rounds.length > 0 ? (
@@ -117,8 +115,6 @@ export function BracketLane({
           rounds={displayRounds}
           actualRounds={rounds}
           teamsById={teamsById}
-          tone={tone}
-          progressiveTone={progressiveTone}
           minHeight={minHeight}
           scrollable={scrollable}
           onSaveResult={onSaveResult}
@@ -139,13 +135,11 @@ export function BracketLane({
             const locked =
               roundIndex > 0 &&
               Boolean(previousRound?.matches.some((match) => match.status !== "complete" && match.status !== "bye"));
-            const roundToneClassName = progressiveTone
-              ? roundToneClass(tone, round.name, roundIndex, displayRounds.length)
-              : toneClass(tone);
+            const roundToneClassName = "bracket-heading-tone";
 
             return (
               <div key={round.key} className="relative z-10 flex shrink-0 flex-col justify-around gap-5" style={{ minHeight }}>
-                <div className={`bracket-round-label ${roundHasActiveMatch ? "ring-2 ring-cyan shadow-[0_0_22px_rgba(47,230,255,0.28)]" : ""} ${roundToneClassName}`}>
+                <div className={`bracket-round-label ${roundHasActiveMatch ? "bracket-round-active" : ""} ${roundToneClassName}`}>
                   {round.name}
                 </div>
                 <div className="flex flex-1 flex-col justify-around gap-5">
@@ -185,8 +179,6 @@ function SplitBranchRounds({
   rounds,
   actualRounds,
   teamsById,
-  tone,
-  progressiveTone,
   minHeight,
   scrollable,
   onSaveResult,
@@ -199,8 +191,6 @@ function SplitBranchRounds({
   rounds: ReturnType<typeof groupByRound>;
   actualRounds: ReturnType<typeof groupByRound>;
   teamsById: Map<string, Team>;
-  tone: BracketLaneProps["tone"];
-  progressiveTone: boolean;
   minHeight: string;
   scrollable: boolean;
   onSaveResult: BracketLaneProps["onSaveResult"];
@@ -232,9 +222,7 @@ function SplitBranchRounds({
             Boolean(previousRound?.matches.some((match) => match.status !== "complete" && match.status !== "bye"));
           const isLastRound = rounds.length > 1 && roundIndex === rounds.length - 1;
           const roundLeft = roundIndex * (cardWidth + columnGap);
-          const roundToneClassName = progressiveTone
-            ? roundToneClass(tone, round.name, roundIndex, rounds.length)
-            : toneClass(tone);
+          const roundToneClassName = "bracket-heading-tone";
 
           return (
             <div
@@ -243,7 +231,7 @@ function SplitBranchRounds({
               style={{ left: roundLeft, width: cardWidth, height: canvasHeight + 56 }}
             >
               <div
-                className={`bracket-round-label ${roundHasActiveMatch ? "ring-2 ring-cyan shadow-[0_0_22px_rgba(47,230,255,0.28)]" : ""} ${roundToneClassName}`}
+                className={`bracket-round-label ${roundHasActiveMatch ? "bracket-round-active" : ""} ${roundToneClassName}`}
                 style={{ width: cardWidth }}
               >
                 {round.name}
@@ -320,13 +308,11 @@ function BracketConnectorOverlay({ paths }: { paths: string[] }) {
         <path
           key={`${path}-${index}`}
           d={path}
-          className="fill-none stroke-cyan/45"
-          strokeWidth="2.5"
+          className="fill-none stroke-muted/65"
+          strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          style={{
-            filter: "drop-shadow(0 0 5px rgba(47,230,255,0.28))"
-          }}
+          vectorEffect="non-scaling-stroke"
         />
       ))}
     </svg>
@@ -613,63 +599,4 @@ function applyRoundNameOverrides(
 
 function roundNameFromBase(baseName: string, round: number) {
   return baseName.replace(/\d+\s*$/, `${round}`);
-}
-
-function toneClass(tone: BracketLaneProps["tone"]) {
-  if (tone === "gold") return "bg-gold text-arena";
-  if (tone === "cyan") return "bg-cyan text-arena";
-  if (tone === "lime") return "bg-lime text-arena";
-  if (tone === "white") return "bg-white text-slate-950";
-  return "bg-danger text-white";
-}
-
-function roundToneClass(tone: BracketLaneProps["tone"], roundName: string, roundIndex = 0, totalRounds = 1) {
-  const level = getRoundLevel(roundName, roundIndex, totalRounds);
-  const toneClasses = {
-    cyan: [
-      "bg-cyan/70 text-arena",
-      "bg-cyan/80 text-arena",
-      "bg-cyan text-arena",
-      "bg-cyan text-arena shadow-[0_0_20px_hsl(var(--cyan)/0.22)]"
-    ],
-    gold: [
-      "bg-gold/65 text-arena",
-      "bg-gold/75 text-arena",
-      "bg-gold text-arena",
-      "bg-gold text-arena shadow-[0_0_20px_hsl(var(--gold)/0.22)]"
-    ],
-    red: [
-      "bg-danger/70 text-white",
-      "bg-danger/80 text-white",
-      "bg-danger text-white",
-      "bg-danger text-white shadow-[0_0_20px_hsl(var(--danger)/0.22)]"
-    ],
-    lime: [
-      "bg-lime/65 text-arena",
-      "bg-lime/75 text-arena",
-      "bg-lime text-arena",
-      "bg-lime text-arena shadow-[0_0_20px_hsl(var(--lime)/0.22)]"
-    ],
-    white: [
-      "bg-white/70 text-slate-950",
-      "bg-white/80 text-slate-950",
-      "bg-white text-slate-950",
-      "bg-white text-slate-950 shadow-[0_0_20px_rgba(255,255,255,0.18)]"
-    ]
-  } satisfies Record<NonNullable<BracketLaneProps["tone"]>, string[]>;
-
-  return toneClasses[tone ?? "red"][level];
-}
-
-function getRoundLevel(roundName: string, roundIndex: number, totalRounds: number) {
-  if (/final/i.test(roundName)) return 3;
-  if (/semifinal/i.test(roundName)) return 2;
-  if (/quarterfinal/i.test(roundName)) return 1;
-  if (/3rd/i.test(roundName)) return 1;
-  if (/32|64|128/.test(roundName)) return 0;
-  if (/16/.test(roundName)) return 1;
-  if (roundIndex === totalRounds - 1) return 3;
-  if (roundIndex === totalRounds - 2) return 2;
-  if (roundIndex === totalRounds - 3) return 1;
-  return 0;
 }

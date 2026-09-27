@@ -18,7 +18,7 @@ export function RandomRoundButton({
   return (
     <button
       type="button"
-      className="inline-flex h-9 items-center gap-2 rounded-md border border-cyan/45 bg-cyan/10 px-3 text-[11px] font-black uppercase tracking-[0.08em] text-cyan transition hover:bg-cyan hover:text-arena disabled:cursor-not-allowed disabled:opacity-40"
+      className="inline-flex h-9 items-center gap-2 rounded border border-line bg-panel px-3 text-xs font-semibold text-ink transition hover:bg-field disabled:cursor-not-allowed disabled:opacity-40"
       onClick={onClick}
       disabled={disabled}
       title={title}

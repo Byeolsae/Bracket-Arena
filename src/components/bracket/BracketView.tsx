@@ -71,7 +71,7 @@ export function BracketView({ tournament, teams, onSaveResult, onClearResult }: 
                 width: `${100 * zoom}%`
               }}
             >
-              <section className="grid grid-cols-[64px_minmax(0,1fr)] gap-x-10 border-l-4 border-cyan/60 bg-arena/25 py-5 pr-4">
+              <section className="grid grid-cols-[64px_minmax(0,1fr)] gap-x-10 border-l border-line py-5 pr-4">
                 <BracketAxisLabel label="메인 브래킷" tone="cyan" />
                 <div className="min-w-0">
                   <BracketLane

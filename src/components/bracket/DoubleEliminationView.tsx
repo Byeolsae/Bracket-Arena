@@ -199,9 +199,7 @@ function BracketStackSection({
 }) {
   return (
     <section
-      className={`grid grid-cols-[64px_minmax(0,1fr)] gap-x-10 border-l-4 bg-arena/25 py-5 pr-4 ${
-        tone === "gold" ? "border-gold/60" : tone === "cyan" ? "border-cyan/60" : "border-danger/60"
-      }`}
+      className="grid grid-cols-[64px_minmax(0,1fr)] gap-x-10 border-l border-line py-5 pr-4"
     >
       <BracketAxisLabel label={label} tone={tone} />
       <div className="min-w-0 space-y-4">

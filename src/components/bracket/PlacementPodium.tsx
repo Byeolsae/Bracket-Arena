@@ -19,15 +19,9 @@ export function PlacementPodium({ champion, runnerUp, thirdPlace }: PlacementPod
   );
 }
 
-function PlacementSlot({ label, team, tone }: { label: string; team?: Team; tone: "gold" | "cyan" | "lime" }) {
-  const toneClass = {
-    gold: "border-gold/50 bg-gold/10 text-gold",
-    cyan: "border-cyan/50 bg-cyan/10 text-cyan",
-    lime: "border-lime/50 bg-lime/10 text-lime"
-  }[tone];
-
+function PlacementSlot({ label, team }: { label: string; team?: Team; tone: "gold" | "cyan" | "lime" }) {
   return (
-    <div className={`flex min-w-36 items-center gap-2 border px-3 py-2 ${toneClass}`}>
+    <div className="flex min-w-36 items-center gap-2 rounded border border-line bg-panel px-3 py-2 text-muted">
       <TeamLogo team={team} size="sm" highlighted={Boolean(team)} />
       <div className="min-w-0">
         <div className="text-[10px] font-black uppercase tracking-wide">{label}</div>

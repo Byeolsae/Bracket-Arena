@@ -163,13 +163,7 @@ export function TripleEliminationView({ stage, teams, onChange }: TripleEliminat
                 return (
                   <section
                     key={lane.group}
-                    className={`grid grid-cols-[56px_minmax(1320px,1fr)] gap-x-7 border-l-4 bg-arena/25 py-5 pr-5 ${
-                      lane.tone === "gold"
-                        ? "border-gold/60"
-                        : lane.tone === "cyan"
-                          ? "border-cyan/60"
-                          : "border-danger/60"
-                    }`}
+                    className="grid grid-cols-[56px_minmax(1320px,1fr)] gap-x-7 border-l border-line py-5 pr-5"
                     style={{ minHeight: laneHeight + 112 }}
                   >
                     <BracketAxisLabel label={lane.title} tone={lane.tone} />
