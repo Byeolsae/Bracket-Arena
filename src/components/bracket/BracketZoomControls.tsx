@@ -42,7 +42,7 @@ export function BracketZoomControls({ zoom, onChange, actions }: BracketZoomCont
           className="h-9 border-l border-line px-3 text-xs font-black uppercase tracking-wide text-muted transition hover:bg-panel hover:text-ink"
           onClick={() => onChange(1)}
         >
-          Reset
+          초기화
         </button>
       </div>
     </div>

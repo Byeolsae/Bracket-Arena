@@ -10,6 +10,7 @@ import { getAdvancingTeams } from "../src/lib/core/advancement";
 import { createSwissStage } from "../src/lib/core/swiss";
 import { getTeamInitial } from "../src/lib/core/team";
 import { buildSeedOrder } from "../src/lib/core/bye";
+import { getBracketRoundLabel } from "../src/lib/core/bracketLabels";
 import {
   createBattleRoyaleStage, updateBattleRoyaleResult, calculateBattleRoyaleStandings,
   getBattleRoyaleScore, getBattleRoyalePlacementPoints, isBattleRoyaleComplete, randomizeBattleRoyaleResults
@@ -23,6 +24,17 @@ import {
   getUpperBracketRoundCount,
   getUpperFirstRoundMatchCount
 } from "../src/lib/core/eliminationSizing";
+
+test("bracket display translates legacy round names and preserves custom names", () => {
+  for (const [name, label] of [
+    ["Quarterfinal", "8강"], ["Semifinal", "준결승"], ["Final", "결승"],
+    ["Final Boss", "결승"], ["Step 3", "3단계"], ["Round of 32", "32강"],
+    ["Upper Quarterfinal", "상위조 8강"], ["Middle Final", "중위조 결승"],
+    ["Lower Round 3", "하위조 3라운드"], ["0-Loss Round 1", "0패조 1라운드"],
+    ["Losers Bracket 2", "패자조 2라운드"], ["Opening Match 1", "첫 경기 1"],
+    ["Grand Final Reset", "최종 결승 재경기"], ["결승", "결승"], ["Custom Cup", "Custom Cup"]
+  ]) assert.equal(getBracketRoundLabel(name), label);
+});
 
 test("battle royale random results respect scope and generate complete unique rankings", () => {
   for (const rounds of [5, 6]) {

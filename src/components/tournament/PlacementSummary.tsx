@@ -34,7 +34,7 @@ export function PlacementSummary({ eyebrow, title, subtitle, entries, variant = 
     <section className="arena-card p-4">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
-          <p className="eyebrow">{eyebrow ?? (variant === "seed" ? "SEEDING" : "RESULT")}</p>
+          <p className="eyebrow">{eyebrow ?? (variant === "seed" ? "시드 배정" : "결과")}</p>
           <h3 className="text-lg font-black text-ink">{title}</h3>
         </div>
         {subtitle ? <p className="text-xs font-bold text-muted">{subtitle}</p> : null}

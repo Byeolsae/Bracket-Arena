@@ -174,7 +174,7 @@ export function DoubleEliminationView({
               <div key={teamId} className="flex items-center gap-2 border border-line bg-field px-2 py-1 opacity-55">
                 <TeamLogo team={team} size="sm" />
                 <span className="text-sm font-black uppercase text-ink">
-                  {team?.shortName || team?.name || "TBD"}
+                  {team?.shortName || team?.name || "미정"}
                 </span>
               </div>
             );

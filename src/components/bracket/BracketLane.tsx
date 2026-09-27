@@ -5,6 +5,7 @@ import type { BracketStageMatch, Team } from "@/lib/core/models";
 import { sortBracketMatches } from "@/lib/core/bracketOrder";
 import { MatchCard } from "@/components/bracket/MatchCard";
 import { useUiStore } from "@/store/uiStore";
+import { getBracketRoundLabel } from "@/lib/core/bracketLabels";
 
 type BracketLaneProps = {
   title: string;
@@ -140,7 +141,7 @@ export function BracketLane({
             return (
               <div key={round.key} className="relative z-10 flex shrink-0 flex-col justify-around gap-5" style={{ minHeight }}>
                 <div className={`bracket-round-label ${roundHasActiveMatch ? "bracket-round-active" : ""} ${roundToneClassName}`}>
-                  {round.name}
+                  {getBracketRoundLabel(round.name)}
                 </div>
                 <div className="flex flex-1 flex-col justify-around gap-5">
                   {round.matches.map((match) => (
@@ -234,7 +235,7 @@ function SplitBranchRounds({
                 className={`bracket-round-label ${roundHasActiveMatch ? "bracket-round-active" : ""} ${roundToneClassName}`}
                 style={{ width: cardWidth }}
               >
-                {round.name}
+                {getBracketRoundLabel(round.name)}
               </div>
 
               {round.matches.map((match, matchIndex) => {

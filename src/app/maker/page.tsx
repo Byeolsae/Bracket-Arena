@@ -1107,7 +1107,7 @@ function ActiveStageView({
   if (!view) {
     return (
       <section className="arena-card border-dashed p-8 text-center text-muted">
-        팀과 방식을 선택한 뒤 생성 버튼을 누르면 여기에 Stage가 표시됩니다.
+        팀과 방식을 선택한 뒤 생성 버튼을 누르면 여기에 대진표가 표시됩니다.
       </section>
     );
   }

@@ -34,7 +34,7 @@ export function TeamSlot({
 }: TeamSlotProps) {
   const isBye = participant?.isBye;
   const isPlaceholder = !isBye && !team;
-  const label = isBye ? "BYE" : team?.shortName || team?.name || "TBD";
+  const label = isBye ? "부전승" : team?.shortName || team?.name || "미정";
   const teamStyle = getTeamAccentStyle(team, isWinner);
   const rowStyle = getTeamWinnerRowStyle(team, isWinner);
   const scoreStyle = isWinner && team ? getWinnerScoreStyle(team) : undefined;

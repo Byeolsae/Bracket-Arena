@@ -6,6 +6,7 @@ import { Dices, Trophy } from "lucide-react";
 import clsx from "clsx";
 import type { Match, MatchParticipant, Team } from "@/lib/core/models";
 import { createRandomHeadToHeadScore } from "@/lib/core/randomResults";
+import { getBracketRoundLabel } from "@/lib/core/bracketLabels";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import { useUiStore, type BracketTeamLayout, type TeamDisplaySize } from "@/store/uiStore";
 import {
@@ -125,8 +126,8 @@ export function MatchCard({
           roundToneClassName ?? "bracket-heading-tone"
         }`}
       >
-        <span>M{match.matchNumber.toString().padStart(2, "0")}</span>
-        <span className="truncate px-2">{match.roundName}</span>
+        <span>#{match.matchNumber.toString().padStart(2, "0")}</span>
+        <span className="truncate px-2">{getBracketRoundLabel(match.roundName)}</span>
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -286,7 +287,7 @@ function BracketTeamRow({
 }) {
   const isBye = participant?.isBye;
   const isPlaceholder = !isBye && !team;
-  const label = isBye ? "BYE" : team?.shortName || team?.name || "TBD";
+  const label = isBye ? "부전승" : team?.shortName || team?.name || "미정";
   const teamStyle = getTeamAccentStyle(team, isWinner);
   const logoStripStyle = getLogoOnlyStripStyle(team, isWinner);
   const rowStyle = getTeamWinnerRowStyle(team, isWinner);
@@ -408,7 +409,7 @@ function LogoOnlyTeamTile({
       {isPlaceholder ? (
         <TbdMark />
       ) : isBye ? (
-        <span className="text-xs font-black uppercase tracking-wide">BYE</span>
+        <span className="text-xs font-black">부전승</span>
       ) : (
         <TeamLogo team={team} size={size.logoOnlyLogo} highlighted={isWinner} useVictoryLogo={isWinner} />
       )}
