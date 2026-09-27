@@ -6,6 +6,7 @@ import { sortBracketMatches } from "@/lib/core/bracketOrder";
 import { MatchCard } from "@/components/bracket/MatchCard";
 import { useUiStore } from "@/store/uiStore";
 import { getBracketRoundLabel } from "@/lib/core/bracketLabels";
+import { getBracketSizing } from "@/components/bracket/bracketSizing";
 
 type BracketLaneProps = {
   title: string;
@@ -52,6 +53,7 @@ export function BracketLane({
   const [connectorPaths, setConnectorPaths] = useState<string[]>([]);
   const bracketTeamLayout = useUiStore((state) => state.bracketTeamLayout);
   const teamDisplaySize = useUiStore((state) => state.teamDisplaySize);
+  const sizing = getBracketSizing(teamDisplaySize, bracketTeamLayout);
   const rounds = groupByRound(matches);
   const rawDisplayRounds =
     splitBranches && expectedFirstRoundMatchCount
@@ -122,12 +124,14 @@ export function BracketLane({
           onClearResult={onClearResult}
           activeMatchIds={activeMatchIds}
           connectorPaths={connectorPaths}
+          sizing={sizing}
         />
       ) : (
       <div className={`${scrollable ? "overflow-x-auto" : "overflow-visible"} pb-4`}>
         <div
           ref={boardRef}
-          className="relative isolate grid min-w-max auto-cols-[minmax(300px,340px)] grid-flow-col gap-14"
+          className="relative isolate grid min-w-max grid-flow-col gap-14"
+          style={{ gridAutoColumns: sizing.cardWidth }}
         >
           <BracketConnectorOverlay paths={connectorPaths} />
           {displayRounds.map((round, roundIndex) => {
@@ -140,7 +144,7 @@ export function BracketLane({
 
             return (
               <div key={round.key} className="relative z-10 flex shrink-0 flex-col justify-around gap-5" style={{ minHeight }}>
-                <div className={`bracket-round-label ${roundHasActiveMatch ? "bracket-round-active" : ""} ${roundToneClassName}`}>
+                <div className={`bracket-round-label ${roundHasActiveMatch ? "bracket-round-active" : ""} ${roundToneClassName}`} style={sizing.labelStyle}>
                   {getBracketRoundLabel(round.name)}
                 </div>
                 <div className="flex flex-1 flex-col justify-around gap-5">
@@ -186,6 +190,7 @@ function SplitBranchRounds({
   onClearResult,
   activeMatchIds,
   connectorPaths,
+  sizing,
   boardRef
 }: {
   boardRef: React.RefObject<HTMLDivElement | null>;
@@ -198,9 +203,9 @@ function SplitBranchRounds({
   onClearResult: BracketLaneProps["onClearResult"];
   activeMatchIds?: Set<string>;
   connectorPaths: string[];
+  sizing: ReturnType<typeof getBracketSizing>;
 }) {
-  const leafGap = 176;
-  const cardWidth = 320;
+  const { leafGap, cardWidth } = sizing;
   const columnGap = 112;
   const canvasHeight = Math.max(Number.parseInt(minHeight, 10) || 0, getRequiredCanvasHeight(rounds, leafGap));
 
@@ -233,7 +238,7 @@ function SplitBranchRounds({
             >
               <div
                 className={`bracket-round-label ${roundHasActiveMatch ? "bracket-round-active" : ""} ${roundToneClassName}`}
-                style={{ width: cardWidth }}
+                style={sizing.labelStyle}
               >
                 {getBracketRoundLabel(round.name)}
               </div>

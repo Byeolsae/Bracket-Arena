@@ -6,6 +6,7 @@ import { createRandomHeadToHeadScore } from "@/lib/core/randomResults";
 import { BracketZoomControls } from "@/components/bracket/BracketZoomControls";
 import { RandomRoundButton } from "@/components/bracket/RandomRoundButton";
 import { MatchCard } from "@/components/bracket/MatchCard";
+import { getBracketSizing } from "@/components/bracket/bracketSizing";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import { useUiStore, type TeamDisplaySize } from "@/store/uiStore";
 
@@ -31,6 +32,7 @@ export function StepladderView({
   const bracketTeamLayout = useUiStore((state) => state.bracketTeamLayout);
   const teamDisplaySize = useUiStore((state) => state.teamDisplaySize);
   const stepSize = stepladderStepSizeClass[teamDisplaySize];
+  const sizing = getBracketSizing(teamDisplaySize, bracketTeamLayout);
   const teamsById = new Map(teams.map((team) => [team.id, team]));
   const champion = bracket.championId ? teamsById.get(bracket.championId) : undefined;
   const placements = getStepladderPlacements(bracket, teamsById);
@@ -127,15 +129,14 @@ export function StepladderView({
             <StepladderConnectorOverlay paths={connectorPaths} />
             {bracket.matches.map((match, index) => {
               const toneClassName = "bracket-heading-tone";
-              const columnWidthClass = bracketTeamLayout === "logo" ? stepSize.logoColumn : stepSize.detailColumn;
 
               return (
                 <div
                   key={match.id}
-                  className={`relative z-10 shrink-0 ${columnWidthClass}`}
-                  style={{ paddingTop: `${index * stepSize.stepOffset}px` }}
+                  className="relative z-10 shrink-0"
+                  style={{ width: sizing.cardWidth, paddingTop: `${index * stepSize.stepOffset}px` }}
                 >
-                  <div className={`bracket-round-label w-full ${stepSize.label} ${toneClassName}`}>
+                  <div className={`bracket-round-label ${toneClassName}`} style={sizing.labelStyle}>
                     {index === bracket.matches.length - 1 ? "결승" : `${index + 1}단계`}
                   </div>
                   <div className={stepSize.cardGap}>
@@ -162,46 +163,28 @@ export function StepladderView({
 const stepladderStepSizeClass: Record<
   TeamDisplaySize,
   {
-    detailColumn: string;
-    logoColumn: string;
     stepOffset: number;
-    label: string;
     cardGap: string;
   }
 > = {
   1: {
-    detailColumn: "w-56",
-    logoColumn: "w-28",
     stepOffset: 52,
-    label: "!min-h-6 !px-2 !py-1 !text-[10px]",
     cardGap: "mt-2"
   },
   2: {
-    detailColumn: "w-60",
-    logoColumn: "w-32",
     stepOffset: 58,
-    label: "!min-h-7 !px-2 !py-1.5 !text-[10px]",
     cardGap: "mt-2"
   },
   3: {
-    detailColumn: "w-64",
-    logoColumn: "w-36",
     stepOffset: 64,
-    label: "!min-h-8 !px-3 !py-2 !text-xs",
     cardGap: "mt-3"
   },
   4: {
-    detailColumn: "w-72",
-    logoColumn: "w-40",
     stepOffset: 74,
-    label: "!min-h-9 !px-3 !py-2 !text-xs",
     cardGap: "mt-3"
   },
   5: {
-    detailColumn: "w-80",
-    logoColumn: "w-44",
     stepOffset: 86,
-    label: "!min-h-10 !px-4 !py-2.5 !text-sm",
     cardGap: "mt-4"
   }
 };

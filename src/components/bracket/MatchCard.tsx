@@ -7,6 +7,7 @@ import clsx from "clsx";
 import type { Match, MatchParticipant, Team } from "@/lib/core/models";
 import { createRandomHeadToHeadScore } from "@/lib/core/randomResults";
 import { getBracketRoundLabel } from "@/lib/core/bracketLabels";
+import { getBracketSizing } from "@/components/bracket/bracketSizing";
 import { TeamLogo } from "@/components/teams/TeamLogo";
 import { useUiStore, type BracketTeamLayout, type TeamDisplaySize } from "@/store/uiStore";
 import {
@@ -115,11 +116,11 @@ export function MatchCard({
       data-match-id={match.id}
       className={clsx(
         "relative shrink-0 rounded border border-line bg-panel",
-        bracketTeamLayout === "logo" ? size.logoCard : size.card,
         active && !isLocked && "ring-1 ring-ink/45",
         match.winnerId && "border-ink/40",
         locked && "opacity-60"
       )}
+      style={{ width: getBracketSizing(teamDisplaySize, bracketTeamLayout).cardWidth }}
     >
       <div
         className={`flex items-center justify-between rounded-t border-b border-line px-2 py-1 text-[10px] font-semibold tracking-normal ${
@@ -177,8 +178,6 @@ export function MatchCard({
 }
 
 type BracketTeamSizeClass = {
-  card: string;
-  logoCard: string;
   row: string;
   logoRow: string;
   teamCell: string;
@@ -192,8 +191,6 @@ type BracketTeamSizeClass = {
 
 const bracketTeamSizeClass: Record<TeamDisplaySize, BracketTeamSizeClass> = {
   1: {
-    card: "w-56",
-    logoCard: "w-28",
     row: "h-9 grid-cols-[1fr_44px]",
     logoRow: "h-12 grid-cols-[6px_48px_44px]",
     teamCell: "gap-1.5 px-1.5",
@@ -205,8 +202,6 @@ const bracketTeamSizeClass: Record<TeamDisplaySize, BracketTeamSizeClass> = {
     scoreText: "text-sm"
   },
   2: {
-    card: "w-60",
-    logoCard: "w-32",
     row: "h-10 grid-cols-[1fr_48px]",
     logoRow: "h-14 grid-cols-[6px_56px_48px]",
     teamCell: "gap-2 px-2",
@@ -218,8 +213,6 @@ const bracketTeamSizeClass: Record<TeamDisplaySize, BracketTeamSizeClass> = {
     scoreText: "text-sm"
   },
   3: {
-    card: "w-64",
-    logoCard: "w-36",
     row: "h-11 grid-cols-[1fr_52px]",
     logoRow: "h-16 grid-cols-[6px_64px_52px]",
     teamCell: "gap-2 px-2",
@@ -231,8 +224,6 @@ const bracketTeamSizeClass: Record<TeamDisplaySize, BracketTeamSizeClass> = {
     scoreText: "text-base"
   },
   4: {
-    card: "w-72",
-    logoCard: "w-40",
     row: "h-12 grid-cols-[1fr_56px]",
     logoRow: "h-20 grid-cols-[6px_80px_56px]",
     teamCell: "gap-2.5 px-2.5",
@@ -244,8 +235,6 @@ const bracketTeamSizeClass: Record<TeamDisplaySize, BracketTeamSizeClass> = {
     scoreText: "text-lg"
   },
   5: {
-    card: "w-80",
-    logoCard: "w-44",
     row: "h-14 grid-cols-[1fr_60px]",
     logoRow: "h-24 grid-cols-[6px_96px_60px]",
     teamCell: "gap-3 px-3",
