@@ -19,7 +19,8 @@ type StageFormat =
   | "group_double_elimination"
   | "group_triple_elimination"
   | "swiss"
-  | "battle_royale";
+  | "battle_royale"
+  | "apex_algs";
 
 const stageLabels: Record<StageFormat, string> = {
   single: "싱글 엘리미네이션",
@@ -31,7 +32,8 @@ const stageLabels: Record<StageFormat, string> = {
   group_double_elimination: "그룹 더블 엘리미네이션",
   group_triple_elimination: "그룹 트리플 엘리미네이션",
   swiss: "스위스",
-  battle_royale: "배틀로얄"
+  battle_royale: "배틀로얄 · 배그",
+  apex_algs: "에이펙스 레전드 · ALGS"
 };
 
 const qualifierStageOptions: StageFormat[] = [
@@ -42,7 +44,7 @@ const qualifierStageOptions: StageFormat[] = [
   "swiss",
   "battle_royale"
 ];
-const finalStageOptions: StageFormat[] = ["single", "double", "triple", "stepladder", "battle_royale"];
+const finalStageOptions: StageFormat[] = ["single", "double", "triple", "stepladder", "battle_royale", "apex_algs"];
 const qualifierFinalOptions: Partial<Record<StageFormat, StageFormat[]>> = {
   league: ["single", "double", "triple", "stepladder"],
   group: ["single", "double", "triple", "stepladder"],
@@ -63,6 +65,7 @@ function normalizeBattleRoyaleMatchCount(value: number | undefined) {
 }
 
 function getStageLimitLabel(format: StageFormat) {
+  if (format === "apex_algs") return "20팀 · 매치 포인트 결승";
   if (format === "triple") return "8팀";
   if (format === "group_double_elimination") return "조당 4팀";
   if (format === "group_triple_elimination") return "조당 8팀";
@@ -129,6 +132,7 @@ function supportsGroupDraw(format: StageFormat) {
 }
 
 function getFixedFormatError(format: StageFormat, teamCount: number, label: string) {
+  if (format === "apex_algs" && teamCount !== 20) return `ALGS는 20팀 고정입니다. 현재 ${teamCount}팀입니다.`;
   if (format === "double" && !doubleEliminationCounts.includes(teamCount)) {
     return `${label} 더블 엘리미네이션은 4/8/16팀만 가능합니다. 현재 ${teamCount}팀입니다.`;
   }

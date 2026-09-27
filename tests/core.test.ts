@@ -12,6 +12,7 @@ import { getTeamInitial } from "../src/lib/core/team";
 import { buildSeedOrder } from "../src/lib/core/bye";
 import { getBracketRoundLabel } from "../src/lib/core/bracketLabels";
 import {
+  createAlgsStage, getAlgsMatchPointStatus, appendAlgsMatch,
   createBattleRoyaleStage, updateBattleRoyaleResult, calculateBattleRoyaleStandings,
   getBattleRoyaleScore, getBattleRoyalePlacementPoints, isBattleRoyaleComplete, randomizeBattleRoyaleResults
 } from "../src/lib/core/battleRoyale";
@@ -24,6 +25,76 @@ import {
   getUpperBracketRoundCount,
   getUpperFirstRoundMatchCount
 } from "../src/lib/core/eliminationSizing";
+
+test("ALGS validates 20 teams, starts at zero, and uses official placement scores", () => {
+  const ids = teams(20).map((team) => team.id);
+  assert.throws(() => createAlgsStage(ids.slice(1)));
+  assert.throws(() => createAlgsStage([...ids.slice(1), ids[1]]));
+  const stage = createAlgsStage(ids);
+  assert.equal(stage.lobbies[0].matches.length, 6);
+  assert.ok(calculateBattleRoyaleStandings(stage).every((row) => row.totalPoints === 0));
+  assert.deepEqual(Array.from({length:20}, (_, i) => getBattleRoyalePlacementPoints(i + 1, "algs")),
+    [12,9,7,5,4,3,3,2,2,2,1,1,1,1,1,0,0,0,0,0]);
+  assert.equal(getBattleRoyaleScore({teamId:ids[0],placement:1,kills:5}, "algs").totalPoints, 17);
+  assert.equal(getBattleRoyaleScore({teamId:ids[0],placement:1,kills:5}).totalPoints, 15);
+  assert.equal(getBattleRoyalePlacementPoints(null, "algs"), 0);
+  assert.deepEqual(calculateBattleRoyaleStandings(JSON.parse(JSON.stringify(stage))), calculateBattleRoyaleStandings(stage));
+});
+
+test("ALGS match point requires an earlier threshold, complete history, and stops at champion", () => {
+  const stage = createAlgsStage(teams(20).map((team) => team.id));
+  const matches = stage.lobbies[0].matches;
+  const fill = (index: number, kills: number) => {
+    matches[index].results = stage.teamIds.map((teamId, position) => ({teamId, placement:position + 1, kills:position === 0 ? kills : 0}));
+  };
+  fill(0, 38);
+  assert.equal(getAlgsMatchPointStatus(stage).championId, undefined);
+  assert.ok(getAlgsMatchPointStatus(stage).eligibleTeamIds.has(stage.teamIds[0]));
+  fill(2, 0);
+  assert.equal(getAlgsMatchPointStatus(stage).championId, undefined);
+  fill(1, 0);
+  assert.equal(getAlgsMatchPointStatus(stage).championId, stage.teamIds[0]);
+  assert.equal(getAlgsMatchPointStatus(stage).winningMatchIndex, 1);
+  assert.equal(calculateBattleRoyaleStandings(stage)[0].totalPoints, 62);
+  assert.equal(calculateBattleRoyaleStandings(stage)[0].played, 2);
+  assert.ok(isBattleRoyaleComplete(stage));
+  assert.equal(appendAlgsMatch(stage), stage);
+  matches[0].results[0].kills = 0;
+  assert.equal(getAlgsMatchPointStatus(stage).championId, undefined);
+  assert.equal(isBattleRoyaleComplete(stage), false);
+});
+
+test("ALGS extends match point series and preserves fixed six-match series", () => {
+  const stage = createAlgsStage(teams(20).map((team) => team.id));
+  assert.equal(appendAlgsMatch(stage), stage);
+  stage.lobbies[0].matches.forEach((match, index) => {
+    match.results = stage.teamIds.map((teamId, i) => ({teamId, placement:(i + index) % 20 + 1, kills:0}));
+  });
+  assert.equal(getAlgsMatchPointStatus(stage).championId, undefined);
+  const extended = appendAlgsMatch(stage);
+  assert.equal(extended.lobbies[0].matches.length, 7);
+  assert.ok(extended.lobbies[0].matches[6].results.every((result) => result.placement === null && result.kills === 0));
+  assert.equal(appendAlgsMatch(extended), extended);
+  const series = {...stage, matchPoint:false};
+  assert.equal(appendAlgsMatch(series), series);
+  assert.ok(isBattleRoyaleComplete(series));
+});
+
+test("ALGS ties compare individual scores before kills and champion outranks higher totals", () => {
+  const stage = createAlgsStage(teams(20).map((team) => team.id), false);
+  stage.lobbies[0].matches[0].results[0] = {teamId:stage.teamIds[0],placement:1,kills:0};
+  stage.lobbies[0].matches[0].results[1] = {teamId:stage.teamIds[1],placement:16,kills:6};
+  stage.lobbies[0].matches[1].results[1] = {teamId:stage.teamIds[1],placement:16,kills:6};
+  assert.equal(calculateBattleRoyaleStandings(stage)[0].teamId, stage.teamIds[0]);
+  stage.matchPoint = true;
+  for (let index = 0; index < 2; index++) {
+    stage.lobbies[0].matches[index].results = stage.teamIds.map((teamId, i) => ({teamId, placement:i + 1,
+      kills:i === 0 ? (index === 0 ? 38 : 0) : i === 1 ? 57 : 0}));
+  }
+  const rows = calculateBattleRoyaleStandings(stage);
+  assert.equal(rows[0].teamId, stage.teamIds[0]);
+  assert.ok(rows[1].totalPoints > rows[0].totalPoints);
+});
 
 test("bracket display translates legacy round names and preserves custom names", () => {
   for (const [name, label] of [

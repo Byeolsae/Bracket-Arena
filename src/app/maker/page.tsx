@@ -13,7 +13,7 @@ import {
 } from "@/lib/core/groupElimination";
 import { createGroupDoubleEliminationStage, getGroupDoubleEliminationAdvancingTeams } from "@/lib/core/groupDoubleElimination";
 import { createLeagueStage } from "@/lib/core/league";
-import { createBattleRoyaleStage, calculateBattleRoyaleStandings, isBattleRoyaleComplete, type BattleRoyaleStage } from "@/lib/core/battleRoyale";
+import { createAlgsStage, createBattleRoyaleStage, calculateBattleRoyaleStandings, isBattleRoyaleComplete, type BattleRoyaleStage } from "@/lib/core/battleRoyale";
 import { getStageAdvancingTeams } from "@/lib/core/advancement";
 import { calculateLeagueStandings } from "@/lib/core/ranking";
 import { createSwissStage, getRankedSwissRecords, getRecommendedSwissConfig } from "@/lib/core/swiss";
@@ -87,7 +87,8 @@ type StageFormat =
   | "group_double_elimination"
   | "group_triple_elimination"
   | "swiss"
-  | "battle_royale";
+  | "battle_royale"
+  | "apex_algs";
 
 type ActiveStage = {
   role: "qualifier" | "final";
@@ -127,7 +128,8 @@ const STAGE_LABELS: Record<StageFormat, { label: string; hint: string }> = {
   group_double_elimination: { label: "그룹 더블 엘리미네이션", hint: "조별 4팀 더블 엘리, 상위 2팀 진출" },
   group_triple_elimination: { label: "그룹 트리플 엘리미네이션", hint: "조별 8팀 상위/하위/라스트 찬스 방식" },
   swiss: { label: "스위스", hint: "같은 전적끼리 매칭" },
-  battle_royale: { label: "배틀로얄", hint: "라운드별 순위/킬 기록" }
+  battle_royale: { label: "배틀로얄 · 배그", hint: "라운드별 순위/킬 기록" },
+  apex_algs: { label: "에이펙스 레전드 · ALGS", hint: "20팀 매치 포인트 결승" }
 };
 
 const TWO_STAGE_FINAL_OPTIONS: StageFormat[] = ["single", "double", "triple", "stepladder", "battle_royale"];
@@ -192,6 +194,7 @@ function getFixedGroupConfig(format: StageFormat) {
 }
 
 function getStageLimitLabel(format: StageFormat) {
+  if (format === "apex_algs") return "20팀";
   if (format === "double") return "4/8/16팀";
   if (format === "triple") return "8팀";
   if (format === "group_double_elimination") return "조당 4팀";
@@ -589,6 +592,10 @@ export default function MakerPage() {
   );
 
   function getStageLimitMessage(format: StageFormat, stageTeams: Team[], role: ActiveStage["role"]) {
+    if (format === "apex_algs") {
+      if (mode !== "final-only") return "ALGS 20팀 대회는 본선만 진행 방식에서 생성해 주세요.";
+      return stageTeams.length === 20 ? undefined : `ALGS는 20팀 고정입니다. 현재 ${stageTeams.length}팀입니다.`;
+    }
     if (format === "battle_royale") {
       const expectedCount = role === "qualifier" ? BATTLE_ROYALE_QUALIFIER_TEAM_COUNT : BATTLE_ROYALE_FINAL_TEAM_COUNT;
       if (stageTeams.length !== expectedCount) {
@@ -712,9 +719,9 @@ export default function MakerPage() {
       setCreationNotice(limitMessage);
       return;
     }
-    if (format === "battle_royale") {
+    if (format === "battle_royale" || format === "apex_algs") {
       try {
-        const stage = createBattleRoyaleStage(stageTeams.map((team) => team.id), role, battleRoundCount,
+        const stage = format === "apex_algs" ? createAlgsStage(stageTeams.map((team) => team.id)) : createBattleRoyaleStage(stageTeams.map((team) => team.id), role, battleRoundCount,
           role === "qualifier" ? teamGroupAssignments : {});
         if (role === "qualifier") {
           setBattleQualifier(stage);
@@ -844,9 +851,9 @@ export default function MakerPage() {
         {creationNotice ? <span className="text-sm font-semibold text-gold">{creationNotice}</span> : null}
       </div>
 
-      {activeStage?.format === "battle_royale" ? (
+      {activeStage?.format === "battle_royale" || activeStage?.format === "apex_algs" ? (
         <div className="space-y-4">
-          {battleQualifier && battleFinal ? <div className="flex gap-2" role="tablist" aria-label="배틀로얄 단계">
+          {activeStage.format === "battle_royale" && battleQualifier && battleFinal ? <div className="flex gap-2" role="tablist" aria-label="배틀로얄 단계">
             {(["qualifier", "final"] as const).map((role) => <button key={role} type="button" role="tab"
               aria-selected={activeStage.role === role} className={activeStage.role === role ? "button-primary" : "button-muted"}
               onClick={() => setActiveStage({ format: "battle_royale", role, teamCount: role === "qualifier" ? 24 : 16 })}>
